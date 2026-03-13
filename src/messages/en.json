@@ -1,0 +1,81 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "back": "Back",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "search": "Search",
+    "submit": "Submit",
+    "create": "Create",
+    "close": "Close"
+  },
+  "nav": {
+    "competitions": "Competitions",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "auth": {
+    "login": "Sign in",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "No account?",
+    "signUp": "Sign up",
+    "haveAccount": "Already have an account?",
+    "signIn": "Sign in"
+  },
+  "competition": {
+    "title": "Competitions",
+    "new": "New competition",
+    "name": "Competition name",
+    "location": "Location",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "status": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Published",
+      "REGISTRATION_OPEN": "Registration open",
+      "IN_PROGRESS": "Live",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled"
+    }
+  },
+  "section": {
+    "title": "Sections",
+    "ageCategory": "Age category",
+    "level": "Level",
+    "danceStyle": "Dance style"
+  },
+  "pairs": {
+    "title": "Pairs",
+    "startNumber": "Start number",
+    "dancer1": "Dancer 1",
+    "dancer2": "Dancer 2",
+    "club": "Club",
+    "payment": {
+      "PENDING": "Pending",
+      "PAID": "Paid",
+      "WAIVED": "Waived"
+    }
+  },
+  "judge": {
+    "title": "Judge",
+    "submit": "Submit scores",
+    "selectPairs": "Select pairs to advance",
+    "assignPlacements": "Assign placements"
+  },
+  "results": {
+    "title": "Results",
+    "placement": "Placement",
+    "advancing": "Advancing",
+    "eliminated": "Eliminated"
+  }
+}

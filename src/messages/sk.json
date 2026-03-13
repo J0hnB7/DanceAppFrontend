@@ -1,0 +1,81 @@
+{
+  "common": {
+    "save": "Uložiť",
+    "cancel": "Zrušiť",
+    "delete": "Vymazať",
+    "edit": "Upraviť",
+    "add": "Pridať",
+    "back": "Späť",
+    "loading": "Načítava sa...",
+    "error": "Chyba",
+    "success": "Úspech",
+    "confirm": "Potvrdiť",
+    "search": "Hľadať",
+    "submit": "Odoslať",
+    "create": "Vytvoriť",
+    "close": "Zatvoriť"
+  },
+  "nav": {
+    "competitions": "Súťaže",
+    "dashboard": "Prehľad",
+    "settings": "Nastavenia",
+    "logout": "Odhlásiť sa"
+  },
+  "auth": {
+    "login": "Prihlásiť sa",
+    "register": "Registrovať sa",
+    "email": "Email",
+    "password": "Heslo",
+    "forgotPassword": "Zabudnuté heslo?",
+    "noAccount": "Nemáte účet?",
+    "signUp": "Registrovať sa",
+    "haveAccount": "Máte účet?",
+    "signIn": "Prihlásiť sa"
+  },
+  "competition": {
+    "title": "Súťaže",
+    "new": "Nová súťaž",
+    "name": "Názov súťaže",
+    "location": "Miesto konania",
+    "startDate": "Dátum začiatku",
+    "endDate": "Dátum ukončenia",
+    "status": {
+      "DRAFT": "Koncept",
+      "PUBLISHED": "Zverejnená",
+      "REGISTRATION_OPEN": "Registrácia otvorená",
+      "IN_PROGRESS": "Prebieha",
+      "COMPLETED": "Ukončená",
+      "CANCELLED": "Zrušená"
+    }
+  },
+  "section": {
+    "title": "Sekcie",
+    "ageCategory": "Veková kategória",
+    "level": "Trieda",
+    "danceStyle": "Štýl tanca"
+  },
+  "pairs": {
+    "title": "Páry",
+    "startNumber": "Štartové číslo",
+    "dancer1": "Tanečník 1",
+    "dancer2": "Tanečník 2",
+    "club": "Klub",
+    "payment": {
+      "PENDING": "Čaká na platbu",
+      "PAID": "Zaplatené",
+      "WAIVED": "Odpustené"
+    }
+  },
+  "judge": {
+    "title": "Rozhodca",
+    "submit": "Odoslať hodnotenia",
+    "selectPairs": "Vybrať páry do ďalšieho kola",
+    "assignPlacements": "Priradiť umiestnenia"
+  },
+  "results": {
+    "title": "Výsledky",
+    "placement": "Umiestnenie",
+    "advancing": "Postupujúce",
+    "eliminated": "Vyradené"
+  }
+}

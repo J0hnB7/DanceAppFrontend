@@ -1,0 +1,364 @@
+{
+  "common": {
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "delete": "Smazat",
+    "create": "Vytvořit",
+    "edit": "Upravit",
+    "back": "Zpět",
+    "copy": "Kopírovat",
+    "close": "Zavřít",
+    "confirm": "Potvrdit",
+    "submit": "Odeslat",
+    "add": "Přidat",
+    "loading": "Načítání...",
+    "error": "Chyba",
+    "success": "Úspěch",
+    "download": "Stáhnout PNG",
+    "print": "Tisknout",
+    "search": "Hledat",
+    "filter": "Filtrovat",
+    "export": "Exportovat CSV",
+    "noData": "Žádná data",
+    "pairs": "párů",
+    "of": "z",
+    "free": "Zdarma",
+    "done": "Hotovo"
+  },
+
+  "nav": {
+    "competitions": "Soutěže",
+    "myRegistrations": "Moje přihlášky",
+    "participants": "Účastníci",
+    "analytics": "Analytika",
+    "admin": "Administrace",
+    "settings": "Nastavení",
+    "logout": "Odhlásit se",
+    "seeder": "Seeder"
+  },
+
+  "status": {
+    "DRAFT": "Koncept",
+    "PUBLISHED": "Zveřejněno",
+    "REGISTRATION_OPEN": "Registrace otevřena",
+    "IN_PROGRESS": "Live",
+    "COMPLETED": "Ukončeno",
+    "CANCELLED": "Zrušeno"
+  },
+
+  "competition": {
+    "title": "Soutěže",
+    "new": "Nová soutěž",
+    "created": "Soutěž vytvořena",
+    "updated": "Soutěž aktualizována",
+    "deleted": "Soutěž smazána",
+    "notFound": "Soutěž nenalezena",
+    "notFoundDesc": "Odkaz může být neplatný nebo soutěž byla odstraněna.",
+    "allCompetitions": "Všechny soutěže",
+    "registeredPairs": "{{count}} párů přihlášeno",
+    "registeredPairsOf": "{{count}} / {{max}} párů",
+    "pairsCount": "{{count}} párů",
+    "registrationLink": "Registrační odkaz",
+    "registrationLinkDesc": "Sdílejte tento odkaz s páry, aby se mohly přímo přihlásit.",
+    "openPublicPage": "Otevřít veřejnou stránku",
+    "publish": "Zveřejnit",
+    "published": "Soutěž zveřejněna",
+    "openRegistration": "Otevřít registraci",
+    "closeRegistration": "Zavřít",
+    "toggleOpenAriaLabel": "Otevřít registraci",
+    "toggleCloseAriaLabel": "Zavřít registraci",
+    "registrationOpened": "Registrace otevřena",
+    "registrationClosed": "Registrace uzavřena",
+    "registrationOpenLabel": "Otevřeno",
+    "registrationOpenAction": "Otevřít",
+    "previewRegistration": "Náhled registrační stránky",
+    "shareLink": "Sdílejte tento odkaz s páry, aby se mohly přímo přihlásit.",
+    "tabs": {
+      "overview": "Přehled",
+      "sections": "Kategorie ({{count}})",
+      "pairs": "Páry ({{count}})",
+      "judges": "Porota",
+      "news": "Aktuality ({{count}})",
+      "settings": "Nastavení"
+    },
+    "overview": {
+      "dates": "Termín",
+      "location": "Místo konání",
+      "pairsCard": "Páry",
+      "rounds": "Kola",
+      "round": "Kolo {{n}}",
+      "roundFinal": "Kolo {{n}} (finále)",
+      "judges": "Porotci",
+      "manageJudges": "Správa tokenů porotců",
+      "max": "z {{max}} max"
+    },
+    "deleteDialog": {
+      "title": "Smazat soutěž?",
+      "description": "{{name}} bude trvale smazána. Tuto akci nelze vzít zpět.",
+      "confirm": "Smazat"
+    },
+    "settings": {
+      "contactEmail": "Kontaktní e-mail",
+      "contactEmailDesc": "Zobrazí se účastníkům na veřejné stránce soutěže.",
+      "rules": "Propozice a pravidla",
+      "rulesDesc": "Zobrazí se na veřejné stránce soutěže. Uveďte pravidla, technické požadavky apod.",
+      "rulesPlaceholder": "Soutěž se řídí pravidly WDSF. Každý pár může startovat v jedné věkové kategorii...",
+      "saveRules": "Uložit propozice",
+      "pairsVisibility": "Viditelnost přihlášených párů",
+      "pairsVisibilityDesc": "Určuje, kdo může vidět seznam přihlášených párů na veřejné stránce.",
+      "visibilityPublic": "Veřejný — viditelný pro všechny",
+      "visibilityPrivate": "Soukromý — viditelný po přihlášení",
+      "visibilityHidden": "Skrytý — nezobrazuje se",
+      "numberOfRounds": "Počet kol",
+      "numberOfRoundsDesc": "Kola jsou pojmenována automaticky: Kolo 1, Kolo 2… Poslední kolo je vždy finále.",
+      "rounds": "{{n}} kol",
+      "round": "{{n}} kolo",
+      "competitionId": "ID soutěže",
+      "dangerZone": "Nebezpečná zóna",
+      "deleteCompetition": "Smazat soutěž",
+      "publicPage": "Veřejná stránka",
+      "publicPageDesc": "Zobrazit veřejnou stránku soutěže."
+    }
+  },
+
+  "section": {
+    "title": "Kategorie",
+    "new": "Přidat kategorii",
+    "noSections": "Zatím žádné kategorie. Přidejte kategorii pro nastavení věkových skupin a tanců.",
+    "created": "Kategorie vytvořena",
+    "entryFee": "Startovné",
+    "entryFeeLabel": "Cena za přihlášení",
+    "currency": "Měna",
+    "paymentInfo": "Platební údaje",
+    "paymentInfoPlaceholder": "Číslo účtu, IBAN, poznámka k platbě, variabilní symbol...",
+    "dances": "{{count}} tanců",
+    "status": {
+      "ACTIVE": "Aktivní",
+      "DRAFT": "Koncept",
+      "COMPLETED": "Ukončeno"
+    },
+    "full": "Obsazeno",
+    "almostFull": "Poslední místa",
+    "spotsLeft": "{{count}} volných míst",
+    "free": "Zdarma",
+    "pairsCount": "{{count}} párů"
+  },
+
+  "pairs": {
+    "title": "Páry",
+    "manage": "Správa párů",
+    "noPairs": "Zatím žádné přihlášené páry",
+    "registered": "{{count}} přihlášených párů",
+    "import": "Importovat CSV",
+    "add": "Přidat pár",
+    "paymentStatus": {
+      "PAID": "Zaplaceno",
+      "PENDING": "Čeká",
+      "WAIVED": "Odpuštěno"
+    }
+  },
+
+  "judges": {
+    "title": "Tokeny porotců",
+    "description": "Sdílejte QR kódy s porotci. Po naskenování se přihlásí bez registrace.",
+    "createTokens": "Vytvořit tokeny",
+    "printQr": "Tisknout QR kódy",
+    "downloadPng": "Stáhnout PNG",
+    "copyLink": "Kopírovat odkaz",
+    "linkCopied": "Odkaz zkopírován",
+    "fallbackScoring": "Fallback scoring",
+    "active": "Aktivní",
+    "revoked": "Zrušen",
+    "noTokens": "Žádné tokeny. Vytvořte tokeny pro porotce.",
+    "judgeNumber": "Porotce #{{number}}",
+    "clickToEnlarge": "Kliknutím zvětšit",
+    "qrPreview": "Náhled QR kódů ({{count}} aktivních)",
+    "activityLog": "Log aktivity porotců",
+    "back": "Zpět",
+    "qrCodes": "QR kódy porotců",
+    "judgeLink": "Odkaz pro porotce",
+    "qrTitle": "Porotce #{{number}} — QR kód",
+    "table": {
+      "judge": "Porotce",
+      "token": "Token",
+      "pin": "PIN",
+      "status": "Status",
+      "actions": "Akce"
+    },
+    "createDialog": {
+      "title": "Vytvořit tokeny porotců",
+      "countLabel": "Počet porotců",
+      "description": "Každý porotce dostane unikátní odkaz + QR kód. Po naskenování se přihlásí bez registrace.",
+      "tokensCreated": "{{count}} tokenů porotců vytvořeno"
+    },
+    "fallbackDialog": {
+      "title": "Fallback scoring — zadat za porotce",
+      "selectJudge": "Vyberte porotce...",
+      "note": "Poznámka: Hodnocení zadané zde bude označeno jako 'Zadáno zástupcem' v záznamu.",
+      "reasonLabel": "Důvod / poznámka (volitelné)",
+      "reasonPlaceholder": "např. Selhání zařízení porotce, zadáno hlavním rozhodčím",
+      "confirm": "Potvrdit a označit jako zástupný záznam"
+    }
+  },
+
+  "news": {
+    "title": "Aktuality",
+    "add": "Publikovat aktualitu",
+    "noNews": "Zatím žádné aktuality. Přidejte první oznámení pro účastníky.",
+    "published": "Aktualita publikována",
+    "titleLabel": "Nadpis",
+    "titlePlaceholder": "Registrace je otevřena!",
+    "contentLabel": "Obsah",
+    "contentPlaceholder": "Text aktuality..."
+  },
+
+  "publicCompetition": {
+    "statusLabels": {
+      "DRAFT": "Koncept",
+      "PUBLISHED": "Zveřejněno",
+      "REGISTRATION_OPEN": "Registrace otevřena",
+      "IN_PROGRESS": "Probíhá",
+      "COMPLETED": "Ukončeno",
+      "CANCELLED": "Zrušeno"
+    },
+    "stats": {
+      "pairsOf": "/ {{max}} párů",
+      "pairsRegistered": "párů přihlášeno"
+    },
+    "registrationOpen": "Registrace je otevřena",
+    "spotsLeft": "Zbývá {{count}} volných míst",
+    "capacityFull": "Kapacita je plná",
+    "unlimitedCapacity": "Neomezená kapacita",
+    "regulations": "Propozice",
+    "registerPair": "Přihlásit pár",
+    "categories": "Kategorie",
+    "full": "Obsazeno",
+    "almostFull": "Poslední místa",
+    "paymentInfo": "Platební údaje",
+    "free": "Zdarma",
+    "news": "Aktuality",
+    "pairsPrivate": "Seznam párů je soukromý",
+    "pairsPrivateDesc": "Přihlaš se svým tanečním účtem pro zobrazení přihlášených párů.",
+    "login": "Přihlásit se",
+    "registeredPairs": "Přihlášené páry ({{count}})",
+    "noPairs": "Zatím žádné páry.",
+    "notFound": "Soutěž nenalezena",
+    "notFoundDesc": "Odkaz může být neplatný nebo soutěž byla odstraněna.",
+    "allCompetitions": "Všechny soutěže",
+    "organizerLogin": "Přihlášení organizátora →"
+  },
+
+  "publicRegister": {
+    "backToCompetition": "Zpět na soutěž",
+    "locationDate": "{{location}} · {{date}}",
+    "deadline": "Uzávěrka: {{date}}",
+    "viewRegulations": "Zobrazit propozice",
+    "selectCategory": "1. Vyberte kategorii",
+    "dancerInfo": "2. Informace o tančících",
+    "firstDancer": "První tančící",
+    "partner": "Partner / partnerka (volitelné)",
+    "contactPayment": "3. Kontakt a platba",
+    "emailLabel": "Email",
+    "emailHint": "Na tento email zašleme potvrzení přihlášky",
+    "discountLabel": "Slevový kód (volitelné)",
+    "discountPlaceholder": "EARLYBIRD",
+    "gdprText": "Souhlasím se zpracováním osobních údajů za účelem organizace a průběhu soutěže.",
+    "gdprLink": "Zásady ochrany osobních údajů",
+    "submitButton": "Odeslat přihlášku",
+    "notOpen": "Registrace není otevřena",
+    "notOpenDesc": "Přihlašování pro tuto soutěž momentálně neprobíhá.",
+    "backButton": "Zpět na soutěž",
+    "notFound": "Soutěž nenalezena",
+    "notFoundDesc": "Tento odkaz může být neplatný.",
+    "browseCompetitions": "Procházet soutěže",
+    "confirmed": "Přihláška potvrzena!",
+    "startNumber": "Startovní číslo",
+    "entryFee": "Startovné: {{amount}}",
+    "payBeforeDeadline": "Uhraďte prosím před uzávěrkou přihlášek.",
+    "confirmationSent": "Potvrzení bylo odesláno na váš email.",
+    "backToPage": "Zpět na stránku soutěže",
+    "spotsLeft": "{{count}} volných míst",
+    "entryFeePerPair": "/ pár",
+    "validation": {
+      "selectCategory": "Vyberte prosím kategorii",
+      "required": "Povinné pole",
+      "invalidEmail": "Zadejte platný email",
+      "gdprRequired": "Souhlas s GDPR je povinný"
+    },
+    "failed": "Přihlášení se nezdařilo"
+  },
+
+  "auth": {
+    "login": "Přihlásit se",
+    "register": "Registrovat",
+    "logout": "Odhlásit se",
+    "email": "Email",
+    "password": "Heslo",
+    "forgotPassword": "Zapomenuté heslo?",
+    "noAccount": "Nemáte účet?",
+    "hasAccount": "Již máte účet?"
+  },
+
+  "settings": {
+    "title": "Nastavení",
+    "profile": "Profil",
+    "security": "Zabezpečení",
+    "notifications": "Oznámení",
+    "gdpr": "Data a soukromí",
+    "profileSaved": "Profil uložen",
+    "passwordChanged": "Heslo změněno"
+  },
+
+  "dashboard": {
+    "title": "Přehled",
+    "description": "Spravujte své soutěže",
+    "newCompetition": "Nová soutěž",
+    "totalCompetitions": "Celkem soutěží",
+    "liveNow": "Právě probíhá",
+    "upcoming": "Nadcházející",
+    "totalPairs": "Celkem párů",
+    "archived": "Archiv",
+    "noUpcoming": "Žádné nadcházející soutěže",
+    "noLive": "Momentálně neprobíhá žádná soutěž",
+    "noArchived": "Žádné archivované soutěže",
+    "createFirst": "Vytvořte svou první soutěž a začněte."
+  },
+
+  "analytics": {
+    "title": "Analytika",
+    "topCompetitions": "Top soutěže",
+    "statusDistribution": "Rozložení stavů",
+    "yearOverYear": "Meziroční srovnání"
+  },
+
+  "ageCategory": {
+    "CHILDREN": "Děti",
+    "JUNIOR_I": "Junioři I",
+    "JUNIOR_II": "Junioři II",
+    "YOUTH": "Mládež",
+    "ADULT": "Dospělí",
+    "SENIOR_I": "Senioři I",
+    "SENIOR_II": "Senioři II"
+  },
+
+  "danceStyle": {
+    "STANDARD": "Standard",
+    "LATIN": "Latina",
+    "TEN_DANCE": "Deset tanců",
+    "FORMATION": "Formace"
+  },
+
+  "level": {
+    "A": "A",
+    "B": "B",
+    "C": "C",
+    "D": "D",
+    "E": "E"
+  },
+
+  "errors": {
+    "generic": "Něco se pokazilo. Zkuste to prosím znovu.",
+    "notFound": "Nenalezeno",
+    "unauthorized": "Přístup zamítnut"
+  }
+}

@@ -1,0 +1,364 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "create": "Create",
+    "edit": "Edit",
+    "back": "Back",
+    "copy": "Copy",
+    "close": "Close",
+    "confirm": "Confirm",
+    "submit": "Submit",
+    "add": "Add",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "download": "Download PNG",
+    "print": "Print",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export CSV",
+    "noData": "No data",
+    "pairs": "pairs",
+    "of": "of",
+    "free": "Free",
+    "done": "Done"
+  },
+
+  "nav": {
+    "competitions": "Competitions",
+    "myRegistrations": "My Registrations",
+    "participants": "Participants",
+    "analytics": "Analytics",
+    "admin": "Admin",
+    "settings": "Settings",
+    "logout": "Log out",
+    "seeder": "Seeder"
+  },
+
+  "status": {
+    "DRAFT": "Draft",
+    "PUBLISHED": "Published",
+    "REGISTRATION_OPEN": "Registration open",
+    "IN_PROGRESS": "Live",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled"
+  },
+
+  "competition": {
+    "title": "Competitions",
+    "new": "New competition",
+    "created": "Competition created",
+    "updated": "Competition updated",
+    "deleted": "Competition deleted",
+    "notFound": "Competition not found",
+    "notFoundDesc": "The link may be invalid or the competition has been removed.",
+    "allCompetitions": "All competitions",
+    "registeredPairs": "{{count}} pairs registered",
+    "registeredPairsOf": "{{count}} / {{max}} pairs",
+    "pairsCount": "{{count}} pairs",
+    "registrationLink": "Registration link",
+    "registrationLinkDesc": "Share this link with competing pairs so they can register directly.",
+    "openPublicPage": "Open public page",
+    "publish": "Publish",
+    "published": "Competition published",
+    "openRegistration": "Open registration",
+    "closeRegistration": "Close",
+    "toggleOpenAriaLabel": "Open registration",
+    "toggleCloseAriaLabel": "Close registration",
+    "registrationOpened": "Registration opened",
+    "registrationClosed": "Registration closed",
+    "registrationOpenLabel": "Open",
+    "registrationOpenAction": "Open",
+    "previewRegistration": "Preview registration page",
+    "shareLink": "Share this link with competing pairs so they can register directly.",
+    "tabs": {
+      "overview": "Overview",
+      "sections": "Sections ({{count}})",
+      "pairs": "Pairs ({{count}})",
+      "judges": "Judges",
+      "news": "News ({{count}})",
+      "settings": "Settings"
+    },
+    "overview": {
+      "dates": "Dates",
+      "location": "Location",
+      "pairsCard": "Pairs",
+      "rounds": "Rounds",
+      "round": "Round {{n}}",
+      "roundFinal": "Round {{n}} (final)",
+      "judges": "Judges",
+      "manageJudges": "Manage judge tokens",
+      "max": "of {{max}} max"
+    },
+    "deleteDialog": {
+      "title": "Delete competition?",
+      "description": "{{name}} will be permanently deleted. This action cannot be undone.",
+      "confirm": "Delete"
+    },
+    "settings": {
+      "contactEmail": "Contact email",
+      "contactEmailDesc": "Displayed to participants on the public competition page.",
+      "rules": "Rules & regulations",
+      "rulesDesc": "Displayed on the public competition page. Include rules, technical requirements, etc.",
+      "rulesPlaceholder": "The competition follows WDSF rules. Each pair may compete in one age category...",
+      "saveRules": "Save rules",
+      "pairsVisibility": "Registered pairs visibility",
+      "pairsVisibilityDesc": "Controls who can see the list of registered pairs on the public competition page.",
+      "visibilityPublic": "Public — visible to everyone",
+      "visibilityPrivate": "Private — visible after login",
+      "visibilityHidden": "Hidden — not shown",
+      "numberOfRounds": "Number of rounds",
+      "numberOfRoundsDesc": "Rounds are named automatically: Round 1, Round 2… The last round is always the final.",
+      "rounds": "{{n}} rounds",
+      "round": "{{n}} round",
+      "competitionId": "Competition ID",
+      "dangerZone": "Danger zone",
+      "deleteCompetition": "Delete competition",
+      "publicPage": "Public page",
+      "publicPageDesc": "View the public-facing competition page."
+    }
+  },
+
+  "section": {
+    "title": "Sections",
+    "new": "Add section",
+    "noSections": "No sections yet. Add a section to configure age groups and dances.",
+    "created": "Section created",
+    "entryFee": "Entry fee",
+    "entryFeeLabel": "Price per registration",
+    "currency": "Currency",
+    "paymentInfo": "Payment information",
+    "paymentInfoPlaceholder": "Account number, IBAN, payment note, variable symbol...",
+    "dances": "{{count}} dances",
+    "status": {
+      "ACTIVE": "Active",
+      "DRAFT": "Draft",
+      "COMPLETED": "Completed"
+    },
+    "full": "Full",
+    "almostFull": "Last spots",
+    "spotsLeft": "{{count}} spots left",
+    "free": "Free",
+    "pairsCount": "{{count}} pairs"
+  },
+
+  "pairs": {
+    "title": "Pairs",
+    "manage": "Manage pairs",
+    "noPairs": "No pairs registered yet",
+    "registered": "{{count}} registered pairs",
+    "import": "Import CSV",
+    "add": "Add pair",
+    "paymentStatus": {
+      "PAID": "Paid",
+      "PENDING": "Pending",
+      "WAIVED": "Waived"
+    }
+  },
+
+  "judges": {
+    "title": "Judge Tokens",
+    "description": "Share QR codes with judges. After scanning they log in without registration.",
+    "createTokens": "Create tokens",
+    "printQr": "Print QR codes",
+    "downloadPng": "Download PNG",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied",
+    "fallbackScoring": "Fallback scoring",
+    "active": "Active",
+    "revoked": "Revoked",
+    "noTokens": "No tokens. Create tokens for judges.",
+    "judgeNumber": "Judge #{{number}}",
+    "clickToEnlarge": "Click to enlarge",
+    "qrPreview": "QR code preview ({{count}} active)",
+    "activityLog": "Judge activity log",
+    "back": "Back",
+    "qrCodes": "Judge QR codes",
+    "judgeLink": "Link for judge",
+    "qrTitle": "Judge #{{number}} — QR code",
+    "table": {
+      "judge": "Judge",
+      "token": "Token",
+      "pin": "PIN",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "createDialog": {
+      "title": "Create judge tokens",
+      "countLabel": "Number of judges",
+      "description": "Each judge gets a unique link + QR code. After scanning they log in without registration.",
+      "tokensCreated": "{{count}} judge tokens created"
+    },
+    "fallbackDialog": {
+      "title": "Fallback scoring — enter on behalf of judge",
+      "selectJudge": "Select judge...",
+      "note": "Note: Scores entered here will be marked as \"Entered by proxy\" in the audit log.",
+      "reasonLabel": "Reason / note (optional)",
+      "reasonPlaceholder": "e.g. Judge device failure, entered by chief adjudicator",
+      "confirm": "Confirm & mark as proxy entry"
+    }
+  },
+
+  "news": {
+    "title": "News",
+    "add": "Publish news",
+    "noNews": "No news yet. Add the first announcement for participants.",
+    "published": "News published",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Registration is open!",
+    "contentLabel": "Content",
+    "contentPlaceholder": "News content..."
+  },
+
+  "publicCompetition": {
+    "statusLabels": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Published",
+      "REGISTRATION_OPEN": "Registration open",
+      "IN_PROGRESS": "In progress",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled"
+    },
+    "stats": {
+      "pairsOf": "/ {{max}} pairs",
+      "pairsRegistered": "pairs registered"
+    },
+    "registrationOpen": "Registration is open",
+    "spotsLeft": "{{count}} spots remaining",
+    "capacityFull": "Capacity is full",
+    "unlimitedCapacity": "Unlimited capacity",
+    "regulations": "Regulations",
+    "registerPair": "Register pair",
+    "categories": "Categories",
+    "full": "Full",
+    "almostFull": "Last spots",
+    "paymentInfo": "Payment information",
+    "free": "Free",
+    "news": "News",
+    "pairsPrivate": "The pairs list is private",
+    "pairsPrivateDesc": "Log in with your dance account to view registered pairs.",
+    "login": "Log in",
+    "registeredPairs": "Registered pairs ({{count}})",
+    "noPairs": "No pairs yet.",
+    "notFound": "Competition not found",
+    "notFoundDesc": "The link may be invalid or the competition has been removed.",
+    "allCompetitions": "All competitions",
+    "organizerLogin": "Organizer login →"
+  },
+
+  "publicRegister": {
+    "backToCompetition": "Back to competition",
+    "locationDate": "{{location}} · {{date}}",
+    "deadline": "Deadline: {{date}}",
+    "viewRegulations": "View regulations",
+    "selectCategory": "1. Select category",
+    "dancerInfo": "2. Dancer information",
+    "firstDancer": "First dancer",
+    "partner": "Partner / Partner (optional)",
+    "contactPayment": "3. Contact & payment",
+    "emailLabel": "Email",
+    "emailHint": "We will send your registration confirmation to this email",
+    "discountLabel": "Discount code (optional)",
+    "discountPlaceholder": "EARLYBIRD",
+    "gdprText": "I agree to the processing of personal data for the purpose of organising and running the competition.",
+    "gdprLink": "Privacy policy",
+    "submitButton": "Submit registration",
+    "notOpen": "Registration is not open",
+    "notOpenDesc": "Registration for this competition is not currently active.",
+    "backButton": "Back to competition",
+    "notFound": "Competition not found",
+    "notFoundDesc": "This link may be invalid.",
+    "browseCompetitions": "Browse competitions",
+    "confirmed": "Registration confirmed!",
+    "startNumber": "Start number",
+    "entryFee": "Entry fee: {{amount}}",
+    "payBeforeDeadline": "Please pay before the registration deadline.",
+    "confirmationSent": "Confirmation was sent to your email.",
+    "backToPage": "Back to competition page",
+    "spotsLeft": "{{count}} spots left",
+    "entryFeePerPair": "/ pair",
+    "validation": {
+      "selectCategory": "Please select a category",
+      "required": "Required field",
+      "invalidEmail": "Enter a valid email",
+      "gdprRequired": "GDPR consent is required"
+    },
+    "failed": "Registration failed"
+  },
+
+  "auth": {
+    "login": "Log in",
+    "register": "Register",
+    "logout": "Log out",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?"
+  },
+
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "security": "Security",
+    "notifications": "Notifications",
+    "gdpr": "Data & Privacy",
+    "profileSaved": "Profile saved",
+    "passwordChanged": "Password changed"
+  },
+
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Manage your competitions",
+    "newCompetition": "New competition",
+    "totalCompetitions": "Total competitions",
+    "liveNow": "Live now",
+    "upcoming": "Upcoming",
+    "totalPairs": "Total pairs",
+    "archived": "Archived",
+    "noUpcoming": "No upcoming competitions",
+    "noLive": "No competitions live right now",
+    "noArchived": "No archived competitions",
+    "createFirst": "Create your first competition to get started."
+  },
+
+  "analytics": {
+    "title": "Analytics",
+    "topCompetitions": "Top competitions",
+    "statusDistribution": "Status distribution",
+    "yearOverYear": "Year over year"
+  },
+
+  "ageCategory": {
+    "CHILDREN": "Children",
+    "JUNIOR_I": "Junior I",
+    "JUNIOR_II": "Junior II",
+    "YOUTH": "Youth",
+    "ADULT": "Adult",
+    "SENIOR_I": "Senior I",
+    "SENIOR_II": "Senior II"
+  },
+
+  "danceStyle": {
+    "STANDARD": "Standard",
+    "LATIN": "Latin",
+    "TEN_DANCE": "Ten Dance",
+    "FORMATION": "Formation"
+  },
+
+  "level": {
+    "A": "A",
+    "B": "B",
+    "C": "C",
+    "D": "D",
+    "E": "E"
+  },
+
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized"
+  }
+}
