@@ -1,12 +1,13 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Medal } from "lucide-react";
+import { Trophy, Medal, BarChart3 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -19,6 +20,8 @@ import {
 import { roundsApi } from "@/lib/api/rounds";
 import { scoringApi } from "@/lib/api/scoring";
 import type { RoundResultsResponse, PreliminaryResultResponse } from "@/lib/api/scoring";
+import { useLocale } from "@/contexts/locale-context";
+import { SkatingWorkbook } from "./skating-workbook";
 
 function PlacementBadge({ placement }: { placement: number }) {
   if (placement === 1) return <Trophy className="h-4 w-4 text-yellow-500" />;
@@ -33,6 +36,8 @@ export default function RoundResultsPage({
   params: Promise<{ id: string; sectionId: string; roundId: string }>;
 }) {
   const { roundId } = use(params);
+  const { t } = useLocale();
+  const [showWorkbook, setShowWorkbook] = useState(false);
 
   const { data: round, isLoading: roundLoading } = useQuery({
     queryKey: ["rounds", "detail", roundId],
@@ -60,32 +65,52 @@ export default function RoundResultsPage({
   return (
     <AppShell>
       <PageHeader
-        title={`${round?.roundType} Results`}
-        description={`Round ${round?.roundNumber}`}
-        actions={<Badge variant="success">Calculated</Badge>}
+        title={t("roundResults.title", { type: round?.roundType ?? "" })}
+        description={t("roundResults.roundNumber", { number: round?.roundNumber ?? "" })}
+        actions={<Badge variant="success">{t("roundResults.calculated")}</Badge>}
       />
 
       {resultsLoading && <Skeleton className="h-96 w-full" />}
 
       {isFinal && results && (
-        <FinalResults results={results as RoundResultsResponse} />
+        <>
+          <FinalResults results={results as RoundResultsResponse} t={t} />
+          <div className="mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowWorkbook((v) => !v)}
+            >
+              <BarChart3 className="h-4 w-4" />
+              {showWorkbook ? t("workbook.hide") : t("workbook.show")}
+            </Button>
+          </div>
+          {showWorkbook && (
+            <div className="mt-4">
+              <SkatingWorkbook
+                results={results as RoundResultsResponse}
+                judgeCount={round?.judgeCount ?? 5}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {isPreliminary && results && (
-        <PreliminaryResults results={results as PreliminaryResultResponse} />
+        <PreliminaryResults results={results as PreliminaryResultResponse} t={t} />
       )}
 
       {round?.status !== "CALCULATED" && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <Trophy className="h-12 w-12 text-[var(--text-tertiary)]" />
-          <p className="text-[var(--text-secondary)]">Results not yet calculated</p>
+          <p className="text-[var(--text-secondary)]">{t("roundResults.notCalculated")}</p>
         </div>
       )}
     </AppShell>
   );
 }
 
-function FinalResults({ results }: { results: RoundResultsResponse }) {
+function FinalResults({ results, t }: { results: RoundResultsResponse; t: (key: string) => string }) {
   return (
     <div className="flex flex-col gap-6">
       {results.dances.map((dance) => (
@@ -97,10 +122,10 @@ function FinalResults({ results }: { results: RoundResultsResponse }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">Place</TableHead>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead>Dancer</TableHead>
-                  <TableHead className="w-16">Rule</TableHead>
+                  <TableHead className="w-16">{t("roundResults.place")}</TableHead>
+                  <TableHead className="w-12">{t("roundResults.number")}</TableHead>
+                  <TableHead>{t("roundResults.dancer")}</TableHead>
+                  <TableHead className="w-16">{t("roundResults.rule")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -127,24 +152,24 @@ function FinalResults({ results }: { results: RoundResultsResponse }) {
   );
 }
 
-function PreliminaryResults({ results }: { results: PreliminaryResultResponse }) {
+function PreliminaryResults({ results, t }: { results: PreliminaryResultResponse; t: (key: string, params?: Record<string, string | number>) => string }) {
   const advancing = results.pairs.filter((p) => p.advances);
   const notAdvancing = results.pairs.filter((p) => !p.advances);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
-        <Badge variant="success">{advancing.length} advancing</Badge>
-        <Badge variant="secondary">{notAdvancing.length} eliminated</Badge>
+        <Badge variant="success">{t("roundResults.advancing", { count: advancing.length })}</Badge>
+        <Badge variant="secondary">{t("roundResults.eliminated", { count: notAdvancing.length })}</Badge>
       </div>
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">#</TableHead>
-              <TableHead>Dancer</TableHead>
-              <TableHead className="w-24">Votes</TableHead>
-              <TableHead className="w-24">Status</TableHead>
+              <TableHead className="w-12">{t("roundResults.number")}</TableHead>
+              <TableHead>{t("roundResults.dancer")}</TableHead>
+              <TableHead className="w-24">{t("roundResults.votes")}</TableHead>
+              <TableHead className="w-24">{t("roundResults.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -155,7 +180,7 @@ function PreliminaryResults({ results }: { results: PreliminaryResultResponse })
                 <TableCell className="font-semibold">{row.voteCount}</TableCell>
                 <TableCell>
                   <Badge variant={row.advances ? "success" : "secondary"}>
-                    {row.advances ? "Advances" : "Out"}
+                    {row.advances ? t("roundResults.advances") : t("roundResults.out")}
                   </Badge>
                 </TableCell>
               </TableRow>
