@@ -91,7 +91,7 @@ class SSEClient {
         const data = JSON.parse((e as MessageEvent).data);
         this.handlers.get(competitionId)?.get(event)?.forEach((h) => h(data));
       } catch {
-        // Ignore malformed SSE payloads
+        console.warn("[SSE] Malformed payload for event", event, (e as MessageEvent).data);
       }
     });
   }

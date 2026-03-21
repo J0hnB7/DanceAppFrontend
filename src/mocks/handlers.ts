@@ -321,8 +321,17 @@ export const handlers = [
     });
   }),
 
-  http.delete("/api/v1/competitions/:id/judge-tokens/:tokenId", async () => {
+  http.delete("/api/v1/competitions/:id/judge-tokens/:tokenId/permanent", async ({ params }) => {
     await delay(D);
+    const idx = judgeTokens.findIndex((j) => j.id === params.tokenId);
+    if (idx !== -1) judgeTokens.splice(idx, 1);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete("/api/v1/competitions/:id/judge-tokens/:tokenId", async ({ params }) => {
+    await delay(D);
+    const tok = judgeTokens.find((j) => j.id === params.tokenId);
+    if (tok) (tok as Record<string, unknown>).active = false;
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -508,8 +517,8 @@ export const handlers = [
     await delay(D);
     const data = await body<Record<string, unknown>>(request);
     const sec = sections.find((s) => s.id === data.sectionId);
-    const slot = { id: `slot-${Date.now()}`, competitionId: params.id as string, sectionName: sec?.name ?? "Unknown", orderIndex: scheduleSlots.length, ...data };
-    scheduleSlots.push(slot as typeof scheduleSlots[0]);
+    const slot = { id: `slot-${Date.now()}`, competitionId: params.id as string, sectionId: (data.sectionId as string) ?? null, roundId: null, label: sec?.name ?? "Unknown", startTime: new Date().toISOString(), durationMinutes: (data.durationMinutes as number) ?? 15, orderIndex: scheduleSlots.length, type: "ROUND" as const, liveStatus: "NOT_STARTED" as const, manuallyMoved: false, suggested: false, durationLocked: false, roundNumber: null };
+    scheduleSlots.push(slot);
     return HttpResponse.json(slot, { status: 201 });
   }),
 
