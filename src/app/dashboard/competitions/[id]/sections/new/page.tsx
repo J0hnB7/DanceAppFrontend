@@ -17,15 +17,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCreateSection } from "@/hooks/queries/use-sections";
+import { useCreateSection, useSections } from "@/hooks/queries/use-sections";
 import { Controller } from "react-hook-form";
-import type { AgeCategory, Level, DanceStyle } from "@/lib/api/sections";
+import type { AgeCategory, Level, DanceStyle, CompetitorType, CompetitionType, Series } from "@/lib/api/sections";
+import { useLocale } from "@/contexts/locale-context";
+import { getErrorMessage } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
 
 const schema = z.object({
-  name: z.string().min(2, "Name required"),
-  ageCategory: z.string().min(1, "Required"),
-  level: z.string().min(1, "Required"),
-  danceStyle: z.string().min(1, "Required"),
+  name: z.string().min(2),
+  ageCategory: z.string().min(1),
+  level: z.string().min(1),
+  danceStyle: z.string().min(1),
+  competitorType: z.string().optional(),
+  competitionType: z.string().optional(),
+  series: z.string().optional(),
   entryFee: z.string().optional(),
   entryFeeCurrency: z.string().optional(),
   paymentInfo: z.string().optional(),
@@ -33,37 +40,110 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const AGE_CATEGORIES: { value: AgeCategory; label: string }[] = [
-  { value: "CHILDREN", label: "Children" },
-  { value: "JUNIOR_I", label: "Junior I" },
-  { value: "JUNIOR_II", label: "Junior II" },
-  { value: "YOUTH", label: "Youth" },
-  { value: "ADULT", label: "Adult" },
-  { value: "SENIOR_I", label: "Senior I" },
-  { value: "SENIOR_II", label: "Senior II" },
-];
+const CURRENCIES = ["CZK", "EUR", "USD", "GBP"];
 
-const LEVELS: { value: Level; label: string }[] = [
-  { value: "D", label: "D" },
-  { value: "C", label: "C" },
-  { value: "B", label: "B" },
-  { value: "A", label: "A" },
-  { value: "S", label: "S" },
-  { value: "OPEN", label: "Open" },
-];
-
-const DANCE_STYLES: { value: DanceStyle; label: string }[] = [
-  { value: "STANDARD", label: "Standard" },
-  { value: "LATIN", label: "Latin" },
-  { value: "COMBINATION", label: "Combination" },
-];
-
-const CURRENCIES = ["EUR", "CZK", "USD", "GBP"];
+function SelectField<T extends string>({
+  label,
+  name,
+  options,
+  control,
+  error,
+  placeholder,
+}: {
+  label: string;
+  name: string;
+  options: { value: T; label: string }[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: any;
+  error?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-[var(--text-primary)]">{label}</label>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field }) => (
+          <Select onValueChange={field.onChange} value={field.value}>
+            <SelectTrigger error={!!error}>
+              <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      />
+      {error && <p className="mt-1 text-xs text-[var(--destructive)]">{error}</p>}
+    </div>
+  );
+}
 
 export default function NewSectionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const createSection = useCreateSection(id);
+  const { data: existingSections } = useSections(id);
+  const { t } = useLocale();
+
+  const AGE_CATEGORIES: { value: AgeCategory; label: string }[] = [
+    { value: "CHILDREN_I", label: t("ageCategory.CHILDREN_I") },
+    { value: "CHILDREN_II", label: t("ageCategory.CHILDREN_II") },
+    { value: "JUNIOR_I", label: t("ageCategory.JUNIOR_I") },
+    { value: "JUNIOR_II", label: t("ageCategory.JUNIOR_II") },
+    { value: "YOUTH", label: t("ageCategory.YOUTH") },
+    { value: "ADULT", label: t("ageCategory.ADULT") },
+    { value: "SENIOR_I", label: t("ageCategory.SENIOR_I") },
+    { value: "SENIOR_II", label: t("ageCategory.SENIOR_II") },
+  ];
+
+  const LEVELS: { value: Level; label: string }[] = [
+    { value: "A", label: "A" },
+    { value: "B", label: "B" },
+    { value: "C", label: "C" },
+    { value: "D", label: "D" },
+    { value: "HOBBY", label: "Hobby" },
+    { value: "CHAMPIONSHIP", label: t("series.CZECH_CHAMPIONSHIP") },
+    { value: "OPEN", label: t("series.OPEN") },
+    { value: "S", label: "S" },
+  ];
+
+  const DANCE_STYLES: { value: DanceStyle; label: string }[] = [
+    { value: "STANDARD", label: t("danceStyle.STANDARD") },
+    { value: "LATIN", label: t("danceStyle.LATIN") },
+    { value: "TEN_DANCE", label: t("danceStyle.TEN_DANCE") },
+    { value: "COMBINATION", label: t("danceStyle.COMBINATION") },
+  ];
+
+  const COMPETITOR_TYPES: { value: CompetitorType; label: string }[] = [
+    { value: "AMATEURS", label: t("competitorType.AMATEURS") },
+    { value: "PROFESSIONALS", label: t("competitorType.PROFESSIONALS") },
+  ];
+
+  const COMPETITION_TYPES: { value: CompetitionType; label: string }[] = [
+    { value: "COUPLE", label: t("competitionType.COUPLE") },
+    { value: "SOLO_STANDARD", label: t("competitionType.SOLO_STANDARD") },
+    { value: "SOLO_LATIN", label: t("competitionType.SOLO_LATIN") },
+    { value: "FORMATION_STANDARD", label: t("competitionType.FORMATION_STANDARD") },
+    { value: "FORMATION_LATIN", label: t("competitionType.FORMATION_LATIN") },
+    { value: "SHOW", label: t("competitionType.SHOW") },
+  ];
+
+  const SERIES_OPTIONS: { value: Series; label: string }[] = [
+    { value: "CZECH_CHAMPIONSHIP", label: t("series.CZECH_CHAMPIONSHIP") },
+    { value: "CZECH_CUP", label: t("series.CZECH_CUP") },
+    { value: "EXTRALIGA", label: t("series.EXTRALIGA") },
+    { value: "LIGA_I", label: t("series.LIGA_I") },
+    { value: "LIGA_II", label: t("series.LIGA_II") },
+    { value: "GRAND_PRIX", label: t("series.GRAND_PRIX") },
+    { value: "OPEN", label: t("series.OPEN") },
+    { value: "OTHER", label: t("series.OTHER") },
+  ];
 
   const {
     register,
@@ -73,7 +153,7 @@ export default function NewSectionPage({ params }: { params: Promise<{ id: strin
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { entryFeeCurrency: "EUR" },
+    defaultValues: { entryFeeCurrency: "CZK" },
   });
 
   const entryFeeValue = watch("entryFee") as string | undefined;
@@ -81,115 +161,115 @@ export default function NewSectionPage({ params }: { params: Promise<{ id: strin
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onSubmit = async (values: any) => {
     const fee = values.entryFee ? parseFloat(values.entryFee) : undefined;
-    await createSection.mutateAsync({
-      name: values.name,
-      ageCategory: values.ageCategory as AgeCategory,
-      level: values.level as Level,
-      danceStyle: values.danceStyle as DanceStyle,
-      entryFee: fee && !isNaN(fee) ? fee : undefined,
-      entryFeeCurrency: fee ? (values.entryFeeCurrency || "EUR") : undefined,
-      paymentInfo: values.paymentInfo || undefined,
-    });
+    try {
+      await createSection.mutateAsync({
+        name: values.name,
+        numberOfJudges: 5,
+        maxFinalPairs: 6,
+        orderIndex: existingSections?.length ?? 0,
+        dances: [],
+        ageCategory: values.ageCategory as AgeCategory,
+        level: values.level as Level,
+        danceStyle: values.danceStyle as DanceStyle,
+        competitorType: values.competitorType as CompetitorType | undefined,
+        competitionType: values.competitionType as CompetitionType | undefined,
+        series: values.series as Series | undefined,
+        entryFee: fee && !isNaN(fee) ? fee : undefined,
+        entryFeeCurrency: fee ? (values.entryFeeCurrency || "CZK") : undefined,
+        paymentInfo: values.paymentInfo || undefined,
+      });
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, t("common.error"));
+      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+      return;
+    }
     router.push(`/dashboard/competitions/${id}`);
   };
 
   return (
     <AppShell>
-      <PageHeader title="New section" description="Add a competitive section to this competition" />
+      <button
+        onClick={() => router.back()}
+        className="mb-4 flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Zpět
+      </button>
+      <PageHeader title={t("newSection.title")} description={t("newSection.description")} />
       <div className="mx-auto max-w-lg">
         <Card>
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <Input
-                label="Section name"
-                placeholder="e.g. Children C Standard"
+                label={t("newSection.nameLabel")}
+                placeholder={t("newSection.namePlaceholder")}
                 error={errors.name?.message}
                 {...register("name")}
               />
 
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--text-primary)]">
-                  Age category
-                </label>
-                <Controller
-                  control={control}
+              {/* Row 1: Age category + Level */}
+              <div className="grid grid-cols-2 gap-4">
+                <SelectField
+                  label={t("newSection.ageCategoryLabel")}
                   name="ageCategory"
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger error={!!errors.ageCategory}>
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {AGE_CATEGORIES.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
-                            {c.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  options={AGE_CATEGORIES}
+                  control={control}
+                  error={errors.ageCategory?.message}
+                  placeholder={t("newSection.ageCategoryPlaceholder")}
                 />
-                {errors.ageCategory && (
-                  <p className="mt-1 text-xs text-[var(--destructive)]">{errors.ageCategory.message}</p>
-                )}
+                <SelectField
+                  label={t("newSection.levelLabel")}
+                  name="level"
+                  options={LEVELS}
+                  control={control}
+                  error={errors.level?.message}
+                  placeholder={t("newSection.levelPlaceholder")}
+                />
               </div>
 
+              {/* Row 2: Dance style + Competition type */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[var(--text-primary)]">
-                    Level
-                  </label>
-                  <Controller
-                    control={control}
-                    name="level"
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger error={!!errors.level}>
-                          <SelectValue placeholder="Level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LEVELS.map((l) => (
-                            <SelectItem key={l.value} value={l.value}>
-                              {l.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
+                <SelectField
+                  label={t("newSection.danceStyleLabel")}
+                  name="danceStyle"
+                  options={DANCE_STYLES}
+                  control={control}
+                  error={errors.danceStyle?.message}
+                  placeholder={t("newSection.danceStylePlaceholder")}
+                />
+                <SelectField
+                  label={t("newSection.competitionTypeLabel")}
+                  name="competitionType"
+                  options={COMPETITION_TYPES}
+                  control={control}
+                  placeholder={t("newSection.competitionTypePlaceholder")}
+                />
+              </div>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[var(--text-primary)]">
-                    Dance style
-                  </label>
-                  <Controller
-                    control={control}
-                    name="danceStyle"
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger error={!!errors.danceStyle}>
-                          <SelectValue placeholder="Style" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DANCE_STYLES.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
+              {/* Row 3: Competitor type + Series */}
+              <div className="grid grid-cols-2 gap-4">
+                <SelectField
+                  label={t("newSection.competitorTypeLabel")}
+                  name="competitorType"
+                  options={COMPETITOR_TYPES}
+                  control={control}
+                  placeholder={t("newSection.competitorTypePlaceholder")}
+                />
+                <SelectField
+                  label={t("newSection.seriesLabel")}
+                  name="series"
+                  options={SERIES_OPTIONS}
+                  control={control}
+                  placeholder={t("newSection.seriesPlaceholder")}
+                />
               </div>
 
               {/* Entry fee */}
               <div className="border-t border-[var(--border)] pt-4">
-                <p className="mb-3 text-sm font-medium text-[var(--text-primary)]">Startovné</p>
+                <p className="mb-3 text-sm font-medium text-[var(--text-primary)]">{t("newSection.entryFeeTitle")}</p>
                 <div className="grid grid-cols-[1fr_120px] gap-3">
                   <Input
-                    label="Cena za přihlášení"
+                    label={t("newSection.entryFeeLabel")}
                     type="number"
                     min="0"
                     step="0.01"
@@ -199,7 +279,7 @@ export default function NewSectionPage({ params }: { params: Promise<{ id: strin
                   />
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-[var(--text-primary)]">
-                      Měna
+                      {t("newSection.currencyLabel")}
                     </label>
                     <Controller
                       control={control}
@@ -221,30 +301,30 @@ export default function NewSectionPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
 
-              {/* Payment info — shown when entry fee is set */}
+              {/* Payment info */}
               {!!entryFeeValue && parseFloat(entryFeeValue) > 0 && (
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-[var(--text-primary)]">
-                    Platební údaje
+                    {t("newSection.paymentInfoLabel")}
                   </label>
                   <textarea
                     className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
                     rows={4}
-                    placeholder="Číslo účtu, IBAN, poznámka k platbě, variabilní symbol..."
+                    placeholder={t("newSection.paymentInfoPlaceholder")}
                     {...register("paymentInfo")}
                   />
                   <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                    Tyto údaje uvidí páry po přihlášení do sekce.
+                    {t("newSection.paymentInfoHint")}
                   </p>
                 </div>
               )}
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => router.back()}>
-                  Cancel
+                  {t("newSection.cancel")}
                 </Button>
                 <Button type="submit" loading={createSection.isPending}>
-                  Create section
+                  {t("newSection.submit")}
                 </Button>
               </div>
             </form>

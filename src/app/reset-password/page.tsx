@@ -10,22 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authApi } from "@/lib/api/auth";
-
-const schema = z
-  .object({
-    password: z
-      .string()
-      .min(8, "At least 8 characters")
-      .regex(/[A-Z]/, "Must contain uppercase")
-      .regex(/[0-9]/, "Must contain a number"),
-    confirm: z.string(),
-  })
-  .refine((v) => v.password === v.confirm, {
-    message: "Passwords do not match",
-    path: ["confirm"],
-  });
-
-type Form = z.infer<typeof schema>;
+import { getT } from "@/lib/i18n";
 
 function ResetPasswordPageInner() {
   const router = useRouter();
@@ -33,6 +18,23 @@ function ResetPasswordPageInner() {
   const token = searchParams.get("token") ?? "";
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [t] = useState(() => getT());
+
+  const schema = z
+    .object({
+      password: z
+        .string()
+        .min(8, t("auth.validationPassword"))
+        .regex(/[A-Z]/, t("auth.validationPasswordUpper"))
+        .regex(/[0-9]/, t("auth.validationPasswordNumber")),
+      confirm: z.string(),
+    })
+    .refine((v) => v.password === v.confirm, {
+      message: t("auth.passwordsMustMatch"),
+      path: ["confirm"],
+    });
+
+  type Form = z.infer<typeof schema>;
 
   const { register, handleSubmit, formState: { errors }, setError } = useForm<Form>({
     resolver: zodResolver(schema),
@@ -45,7 +47,7 @@ function ResetPasswordPageInner() {
       router.push("/login?reset=success");
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
-      setError("password", { message: apiErr?.message ?? "Reset failed. Link may have expired." });
+      setError("password", { message: apiErr?.message ?? t("auth.resetFailed") });
     } finally {
       setLoading(false);
     }
@@ -56,16 +58,16 @@ function ResetPasswordPageInner() {
       <div className="w-full max-w-sm">
         <Card>
           <CardHeader>
-            <CardTitle>New password</CardTitle>
-            <CardDescription>Choose a strong password for your account.</CardDescription>
+            <CardTitle>{t("auth.newPassword")}</CardTitle>
+            <CardDescription>{t("auth.newPasswordDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <Input
-                label="New password"
+                label={t("auth.newPasswordLabel")}
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                placeholder="Min. 8 chars, uppercase, number"
+                placeholder={t("auth.newPasswordPlaceholder")}
                 error={errors.password?.message}
                 rightIcon={
                   <button type="button" onClick={() => setShowPassword((s) => !s)} className="pointer-events-auto">
@@ -75,15 +77,15 @@ function ResetPasswordPageInner() {
                 {...register("password")}
               />
               <Input
-                label="Confirm password"
+                label={t("auth.confirmPassword")}
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                placeholder="Repeat password"
+                placeholder={t("auth.confirmPasswordPlaceholder")}
                 error={errors.confirm?.message}
                 {...register("confirm")}
               />
               <Button type="submit" loading={loading} className="w-full">
-                Set new password
+                {t("auth.setNewPassword")}
               </Button>
             </form>
           </CardContent>

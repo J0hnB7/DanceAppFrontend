@@ -18,86 +18,19 @@ import { useCreateCompetition } from "@/hooks/queries/use-competitions";
 import { sectionsApi } from "@/lib/api/sections";
 import apiClient from "@/lib/api-client";
 import { toast } from "@/hooks/use-toast";
-import type { AgeCategory, Level, DanceStyle, SectionDto } from "@/lib/api/sections";
+import { useLocale } from "@/contexts/locale-context";
+import type { AgeCategory, Level, DanceStyle, CompetitorType, CompetitionType, Series, SectionDto } from "@/lib/api/sections";
 import type { CompetitionNewsItem } from "@/lib/api/competitions";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
-const step1Schema = z.object({
-  name: z.string().min(3, "Název musí mít alespoň 3 znaky"),
-  description: z.string().optional(),
-  location: z.string().min(2, "Místo je povinné"),
-});
 
-const step2BaseSchema = z.object({
-  startDate: z.string().min(1, "Datum zahájení je povinné"),
-  endDate: z.string().min(1, "Datum ukončení je povinné"),
-  registrationDeadline: z.string().optional(),
-});
-
-const step3Schema = z.object({
-  maxPairs: z.string().optional(),
-  numberOfRounds: z.string().min(1, "Vyberte počet kol"),
-});
-
-const fullSchema = step1Schema
-  .merge(step2BaseSchema)
-  .merge(step3Schema)
-  .refine((v) => !v.endDate || v.endDate >= v.startDate, {
-    message: "Datum ukončení musí být stejné nebo pozdější než zahájení",
-    path: ["endDate"],
-  });
-
-type WizardForm = z.infer<typeof fullSchema>;
-
-// Section mini-form schema
-const sectionSchema = z.object({
-  name: z.string().min(2, "Název je povinný"),
-  ageCategory: z.string().min(1, "Povinné"),
-  level: z.string().min(1, "Povinné"),
-  danceStyle: z.string().min(1, "Povinné"),
-  entryFee: z.string().optional(),
-  entryFeeCurrency: z.string().optional(),
-});
-type SectionForm = z.infer<typeof sectionSchema>;
-
-// News mini-form schema
-const newsSchema = z.object({
-  title: z.string().min(1, "Název je povinný"),
-  content: z.string().min(1, "Obsah je povinný"),
-});
-type NewsForm = z.infer<typeof newsSchema>;
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-const AGE_CATEGORIES: { value: AgeCategory; label: string }[] = [
-  { value: "CHILDREN", label: "Děti" },
-  { value: "JUNIOR_I", label: "Junioři I" },
-  { value: "JUNIOR_II", label: "Junioři II" },
-  { value: "YOUTH", label: "Mládež" },
-  { value: "ADULT", label: "Dospělí" },
-  { value: "SENIOR_I", label: "Senioři I" },
-  { value: "SENIOR_II", label: "Senioři II" },
-];
-
-const LEVELS: { value: Level; label: string }[] = [
-  { value: "D", label: "D" }, { value: "C", label: "C" }, { value: "B", label: "B" },
-  { value: "A", label: "A" }, { value: "S", label: "S" }, { value: "OPEN", label: "Open" },
-];
-
-const DANCE_STYLES: { value: DanceStyle; label: string }[] = [
-  { value: "STANDARD", label: "Standard" },
-  { value: "LATIN", label: "Latin" },
-  { value: "COMBINATION", label: "Kombinace" },
-];
-
-const CURRENCIES = ["EUR", "CZK", "USD"];
-
-const STEPS = ["Základní info", "Termíny", "Kapacita", "Kategorie", "Aktuality"];
+const CURRENCIES = ["CZK", "EUR", "USD"];
 
 // ── Step indicator ────────────────────────────────────────────────────────────
-function StepIndicator({ current }: { current: number }) {
+function StepIndicator({ current, steps }: { current: number; steps: string[] }) {
   return (
     <ol className="mb-8 flex items-center gap-0">
-      {STEPS.map((label, i) => {
+      {steps.map((label, i) => {
         const done = i < current;
         const active = i === current;
         return (
@@ -118,7 +51,7 @@ function StepIndicator({ current }: { current: number }) {
                 {label}
               </span>
             </div>
-            {i < STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <div className={cn(
                 "mx-2 mb-5 h-px flex-1 transition-colors",
                 done ? "bg-[var(--accent)]" : "bg-[var(--border)]"
@@ -132,10 +65,55 @@ function StepIndicator({ current }: { current: number }) {
 }
 
 // ── Section mini-form ─────────────────────────────────────────────────────────
-function SectionMiniForm({ onAdd, loading }: { onAdd: (v: SectionForm) => Promise<void>; loading: boolean }) {
+interface SectionMiniFormProps {
+  onAdd: (v: SectionForm) => Promise<void>;
+  loading: boolean;
+  labels: {
+    newSectionLabel: string;
+    sectionNameLabel: string;
+    sectionNamePlaceholder: string;
+    sectionNameRequired: string;
+    ageCategoryLabel: string;
+    ageCategoryPlaceholder: string;
+    levelLabel: string;
+    levelPlaceholder: string;
+    danceStyleLabel: string;
+    danceStylePlaceholder: string;
+    competitionTypeLabel: string;
+    competitionTypePlaceholder: string;
+    competitorTypeLabel: string;
+    competitorTypePlaceholder: string;
+    seriesLabel: string;
+    seriesPlaceholder: string;
+    entryFeeLabel: string;
+    currencyLabel: string;
+    addSectionButton: string;
+    ageCategories: { value: AgeCategory; label: string }[];
+    levels: { value: Level; label: string }[];
+    danceStyles: { value: DanceStyle; label: string }[];
+    competitorTypes: { value: CompetitorType; label: string }[];
+    competitionTypes: { value: CompetitionType; label: string }[];
+    seriesOptions: { value: Series; label: string }[];
+  };
+}
+
+const sectionSchema = z.object({
+  name: z.string().min(2),
+  ageCategory: z.string().min(1),
+  level: z.string().min(1),
+  danceStyle: z.string().min(1),
+  competitorType: z.string().optional(),
+  competitionType: z.string().optional(),
+  series: z.string().optional(),
+  entryFee: z.string().optional(),
+  entryFeeCurrency: z.string().optional(),
+});
+type SectionForm = z.infer<typeof sectionSchema>;
+
+function SectionMiniForm({ onAdd, loading, labels }: SectionMiniFormProps) {
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm<SectionForm>({
     resolver: zodResolver(sectionSchema),
-    defaultValues: { entryFeeCurrency: "EUR" },
+    defaultValues: { entryFeeCurrency: "CZK" },
   });
 
   const onSubmit = async (v: SectionForm) => {
@@ -145,43 +123,73 @@ function SectionMiniForm({ onAdd, loading }: { onAdd: (v: SectionForm) => Promis
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-secondary)] p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Nová kategorie</p>
-      <Input label="Název" placeholder="Adult Standard A" error={errors.name?.message} {...register("name")} />
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">{labels.newSectionLabel}</p>
+      <Input label={labels.sectionNameLabel} placeholder={labels.sectionNamePlaceholder} error={errors.name?.message} {...register("name")} />
 
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Věková kat.</label>
+          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">{labels.ageCategoryLabel}</label>
           <Controller control={control} name="ageCategory" render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger error={!!errors.ageCategory}><SelectValue placeholder="Věk" /></SelectTrigger>
-              <SelectContent>{AGE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+              <SelectTrigger error={!!errors.ageCategory}><SelectValue placeholder={labels.ageCategoryPlaceholder} /></SelectTrigger>
+              <SelectContent>{labels.ageCategories.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
             </Select>
           )} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Třída</label>
+          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">{labels.levelLabel}</label>
           <Controller control={control} name="level" render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger error={!!errors.level}><SelectValue placeholder="Třída" /></SelectTrigger>
-              <SelectContent>{LEVELS.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}</SelectContent>
+              <SelectTrigger error={!!errors.level}><SelectValue placeholder={labels.levelPlaceholder} /></SelectTrigger>
+              <SelectContent>{labels.levels.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}</SelectContent>
             </Select>
           )} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Styl</label>
+          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">{labels.danceStyleLabel}</label>
           <Controller control={control} name="danceStyle" render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger error={!!errors.danceStyle}><SelectValue placeholder="Styl" /></SelectTrigger>
-              <SelectContent>{DANCE_STYLES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+              <SelectTrigger error={!!errors.danceStyle}><SelectValue placeholder={labels.danceStylePlaceholder} /></SelectTrigger>
+              <SelectContent>{labels.danceStyles.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+            </Select>
+          )} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">{labels.competitionTypeLabel}</label>
+          <Controller control={control} name="competitionType" render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger><SelectValue placeholder={labels.competitionTypePlaceholder} /></SelectTrigger>
+              <SelectContent>{labels.competitionTypes.map((ct) => <SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>)}</SelectContent>
+            </Select>
+          )} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">{labels.competitorTypeLabel}</label>
+          <Controller control={control} name="competitorType" render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger><SelectValue placeholder={labels.competitorTypePlaceholder} /></SelectTrigger>
+              <SelectContent>{labels.competitorTypes.map((ct) => <SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>)}</SelectContent>
+            </Select>
+          )} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">{labels.seriesLabel}</label>
+          <Controller control={control} name="series" render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger><SelectValue placeholder={labels.seriesPlaceholder} /></SelectTrigger>
+              <SelectContent>{labels.seriesOptions.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
             </Select>
           )} />
         </div>
       </div>
 
       <div className="grid grid-cols-[1fr_100px] gap-3">
-        <Input label="Startovné" type="number" min="0" step="0.01" placeholder="0" {...register("entryFee")} />
+        <Input label={labels.entryFeeLabel} type="number" min="0" step="0.01" placeholder="0" {...register("entryFee")} />
         <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Měna</label>
+          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">{labels.currencyLabel}</label>
           <Controller control={control} name="entryFeeCurrency" render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -193,7 +201,7 @@ function SectionMiniForm({ onAdd, loading }: { onAdd: (v: SectionForm) => Promis
 
       <div className="flex justify-end">
         <Button type="submit" size="sm" loading={loading}>
-          <Plus className="h-4 w-4" /> Přidat kategorii
+          <Plus className="h-4 w-4" /> {labels.addSectionButton}
         </Button>
       </div>
     </form>
@@ -201,7 +209,26 @@ function SectionMiniForm({ onAdd, loading }: { onAdd: (v: SectionForm) => Promis
 }
 
 // ── News mini-form ────────────────────────────────────────────────────────────
-function NewsMiniForm({ onAdd, loading }: { onAdd: (v: NewsForm) => Promise<void>; loading: boolean }) {
+const newsSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+});
+type NewsForm = z.infer<typeof newsSchema>;
+
+interface NewsMiniFormProps {
+  onAdd: (v: NewsForm) => Promise<void>;
+  loading: boolean;
+  labels: {
+    newNewsLabel: string;
+    newsTitleLabel: string;
+    newsTitlePlaceholder: string;
+    newsContentLabel: string;
+    newsContentPlaceholder: string;
+    addNewsButton: string;
+  };
+}
+
+function NewsMiniForm({ onAdd, loading, labels }: NewsMiniFormProps) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<NewsForm>({ resolver: zodResolver(newsSchema) });
 
   const onSubmit = async (v: NewsForm) => {
@@ -211,21 +238,21 @@ function NewsMiniForm({ onAdd, loading }: { onAdd: (v: NewsForm) => Promise<void
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-secondary)] p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Nová aktualita</p>
-      <Input label="Nadpis" placeholder="Důležitá informace pro účastníky" error={errors.title?.message} {...register("title")} />
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">{labels.newNewsLabel}</p>
+      <Input label={labels.newsTitleLabel} placeholder={labels.newsTitlePlaceholder} error={errors.title?.message} {...register("title")} />
       <div>
-        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Obsah</label>
+        <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">{labels.newsContentLabel}</label>
         <textarea
           className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
           rows={3}
-          placeholder="Text aktuality..."
+          placeholder={labels.newsContentPlaceholder}
           {...register("content")}
         />
         {errors.content && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.content.message}</p>}
       </div>
       <div className="flex justify-end">
         <Button type="submit" size="sm" loading={loading}>
-          <Plus className="h-4 w-4" /> Přidat aktualitu
+          <Plus className="h-4 w-4" /> {labels.addNewsButton}
         </Button>
       </div>
     </form>
@@ -244,39 +271,110 @@ export function CompetitionWizard() {
 
   const router = useRouter();
   const create = useCreateCompetition();
+  const { t } = useLocale();
+
+  const STEPS = [
+    t("wizard.step0Label"),
+    t("wizard.step1Label"),
+    t("wizard.step2Label"),
+    t("wizard.step3Label"),
+  ];
+
+  const AGE_CATEGORIES: { value: AgeCategory; label: string }[] = [
+    { value: "CHILDREN_I", label: t("ageCategory.CHILDREN_I") },
+    { value: "CHILDREN_II", label: t("ageCategory.CHILDREN_II") },
+    { value: "JUNIOR_I", label: t("ageCategory.JUNIOR_I") },
+    { value: "JUNIOR_II", label: t("ageCategory.JUNIOR_II") },
+    { value: "YOUTH", label: t("ageCategory.YOUTH") },
+    { value: "ADULT", label: t("ageCategory.ADULT") },
+    { value: "SENIOR_I", label: t("ageCategory.SENIOR_I") },
+    { value: "SENIOR_II", label: t("ageCategory.SENIOR_II") },
+  ];
+
+  const LEVELS: { value: Level; label: string }[] = [
+    { value: "A", label: "A" },
+    { value: "B", label: "B" },
+    { value: "C", label: "C" },
+    { value: "D", label: "D" },
+    { value: "HOBBY", label: t("level.HOBBY") },
+    { value: "CHAMPIONSHIP", label: t("level.CHAMPIONSHIP") },
+    { value: "OPEN", label: t("level.OPEN") },
+    { value: "S", label: "S" },
+  ];
+
+  const DANCE_STYLES: { value: DanceStyle; label: string }[] = [
+    { value: "STANDARD", label: t("danceStyle.STANDARD") },
+    { value: "LATIN", label: t("danceStyle.LATIN") },
+    { value: "TEN_DANCE", label: t("danceStyle.TEN_DANCE") },
+    { value: "COMBINATION", label: t("danceStyle.COMBINATION") },
+  ];
+
+  const COMPETITOR_TYPES: { value: CompetitorType; label: string }[] = [
+    { value: "AMATEURS", label: t("competitorType.AMATEURS") },
+    { value: "PROFESSIONALS", label: t("competitorType.PROFESSIONALS") },
+  ];
+
+  const COMPETITION_TYPES: { value: CompetitionType; label: string }[] = [
+    { value: "COUPLE", label: t("competitionType.COUPLE") },
+    { value: "SOLO_STANDARD", label: t("competitionType.SOLO_STANDARD") },
+    { value: "SOLO_LATIN", label: t("competitionType.SOLO_LATIN") },
+    { value: "FORMATION_STANDARD", label: t("competitionType.FORMATION_STANDARD") },
+    { value: "FORMATION_LATIN", label: t("competitionType.FORMATION_LATIN") },
+    { value: "SHOW", label: t("competitionType.SHOW") },
+  ];
+
+  const SERIES_OPTIONS: { value: Series; label: string }[] = [
+    { value: "CZECH_CHAMPIONSHIP", label: t("series.CZECH_CHAMPIONSHIP") },
+    { value: "CZECH_CUP", label: t("series.CZECH_CUP") },
+    { value: "EXTRALIGA", label: t("series.EXTRALIGA") },
+    { value: "LIGA_I", label: t("series.LIGA_I") },
+    { value: "LIGA_II", label: t("series.LIGA_II") },
+    { value: "GRAND_PRIX", label: t("series.GRAND_PRIX") },
+    { value: "OPEN", label: t("series.OPEN") },
+    { value: "OTHER", label: t("series.OTHER") },
+  ];
+
+  const fullSchema = z.object({
+    name: z.string().min(3, t("wizard.nameRequired")),
+    description: z.string().optional(),
+    venue: z.string().min(2, t("wizard.venueRequired")),
+    startDate: z.string().min(1, t("wizard.startDateRequired")),
+    endDate: z.string().min(1, t("wizard.endDateRequired")),
+    registrationDeadline: z.string().optional(),
+  }).refine((v) => !v.endDate || v.endDate >= v.startDate, {
+    message: t("wizard.endDateOrder"),
+    path: ["endDate"],
+  });
+
+  type WizardForm = z.infer<typeof fullSchema>;
 
   const { register, control, handleSubmit, trigger, formState: { errors } } = useForm<WizardForm>({
     resolver: zodResolver(fullSchema),
     mode: "onTouched",
   });
 
-  // Steps 0-2: validate fields and advance; step 2→3 creates the competition
   const nextStep = async () => {
-    if (step < 3) {
+    if (step < 2) {
       const fields = getFieldsForStep(step);
       const valid = await trigger(fields as (keyof WizardForm)[]);
       if (!valid) return;
     }
 
-    if (step === 2) {
-      // Create competition before entering step 3
+    if (step === 1) {
       await handleSubmit(async (values) => {
         setCreatingComp(true);
         try {
           const competition = await create.mutateAsync({
             name: values.name,
             description: values.description,
-            location: values.location,
-            startDate: values.startDate,
-            endDate: values.endDate,
+            venue: values.venue,
+            eventDate: values.startDate,
             registrationDeadline: values.registrationDeadline || undefined,
-            maxPairs: values.maxPairs ? Number(values.maxPairs) : undefined,
-            numberOfRounds: Number(values.numberOfRounds) || 2,
           });
           setCompetitionId(competition.id);
-          setStep(3);
+          setStep(2);
         } catch {
-          toast({ title: "Nepodařilo se vytvořit soutěž", variant: "destructive" } as Parameters<typeof toast>[0]);
+          toast({ title: t("wizard.createFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
         } finally {
           setCreatingComp(false);
         }
@@ -297,12 +395,15 @@ export function CompetitionWizard() {
         ageCategory: v.ageCategory as AgeCategory,
         level: v.level as Level,
         danceStyle: v.danceStyle as DanceStyle,
+        competitorType: v.competitorType as CompetitorType | undefined,
+        competitionType: v.competitionType as CompetitionType | undefined,
+        series: v.series as Series | undefined,
         entryFee: fee && !isNaN(fee) ? fee : undefined,
-        entryFeeCurrency: fee ? (v.entryFeeCurrency || "EUR") : undefined,
+        entryFeeCurrency: fee ? (v.entryFeeCurrency || "CZK") : undefined,
       });
       setSections((prev) => [...prev, section]);
     } catch {
-      toast({ title: "Nepodařilo se přidat kategorii", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("wizard.addSectionFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
     } finally {
       setSectionLoading(false);
     }
@@ -314,7 +415,7 @@ export function CompetitionWizard() {
       await sectionsApi.delete(competitionId, sectionId);
       setSections((prev) => prev.filter((s) => s.id !== sectionId));
     } catch {
-      toast({ title: "Nepodařilo se odebrat kategorii", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("wizard.removeSectionFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
     }
   };
 
@@ -325,7 +426,7 @@ export function CompetitionWizard() {
       const item = await apiClient.post<CompetitionNewsItem>(`/competitions/${competitionId}/news`, v).then((r) => r.data);
       setNews((prev) => [...prev, item]);
     } catch {
-      toast({ title: "Nepodařilo se přidat aktualitu", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("wizard.addNewsFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
     } finally {
       setNewsLoading(false);
     }
@@ -337,34 +438,71 @@ export function CompetitionWizard() {
       await apiClient.delete(`/competitions/${competitionId}/news/${newsId}`);
       setNews((prev) => prev.filter((n) => n.id !== newsId));
     } catch {
-      toast({ title: "Nepodařilo se odebrat aktualitu", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("wizard.removeNewsFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
     }
   };
 
   const finish = () => {
-    toast({ title: "Soutěž vytvořena!", variant: "success" } as Parameters<typeof toast>[0]);
+    toast({ title: t("wizard.created"), variant: "success" } as Parameters<typeof toast>[0]);
     router.push(`/dashboard/competitions/${competitionId}?new=1`);
+  };
+
+  const sectionLabels = {
+    newSectionLabel: t("wizard.newSectionLabel"),
+    sectionNameLabel: t("wizard.sectionNameLabel"),
+    sectionNamePlaceholder: t("wizard.sectionNamePlaceholder"),
+    sectionNameRequired: t("wizard.sectionNameRequired"),
+    ageCategoryLabel: t("wizard.ageCategoryLabel"),
+    ageCategoryPlaceholder: t("wizard.ageCategoryPlaceholder"),
+    levelLabel: t("wizard.levelLabel"),
+    levelPlaceholder: t("wizard.levelPlaceholder"),
+    danceStyleLabel: t("wizard.danceStyleLabel"),
+    danceStylePlaceholder: t("wizard.danceStylePlaceholder"),
+    competitionTypeLabel: t("wizard.competitionTypeLabel"),
+    competitionTypePlaceholder: t("wizard.competitionTypePlaceholder"),
+    competitorTypeLabel: t("wizard.competitorTypeLabel"),
+    competitorTypePlaceholder: t("wizard.competitorTypePlaceholder"),
+    seriesLabel: t("wizard.seriesLabel"),
+    seriesPlaceholder: t("wizard.seriesPlaceholder"),
+    entryFeeLabel: t("wizard.entryFeeLabel"),
+    currencyLabel: t("wizard.currencyLabel"),
+    addSectionButton: t("wizard.addSectionButton"),
+    ageCategories: AGE_CATEGORIES,
+    levels: LEVELS,
+    danceStyles: DANCE_STYLES,
+    competitorTypes: COMPETITOR_TYPES,
+    competitionTypes: COMPETITION_TYPES,
+    seriesOptions: SERIES_OPTIONS,
+  };
+
+  const newsLabels = {
+    newNewsLabel: t("wizard.newNewsLabel"),
+    newsTitleLabel: t("wizard.newsTitleLabel"),
+    newsTitlePlaceholder: t("wizard.newsTitlePlaceholder"),
+    newsContentLabel: t("wizard.newsContentLabel"),
+    newsContentPlaceholder: t("wizard.newsContentPlaceholder"),
+    addNewsButton: t("wizard.addNewsButton"),
   };
 
   return (
     <div className="mx-auto max-w-xl">
-      <StepIndicator current={step} />
+      <StepIndicator current={step} steps={STEPS} />
 
-      {/* Steps 0-2: basic form */}
-      {step <= 2 && (
+      {/* Steps 0-1: basic form */}
+      {step <= 1 && (
         <form onSubmit={(e) => e.preventDefault()}>
           {step === 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Základní informace</CardTitle>
-                <CardDescription>Název a místo konání soutěže</CardDescription>
+                <CardTitle>{t("wizard.step0Title")}</CardTitle>
+                <CardDescription>{t("wizard.step0Desc")}</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <Input label="Název soutěže" placeholder="Slovak Open 2026"
+                <Input label={t("wizard.nameLabel")} placeholder={t("wizard.namePlaceholder")}
                   error={errors.name?.message} {...register("name")} />
-                <Input label="Místo konání" placeholder="Bratislava, Incheba Expo"
-                  error={errors.location?.message} {...register("location")} />
-                <Input label="Popis (volitelné)" placeholder="Krátký popis..."
+                <Input label={t("wizard.venueLabel")} placeholder={t("wizard.venuePlaceholder")}
+                  error={errors.venue?.message} {...register("venue")} />
+                <Input label={t("wizard.descriptionLabel")} placeholder={t("wizard.descriptionPlaceholder")}
                   error={errors.description?.message} {...register("description")} />
               </CardContent>
             </Card>
@@ -373,68 +511,32 @@ export function CompetitionWizard() {
           {step === 1 && (
             <Card>
               <CardHeader>
-                <CardTitle>Termíny</CardTitle>
-                <CardDescription>Kdy se soutěž koná?</CardDescription>
+                <CardTitle>{t("wizard.step1Title")}</CardTitle>
+                <CardDescription>{t("wizard.step1Desc")}</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <Input label="Datum zahájení" type="date"
+                <Input label={t("wizard.startDateLabel")} type="date"
                   error={errors.startDate?.message} {...register("startDate")} />
-                <Input label="Datum ukončení" type="date"
+                <Input label={t("wizard.endDateLabel")} type="date"
                   error={errors.endDate?.message} {...register("endDate")} />
-                <Input label="Uzávěrka přihlášek (volitelné)" type="date"
+                <Input label={t("wizard.registrationDeadlineLabel")} type="date"
                   error={errors.registrationDeadline?.message} {...register("registrationDeadline")} />
-              </CardContent>
-            </Card>
-          )}
-
-          {step === 2 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Kapacita a kola</CardTitle>
-                <CardDescription>Nastavte limity a strukturu soutěže</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-[var(--text-secondary)]">
-                    Počet kol <span className="text-[var(--destructive)]">*</span>
-                  </label>
-                  <Controller control={control} name="numberOfRounds" render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger><SelectValue placeholder="Vyberte počet kol" /></SelectTrigger>
-                      <SelectContent>
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            {n} {n === 1 ? "kolo" : n < 5 ? "kola" : "kol"}
-                            {n === 1 && " (pouze finále)"}
-                            {n === 2 && " (předkolo + finále)"}
-                            {n === 3 && " (předkolo + semifinále + finále)"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )} />
-                  {errors.numberOfRounds && (
-                    <p className="text-xs text-[var(--destructive)]">{errors.numberOfRounds.message}</p>
-                  )}
-                </div>
-                <Input label="Max počet párů (prázdné = bez limitu)" type="number" min={1}
-                  placeholder="např. 200" error={errors.maxPairs?.message} {...register("maxPairs")} />
               </CardContent>
             </Card>
           )}
         </form>
       )}
 
-      {/* Step 3: Kategorie */}
-      {step === 3 && (
+      {/* Step 2: Sections */}
+      {step === 2 && (
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-[var(--accent)]" /> Kategorie
+                <Trophy className="h-5 w-5 text-[var(--accent)]" /> {t("wizard.step2Title")}
               </CardTitle>
               <CardDescription>
-                Přidejte soutěžní kategorie. Kategorie můžete přidávat i kdykoli později.
+                {t("wizard.step2Desc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
@@ -457,27 +559,27 @@ export function CompetitionWizard() {
                   ))}
                 </ul>
               )}
-              <SectionMiniForm onAdd={addSection} loading={sectionLoading} />
+              <SectionMiniForm onAdd={addSection} loading={sectionLoading} labels={sectionLabels} />
             </CardContent>
           </Card>
           {sections.length === 0 && (
             <p className="text-center text-xs text-[var(--text-tertiary)]">
-              Nemáte žádné kategorie. Můžete je přeskočit a přidat later.
+              {t("wizard.noSectionsHint")}
             </p>
           )}
         </div>
       )}
 
-      {/* Step 4: Aktuality */}
-      {step === 4 && (
+      {/* Step 3: News */}
+      {step === 3 && (
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Newspaper className="h-5 w-5 text-[var(--accent)]" /> Aktuality
+                <Newspaper className="h-5 w-5 text-[var(--accent)]" /> {t("wizard.step3Title")}
               </CardTitle>
               <CardDescription>
-                Přidejte aktuality pro účastníky. Lze přidat i kdykoliv později.
+                {t("wizard.step3Desc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
@@ -497,12 +599,12 @@ export function CompetitionWizard() {
                   ))}
                 </ul>
               )}
-              <NewsMiniForm onAdd={addNews} loading={newsLoading} />
+              <NewsMiniForm onAdd={addNews} loading={newsLoading} labels={newsLabels} />
             </CardContent>
           </Card>
           {sections.length > 0 && (
             <div className="flex flex-wrap gap-1.5 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-2">
-              <span className="text-xs text-[var(--text-tertiary)]">Kategorie:</span>
+              <span className="text-xs text-[var(--text-tertiary)]">{t("wizard.sectionsLabel")}</span>
               {sections.map((s) => (
                 <Badge key={s.id} variant="secondary" className="text-xs">{s.name}</Badge>
               ))}
@@ -515,23 +617,23 @@ export function CompetitionWizard() {
       <div className="mt-6 flex items-center justify-between">
         <Button type="button" variant="outline"
           onClick={() => step === 0 ? router.back() : setStep((s) => s - 1)}
-          disabled={step >= 3 && step < 4 /* can't go back after creating */ || false}>
-          {step === 0 ? "Zrušit" : "Zpět"}
+          disabled={step >= 2}>
+          {step === 0 ? t("wizard.cancelButton") : t("wizard.backButton")}
         </Button>
 
-        {step < 3 && (
-          <Button type="button" onClick={nextStep} loading={step === 2 ? creatingComp : false}>
-            {step === 2 ? "Vytvořit soutěž" : "Pokračovat"} <ChevronRight className="h-4 w-4" />
+        {step < 2 && (
+          <Button type="button" onClick={nextStep} loading={step === 1 ? creatingComp : false}>
+            {step === 1 ? t("wizard.createCompetition") : t("wizard.continueButton")} <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
+        {step === 2 && (
+          <Button type="button" onClick={() => setStep(3)}>
+            {t("wizard.continueButton")} <ChevronRight className="h-4 w-4" />
           </Button>
         )}
         {step === 3 && (
-          <Button type="button" onClick={() => setStep(4)}>
-            Pokračovat <ChevronRight className="h-4 w-4" />
-          </Button>
-        )}
-        {step === 4 && (
           <Button type="button" onClick={finish}>
-            Dokončit <Check className="h-4 w-4" />
+            {t("wizard.finishButton")} <Check className="h-4 w-4" />
           </Button>
         )}
       </div>
@@ -540,8 +642,7 @@ export function CompetitionWizard() {
 }
 
 function getFieldsForStep(step: number): string[] {
-  if (step === 0) return ["name", "location", "description"];
+  if (step === 0) return ["name", "venue", "description"];
   if (step === 1) return ["startDate", "endDate", "registrationDeadline"];
-  if (step === 2) return ["numberOfRounds", "maxPairs"];
   return [];
 }

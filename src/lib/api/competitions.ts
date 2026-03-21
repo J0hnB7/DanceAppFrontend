@@ -1,6 +1,8 @@
 import apiClient from "@/lib/api-client";
 
-export type CompetitionStatus = "DRAFT" | "PUBLISHED" | "REGISTRATION_OPEN" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type CompetitionStatus = "DRAFT" | "PUBLISHED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type FederationType = "WDSF" | "WDC" | "NATIONAL" | "CUSTOM";
+export type RoleMode = "ORGANIZER_ONLY" | "TEAM";
 export type PairsVisibility = "PUBLIC" | "PRIVATE" | "HIDDEN";
 export type FeeCalculationType =
   | "ASK_ORGANIZER"
@@ -13,37 +15,66 @@ export type FeeCalculationType =
   | "PER_ATHLETE_AGE_GROUP";
 export type PaymentMethodType = "PAY_AT_VENUE" | "ORGANIZER_WEBSITE" | "BANK_TRANSFER" | "STRIPE" | "OTHER";
 
+/** Returned by GET /competitions (list) */
+export interface CompetitionSummary {
+  id: string;
+  name: string;
+  slug: string;
+  status: CompetitionStatus;
+  eventDate: string;
+  sectionCount: number;
+  pairCount: number;
+  /** Frontend-only: set from detail fetch when available */
+  registrationOpen?: boolean;
+}
+
+/** Returned by GET /competitions/:id (detail) and POST/PUT */
 export interface CompetitionDto {
   id: string;
   name: string;
-  description?: string;
-  location: string;
-  startDate: string;
-  endDate: string;
+  slug?: string;
   status: CompetitionStatus;
-  organizerId: string;
-  registrationDeadline?: string;
-  maxPairs?: number;
-  registeredPairsCount: number;
-  createdAt: string;
-  pairsVisibility?: PairsVisibility;
-  bannerUrl?: string;
+  federation?: FederationType;
+  roleMode?: RoleMode;
+  /** Backend field for date */
+  eventDate: string;
+  /** Backend field for location */
+  venue: string;
+  description?: string;
   logoUrl?: string;
-  contactEmail?: string;
-  propozice?: string;
-  paymentInfo?: string;
+  publicPageEnabled?: boolean;
+  registrationOpen: boolean;
+  registrationDeadline?: string;
+  organizerId?: string;
+  organizerName?: string;
+  // Frontend extension fields (not yet in backend)
   numberOfRounds?: number;
+  maxPairs?: number;
   presenceClosed?: boolean;
-  // Content pages
+  pairsVisibility?: PairsVisibility;
   contentDescription?: string;
   contentFees?: string;
   contentPayment?: string;
-  // Fee calculation
   feeCalculationType?: FeeCalculationType;
   feeConfig?: Record<string, unknown>;
-  // Payment method
   paymentMethod?: PaymentMethodType;
   paymentConfig?: Record<string, unknown>;
+  contactEmail?: string;
+  bannerUrl?: string;
+  propozice?: string;
+  paymentInfo?: string;
+  /** Computed pair count (not in backend DTO directly) */
+  registeredPairsCount?: number;
+  // Schedule config (from backend V026)
+  scheduleStartTime?: string;
+  danceDurationSeconds?: number;
+  transitionDurationSeconds?: number;
+  maxPairsOnFloor?: number;
+  breakDurationMinutes?: number;
+  breakRule?: "AFTER_ROUND" | "BETWEEN_CATEGORIES" | "BOTH";
+  judgeBreakAfterMinutes?: number;
+  judgeBreakDurationMinutes?: number;
+  slotBufferMinutes?: number;
 }
 
 export interface CompetitionNewsItem {
@@ -57,23 +88,29 @@ export interface CompetitionNewsItem {
 
 export interface CreateCompetitionRequest {
   name: string;
+  eventDate?: string;
+  venue?: string;
   description?: string;
-  location: string;
-  startDate: string;
-  endDate: string;
+  federation?: FederationType;
+  roleMode?: RoleMode;
   registrationDeadline?: string;
-  maxPairs?: number;
-  contactEmail?: string;
-  propozice?: string;
-  paymentInfo?: string;
-  numberOfRounds?: number;
 }
 
-export interface UpdateCompetitionRequest extends Partial<CreateCompetitionRequest> {
-  status?: CompetitionStatus;
-  pairsVisibility?: PairsVisibility;
-  bannerUrl?: string;
+export interface UpdateCompetitionRequest {
+  name?: string;
+  eventDate?: string;
+  venue?: string;
+  description?: string;
+  federation?: FederationType;
+  roleMode?: RoleMode;
   logoUrl?: string;
+  publicPageEnabled?: boolean;
+  registrationOpen?: boolean;
+  registrationDeadline?: string;
+  // Frontend extension fields
+  numberOfRounds?: number;
+  maxPairs?: number;
+  pairsVisibility?: PairsVisibility;
   contentDescription?: string;
   contentFees?: string;
   contentPayment?: string;
@@ -81,6 +118,9 @@ export interface UpdateCompetitionRequest extends Partial<CreateCompetitionReque
   feeConfig?: Record<string, unknown>;
   paymentMethod?: PaymentMethodType;
   paymentConfig?: Record<string, unknown>;
+  contactEmail?: string;
+  propozice?: string;
+  paymentInfo?: string;
 }
 
 export interface PageResponse<T> {
@@ -92,8 +132,8 @@ export interface PageResponse<T> {
 }
 
 export const competitionsApi = {
-  list: (params?: { page?: number; size?: number; status?: CompetitionStatus }) =>
-    apiClient.get<PageResponse<CompetitionDto>>("/competitions", { params }).then((r) => r.data),
+  list: (params?: { status?: CompetitionStatus }) =>
+    apiClient.get<CompetitionSummary[]>("/competitions", { params }).then((r) => r.data),
 
   get: (id: string) =>
     apiClient.get<CompetitionDto>(`/competitions/${id}`).then((r) => r.data),
@@ -110,10 +150,10 @@ export const competitionsApi = {
     apiClient.post<CompetitionDto>(`/competitions/${id}/publish`).then((r) => r.data),
 
   openRegistration: (id: string) =>
-    apiClient.post<CompetitionDto>(`/competitions/${id}/open-registration`).then((r) => r.data),
+    apiClient.put<CompetitionDto>(`/competitions/${id}`, { registrationOpen: true }).then((r) => r.data),
 
   closeRegistration: (id: string) =>
-    apiClient.post<CompetitionDto>(`/competitions/${id}/close-registration`).then((r) => r.data),
+    apiClient.put<CompetitionDto>(`/competitions/${id}`, { registrationOpen: false }).then((r) => r.data),
 
   listNews: (id: string) =>
     apiClient.get<CompetitionNewsItem[]>(`/competitions/${id}/news`).then((r) => r.data),

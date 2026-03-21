@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { sseClient } from "@/lib/sse-client";
 
 export function useSSE<T>(
@@ -8,7 +8,10 @@ export function useSSE<T>(
   event: string,
   handler: (data: T) => void
 ) {
-  const stableHandler = useCallback(handler, []);
+  const handlerRef = useRef(handler);
+  useEffect(() => { handlerRef.current = handler; });
+
+  const stableHandler = useCallback((data: T) => handlerRef.current(data), []);
 
   useEffect(() => {
     if (!competitionId) return;

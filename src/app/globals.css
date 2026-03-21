@@ -49,12 +49,56 @@
   /* ── Status ──────────────────────────────────────────── */
   --success: #10b981;
   --success-subtle: #d1fae5;
+  --success-text: #065f46;
   --warning: #f59e0b;
   --warning-subtle: #fef3c7;
+  --warning-text: #92400e;
   --destructive: #ef4444;
   --destructive-subtle: #fee2e2;
+  --destructive-text: #991b1b;
   --info: #3b5fe8;
   --info-subtle: #eef1fd;
+}
+
+/* ── Dark mode ───────────────────────────────────────────── */
+.dark {
+  /* ── Backgrounds ─────────────────────────────────────── */
+  --background: #0f1117;
+  --surface: #1a1d27;
+  --surface-secondary: #1e2233;
+  --surface-hover: #252840;
+
+  /* ── Borders ─────────────────────────────────────────── */
+  --border: #2a2f45;
+  --border-secondary: #353a52;
+
+  /* ── Text ────────────────────────────────────────────── */
+  --foreground: #f0f2fa;
+  --text-primary: #f0f2fa;
+  --text-secondary: #9ba3be;
+  --text-tertiary: #6b7491;
+
+  /* ── Blue accent ─────────────────────────────────────── */
+  --accent: #5b80f5;
+  --accent-hover: #7096f7;
+  --accent-subtle: #1a2346;
+
+  /* ── Primary CTA ─────────────────────────────────────── */
+  --primary: #5b80f5;
+  --primary-hover: #7096f7;
+
+  /* ── Status ──────────────────────────────────────────── */
+  --success: #34d399;
+  --success-subtle: #064e3b;
+  --success-text: #34d399;
+  --warning: #fbbf24;
+  --warning-subtle: #451a03;
+  --warning-text: #fbbf24;
+  --destructive: #f87171;
+  --destructive-subtle: #450a0a;
+  --destructive-text: #f87171;
+  --info: #5b80f5;
+  --info-subtle: #1a2346;
 }
 
 * {
@@ -68,7 +112,7 @@ svg {
 }
 
 html {
-  background-color: #eef1f8;
+  background-color: var(--background);
   min-height: 100%;
 }
 
@@ -84,8 +128,8 @@ body {
 /* ── Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d0d7e8; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+::-webkit-scrollbar-thumb { background: var(--border-secondary); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 
 /* ── Focus ring ──────────────────────────────────────────── */
 :focus-visible {
@@ -110,7 +154,7 @@ body {
 
 /* ── Glass panel (sidebar) ───────────────────────────────── */
 .glass {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--border);
 }
 

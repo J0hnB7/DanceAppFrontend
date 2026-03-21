@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { AuthGuard } from "@/components/shared/auth-guard";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { SessionExpiryWarning } from "@/components/shared/session-expiry-warning";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -29,10 +31,21 @@ function DancerGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [errorKey, setErrorKey] = useState(0);
+
   return (
     <AuthGuard allowedRoles={["ADMIN", "ORGANIZER", "DANCER"]}>
       <DancerGuard>
-        {children}
+        <QueryErrorResetBoundary>
+          {({ reset }) => (
+            <ErrorBoundary
+              errorKey={errorKey}
+              onReset={() => { reset(); setErrorKey(k => k + 1); }}
+            >
+              {children}
+            </ErrorBoundary>
+          )}
+        </QueryErrorResetBoundary>
         <SessionExpiryWarning />
       </DancerGuard>
     </AuthGuard>

@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatTime } from "@/lib/utils";
+import { useLocale } from "@/contexts/locale-context";
 
 const levelIcon: Record<AlertLevel, React.ReactNode> = {
   info: <Info className="h-4 w-4 text-[var(--accent)]" />,
@@ -28,6 +29,7 @@ const levelBg: Record<AlertLevel, string> = {
 
 export function NotificationCenter() {
   const { alerts, markRead, markAllRead, removeAlert, unreadCount } = useAlertsStore();
+  const { t } = useLocale();
   const count = unreadCount();
 
   return (
@@ -35,7 +37,7 @@ export function NotificationCenter() {
       <DropdownMenuTrigger asChild>
         <button
           className="relative flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          aria-label={`Notifications${count > 0 ? ` (${count} unread)` : ""}`}
+          aria-label={`${t("notificationCenter.title")}${count > 0 ? ` (${count} unread)` : ""}`}
         >
           <Bell className="h-4 w-4" />
           {count > 0 && (
@@ -50,7 +52,7 @@ export function NotificationCenter() {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <h3 className="font-semibold text-sm text-[var(--text-primary)]">
-            Notifications
+            {t("notificationCenter.title")}
             {count > 0 && (
               <span className="ml-2 rounded-full bg-[var(--destructive)] px-1.5 py-0.5 text-[10px] font-bold text-white">
                 {count}
@@ -63,7 +65,7 @@ export function NotificationCenter() {
               className="flex items-center gap-1 text-xs text-[var(--accent)] hover:text-[var(--accent-hover)]"
             >
               <CheckCheck className="h-3.5 w-3.5" />
-              Mark all read
+              {t("notificationCenter.markAllRead")}
             </button>
           )}
         </div>
@@ -73,7 +75,7 @@ export function NotificationCenter() {
           {alerts.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <Bell className="h-8 w-8 text-[var(--text-tertiary)]" />
-              <p className="text-sm text-[var(--text-secondary)]">No notifications</p>
+              <p className="text-sm text-[var(--text-secondary)]">{t("notificationCenter.noNotifications")}</p>
             </div>
           ) : (
             alerts.map((alert) => (

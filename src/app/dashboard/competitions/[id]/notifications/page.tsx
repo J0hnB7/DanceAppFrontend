@@ -10,9 +10,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -22,15 +21,16 @@ import {
 } from "@/components/ui/select";
 import { notificationsApi } from "@/lib/api/notifications";
 import { sectionsApi } from "@/lib/api/sections";
-import { formatDate, formatTime } from "@/lib/utils";
+import { formatTime, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
 
 const schema = z.object({
   recipientType: z.enum(["ALL_PAIRS", "SECTION", "INDIVIDUAL"]),
   sectionId: z.string().optional(),
   recipientEmail: z.string().optional(),
-  subject: z.string().min(1, "Subject required"),
-  body: z.string().min(10, "Message must be at least 10 characters"),
+  subject: z.string().min(1),
+  body: z.string().min(10),
 });
 
 type NotifForm = z.infer<typeof schema>;
@@ -44,6 +44,7 @@ const statusIcon = {
 export default function NotificationsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const qc = useQueryClient();
+  const { t } = useLocale();
 
   const { data: notifications } = useQuery({
     queryKey: ["notifications", id],
@@ -67,7 +68,10 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications", id] });
       reset();
-      toast({ title: "Email sent", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("notifications.sent"), variant: "success" } as Parameters<typeof toast>[0]);
+    },
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
     },
   });
 
@@ -87,17 +91,17 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
 
   return (
     <AppShell>
-      <PageHeader title="Email notifications" description="Send announcements and updates to pairs" />
+      <PageHeader title={t("notifications.title")} description={t("notifications.description")} backHref={`/dashboard/competitions/${id}`} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Compose */}
         <div>
-          <h3 className="mb-3 font-semibold text-[var(--text-primary)]">Compose message</h3>
+          <h3 className="mb-3 font-semibold text-[var(--text-primary)]">{t("notifications.composeTitle")}</h3>
           <Card>
             <CardContent className="pt-5">
               <form onSubmit={handleSubmit((d) => send.mutate(d))} className="flex flex-col gap-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">Recipients</label>
+                  <label className="mb-1.5 block text-sm font-medium">{t("notifications.recipientsLabel")}</label>
                   <Controller
                     control={control}
                     name="recipientType"
@@ -107,9 +111,9 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="ALL_PAIRS">All registered pairs</SelectItem>
-                          <SelectItem value="SECTION">Specific section</SelectItem>
-                          <SelectItem value="INDIVIDUAL">Individual email</SelectItem>
+                          <SelectItem value="ALL_PAIRS">{t("notifications.allPairs")}</SelectItem>
+                          <SelectItem value="SECTION">{t("notifications.specificSection")}</SelectItem>
+                          <SelectItem value="INDIVIDUAL">{t("notifications.individualEmail")}</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -118,14 +122,14 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
 
                 {recipientType === "SECTION" && (
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium">Section</label>
+                    <label className="mb-1.5 block text-sm font-medium">{t("notifications.sectionLabel")}</label>
                     <Controller
                       control={control}
                       name="sectionId"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value ?? ""}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Choose section..." />
+                            <SelectValue placeholder={t("notifications.sectionPlaceholder")} />
                           </SelectTrigger>
                           <SelectContent>
                             {sections?.map((s) => (
@@ -141,16 +145,16 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
                 )}
 
                 {recipientType === "INDIVIDUAL" && (
-                  <Input label="Email address" type="email" {...register("recipientEmail")} />
+                  <Input label={t("notifications.emailLabel")} type="email" {...register("recipientEmail")} />
                 )}
 
-                <Input label="Subject" placeholder="Important announcement" error={errors.subject?.message} {...register("subject")} />
+                <Input label={t("notifications.subjectLabel")} placeholder={t("notifications.subjectPlaceholder")} error={errors.subject?.message} {...register("subject")} />
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">Message</label>
+                  <label className="mb-1.5 block text-sm font-medium">{t("notifications.messageLabel")}</label>
                   <textarea
                     className="flex min-h-[140px] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 resize-y"
-                    placeholder="Write your message here..."
+                    placeholder={t("notifications.messagePlaceholder")}
                     {...register("body")}
                   />
                   {errors.body && (
@@ -160,7 +164,7 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
 
                 <Button type="submit" loading={send.isPending}>
                   <Send className="h-4 w-4" />
-                  Send email
+                  {t("notifications.sendButton")}
                 </Button>
               </form>
             </CardContent>
@@ -169,12 +173,12 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
 
         {/* History */}
         <div>
-          <h3 className="mb-3 font-semibold text-[var(--text-primary)]">Sent emails</h3>
+          <h3 className="mb-3 font-semibold text-[var(--text-primary)]">{t("notifications.sentTitle")}</h3>
           {!notifications?.length ? (
             <Card>
               <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
                 <Mail className="h-8 w-8 text-[var(--text-tertiary)]" />
-                <p className="text-sm text-[var(--text-secondary)]">No emails sent yet</p>
+                <p className="text-sm text-[var(--text-secondary)]">{t("notifications.noEmailsSent")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -187,10 +191,10 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
                         <p className="truncate text-sm font-medium">{n.subject}</p>
                         <p className="text-xs text-[var(--text-tertiary)]">
                           {n.recipientType === "ALL_PAIRS"
-                            ? "All pairs"
+                            ? t("notifications.allPairsLabel")
                             : n.recipientType === "INDIVIDUAL"
                             ? n.recipientEmail
-                            : "Section"}
+                            : t("notifications.sectionRecipient")}
                           {n.sentAt && ` · ${formatTime(n.sentAt)}`}
                         </p>
                       </div>

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { competitionsApi, type CompetitionStatus, type CreateCompetitionRequest, type UpdateCompetitionRequest } from "@/lib/api/competitions";
+import { competitionsApi, type CompetitionStatus, type CompetitionSummary, type CreateCompetitionRequest, type UpdateCompetitionRequest } from "@/lib/api/competitions";
 import { toast } from "@/hooks/use-toast";
 import { getT } from "@/lib/i18n";
 
@@ -33,7 +33,7 @@ export function useCreateCompetition() {
     mutationFn: (data: CreateCompetitionRequest) => competitionsApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: competitionKeys.lists() });
-      toast({ title: "Competition created", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: getT()("competitions.created"), variant: "success" } as Parameters<typeof toast>[0]);
     },
   });
 }
@@ -59,28 +59,28 @@ export function useDeleteCompetition() {
   });
 }
 
-export function useToggleRegistration(id: string, currentStatus: string) {
+export function useToggleRegistration(id: string, registrationOpen: boolean) {
   const qc = useQueryClient();
-  const isOpen = currentStatus === "REGISTRATION_OPEN";
 
   return useMutation({
     mutationFn: async () => {
-      if (isOpen) {
+      if (registrationOpen) {
         return competitionsApi.closeRegistration(id);
-      }
-      // Auto-publish DRAFT before opening
-      if (currentStatus === "DRAFT") {
-        await competitionsApi.publish(id);
       }
       return competitionsApi.openRegistration(id);
     },
     onSuccess: (updated) => {
+      // Update detail cache
       qc.setQueryData(competitionKeys.detail(id), updated);
-      qc.invalidateQueries({ queryKey: competitionKeys.lists() });
+      // Patch every cached list to flip registrationOpen for this competition
+      qc.setQueriesData<CompetitionSummary[]>(
+        { queryKey: competitionKeys.lists() },
+        (old) => old?.map((c) => c.id === id ? { ...c, registrationOpen: !registrationOpen } : c)
+      );
       const t = getT();
       toast({
-        title: isOpen ? t("competition.registrationClosed") : t("competition.registrationOpened"),
-        variant: isOpen ? "default" : "success",
+        title: registrationOpen ? t("competition.registrationClosed") : t("competition.registrationOpened"),
+        variant: registrationOpen ? "default" : "success",
       } as Parameters<typeof toast>[0]);
     },
   });

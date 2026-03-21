@@ -8,14 +8,16 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Shield,
   FlaskConical,
   ClipboardList,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import type { UserDto } from "@/lib/api/auth";
 import { useLocale } from "@/contexts/locale-context";
+import { useTheme } from "@/contexts/theme-context";
 import { NotificationCenter } from "@/components/shared/notification-center";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials, getAvatarColor } from "@/lib/utils";
@@ -46,7 +48,6 @@ const navItems: NavItem[] = [
   { label: "nav.myRegistrations", href: "/dashboard/my-registrations", icon: ClipboardList },
   { label: "nav.participants", href: "/dashboard/participants", icon: Users, roles: ["ORGANIZER", "ADMIN"] },
   { label: "nav.analytics", href: "/dashboard/analytics", icon: BarChart3, roles: ["ORGANIZER", "ADMIN"] },
-  { label: "nav.admin", href: "/admin", icon: Shield, roles: ["ADMIN"] },
   { label: "nav.settings", href: "/dashboard/settings", icon: Settings },
   { label: "nav.seeder", href: "/dashboard/seed", icon: FlaskConical, testModeOnly: true },
 ];
@@ -55,8 +56,9 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const { t, locale, setLocale } = useLocale();
+  const { theme, toggleTheme } = useTheme();
 
-  const fullName = user ? `${user.firstName} ${user.lastName}` : "";
+  const fullName = user?.name ?? "";
   const avatarColor = getAvatarColor(fullName || "?");
 
   const visibleItems = navItems.filter(
@@ -101,9 +103,23 @@ export function Sidebar() {
 
       {/* Bottom controls */}
       <div className="flex flex-col items-center gap-1">
+        {/* Dark mode toggle */}
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] text-[var(--text-tertiary)] transition-all duration-200 hover:bg-[var(--surface-secondary)] hover:text-[var(--accent)]"
+        >
+          {theme === "dark" ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
+          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+            {theme === "dark" ? "Light" : "Dark"}
+          </span>
+        </button>
+
         {/* Language toggle */}
         <button
           onClick={() => setLocale(locale === "en" ? "cs" : "en")}
+          aria-label={locale === "en" ? "Switch to Czech" : "Přepnout do angličtiny"}
           title={locale === "en" ? "Switch to Czech" : "Přepnout do angličtiny"}
           className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] text-[var(--text-tertiary)] transition-all duration-200 hover:bg-[var(--surface-secondary)] hover:text-[var(--accent)]"
         >
@@ -121,7 +137,7 @@ export function Sidebar() {
         {/* User avatar */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] transition-all duration-200 hover:bg-white/80 hover:shadow-[0_2px_8px_rgba(91,141,238,0.15)] focus:outline-none">
+            <button aria-label={t("nav.accountMenu")} className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] transition-all duration-200 hover:bg-[var(--surface-secondary)] hover:shadow-[0_2px_8px_rgba(91,141,238,0.15)] focus:outline-none">
               <Avatar className="h-8 w-8">
                 <AvatarFallback
                   className="text-xs font-semibold text-white"
@@ -132,10 +148,10 @@ export function Sidebar() {
               </Avatar>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="end" className="w-48 rounded-[var(--radius-xl)] border-white/60 bg-white/90 backdrop-blur-lg shadow-[0_8px_32px_rgba(91,141,238,0.12)]">
+          <DropdownMenuContent side="right" align="end" className="w-48 rounded-[var(--radius-xl)] border-[var(--border)] bg-[var(--surface)] backdrop-blur-lg shadow-[0_8px_32px_rgba(91,141,238,0.12)]">
             <DropdownMenuLabel>
               <div>
-                <p className="font-medium text-[var(--text-primary)]">{user?.firstName} {user?.lastName}</p>
+                <p className="font-medium text-[var(--text-primary)]">{user?.name}</p>
                 <p className="text-xs text-[var(--text-tertiary)]">{user?.email}</p>
               </div>
             </DropdownMenuLabel>
@@ -154,7 +170,8 @@ export function Sidebar() {
         <button
           onClick={() => logout()}
           title={t("nav.logout")}
-          className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] text-[var(--text-tertiary)] transition-all duration-200 hover:bg-red-50 hover:text-[var(--destructive)]"
+          aria-label={t("nav.logout")}
+          className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] text-[var(--text-tertiary)] transition-all duration-200 hover:bg-[var(--destructive-subtle)] hover:text-[var(--destructive)]"
         >
           <LogOut className="h-5 w-5 shrink-0" />
           <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">

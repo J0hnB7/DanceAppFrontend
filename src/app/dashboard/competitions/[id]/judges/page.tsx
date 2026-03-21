@@ -34,15 +34,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { judgeTokensApi, type JudgeTokenDto } from "@/lib/api/judge-tokens";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
 import QRCode from "qrcode";
 import { formatTime } from "@/lib/utils";
 
 // ── QR canvas component ──────────────────────────────────────────────────────
-function QRCanvas({ url, size = 140 }: { url: string; size?: number }) {
+function QRCanvas({ url, size = 140 }: { url: string | null; size?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !url) return;
     QRCode.toCanvas(canvasRef.current, url, {
       width: size,
       margin: 1,
@@ -50,22 +51,38 @@ function QRCanvas({ url, size = 140 }: { url: string; size?: number }) {
     });
   }, [url, size]);
 
+  if (!url) {
+    return (
+      <div style={{ width: size, height: size }} className="rounded flex items-center justify-center bg-[var(--surface-secondary)] text-xs text-[var(--text-tertiary)] text-center p-2">
+        Token není dostupný — znovu vytvořte
+      </div>
+    );
+  }
+
   return <canvas ref={canvasRef} width={size} height={size} className="rounded" />;
 }
 
 // ── Single judge QR card (for print view) ───────────────────────────────────
-function JudgeQRCard({ token, judgeUrl }: { token: JudgeTokenDto; judgeUrl: string }) {
-  const url = `${judgeUrl}/${token.token}`;
+function JudgeQRCard({ token, judgeUrl, rawToken }: { token: JudgeTokenDto; judgeUrl: string; rawToken?: string }) {
+  const { t } = useLocale();
+  const url = rawToken ? `${judgeUrl}/${rawToken}` : null;
+  const pin = token.rawPin ?? token.pin;
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-[var(--border)] bg-white p-6 text-center print:break-inside-avoid">
-      <p className="text-lg font-bold text-[var(--text-primary)]">Porotce #{token.judgeNumber}</p>
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center print:break-inside-avoid">
+      <p className="text-lg font-bold text-[var(--text-primary)]">{t("judges.judgeNumber", { number: token.judgeNumber ?? 0 })}</p>
       {token.name && <p className="text-sm text-[var(--text-secondary)]">{token.name}</p>}
       <QRCanvas url={url} size={160} />
+      {pin && (
+        <div className="w-full rounded-lg bg-[var(--surface-secondary)] px-3 py-2">
+          <p className="text-xs text-[var(--text-tertiary)]">PIN</p>
+          <code className="text-sm font-bold tracking-widest">{pin}</code>
+        </div>
+      )}
       <div className="w-full rounded-lg bg-[var(--surface-secondary)] px-3 py-2">
         <p className="text-xs text-[var(--text-tertiary)]">Token</p>
-        <code className="text-xs font-bold">{token.token}</code>
+        <code className="text-xs font-bold">{rawToken ? rawToken.slice(0, 16) + "…" : "—"}</code>
       </div>
-      <p className="text-xs text-[var(--text-tertiary)] break-all">{url}</p>
+      {url && <p className="text-xs text-[var(--text-tertiary)] break-all">{url}</p>}
     </div>
   );
 }
@@ -74,15 +91,20 @@ function JudgeQRCard({ token, judgeUrl }: { token: JudgeTokenDto; judgeUrl: stri
 function QRModal({
   token,
   judgeUrl,
+  rawToken,
   onClose,
 }: {
   token: JudgeTokenDto;
   judgeUrl: string;
+  rawToken?: string;
   onClose: () => void;
 }) {
-  const url = `${judgeUrl}/${token.token}`;
+  const { t } = useLocale();
+  const url = rawToken ? `${judgeUrl}/${rawToken}` : null;
+  const pin = token.rawPin ?? token.pin;
 
   const handleDownload = () => {
+    if (!url) return;
     const canvas = document.createElement("canvas");
     QRCode.toCanvas(canvas, url, { width: 512, margin: 2 }, () => {
       const link = document.createElement("a");
@@ -96,29 +118,43 @@ function QRModal({
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Porotce #{token.judgeNumber} — QR kód</DialogTitle>
+          <DialogTitle>{t("judges.qrTitle", { number: token.judgeNumber ?? 0 })}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4">
           <QRCanvas url={url} size={220} />
-          <div className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3 text-center">
-            <p className="mb-1 text-xs text-[var(--text-tertiary)]">Odkaz pro porotce</p>
-            <code className="break-all text-xs">{url}</code>
-          </div>
-          <div className="flex w-full gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => {
-                navigator.clipboard.writeText(url);
-                toast({ title: "Odkaz zkopírován" } as Parameters<typeof toast>[0]);
-              }}
-            >
-              <Copy className="h-4 w-4" /> Kopírovat
-            </Button>
-            <Button className="flex-1" onClick={handleDownload}>
-              <Download className="h-4 w-4" /> Stáhnout PNG
-            </Button>
-          </div>
+          {url ? (
+            <>
+              {pin && (
+                <div className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3 text-center">
+                  <p className="mb-1 text-xs text-[var(--text-tertiary)]">PIN</p>
+                  <code className="text-2xl font-bold tracking-widest">{pin}</code>
+                </div>
+              )}
+              <div className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3 text-center">
+                <p className="mb-1 text-xs text-[var(--text-tertiary)]">{t("judges.judgeLink")}</p>
+                <code className="break-all text-xs">{url}</code>
+              </div>
+              <div className="flex w-full gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    navigator.clipboard.writeText(url);
+                    toast({ title: t("judges.linkCopied") } as Parameters<typeof toast>[0]);
+                  }}
+                >
+                  <Copy className="h-4 w-4" /> {t("judges.copyLink")}
+                </Button>
+                <Button className="flex-1" onClick={handleDownload}>
+                  <Download className="h-4 w-4" /> {t("judges.downloadPng")}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-[var(--text-secondary)] text-center">
+              Token není uložen — zrušte token a vytvořte nový.
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -133,22 +169,19 @@ function FallbackScoringModal({
   tokens: JudgeTokenDto[];
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   const [selectedJudge, setSelectedJudge] = useState("");
   const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
-  const activeTokens = tokens.filter((t) => t.active);
+  const activeTokens = tokens.filter((tk) => tk.active);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!selectedJudge) return;
-    setSaving(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    toast({
-      title: "Scores recorded",
-      description: `Fallback scores for Judge ${activeTokens.find((t) => t.id === selectedJudge)?.judgeNumber} saved. Marked as "Entered by proxy".`,
-      variant: "success",
-    } as Parameters<typeof toast>[0]);
+    const token = activeTokens.find((tk) => tk.id === selectedJudge);
+    if (!token) return;
+    const rawToken = token.rawToken ?? token.token;
+    if (rawToken) {
+      window.open(`/judge/${rawToken}`, "_blank");
+    }
     onClose();
   };
 
@@ -158,22 +191,22 @@ function FallbackScoringModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Fallback scoring — enter on behalf of judge
+            {t("judges.fallbackDialog.title")}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
-              Select judge
+              {t("judges.fallbackDialog.selectJudgeLabel")}
             </label>
             <Select value={selectedJudge} onValueChange={setSelectedJudge}>
               <SelectTrigger>
-                <SelectValue placeholder="Select judge..." />
+                <SelectValue placeholder={t("judges.fallbackDialog.selectJudge")} />
               </SelectTrigger>
               <SelectContent>
-                {activeTokens.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    Judge #{t.judgeNumber}{t.name ? ` — ${t.name}` : ""}
+                {activeTokens.map((tk) => (
+                  <SelectItem key={tk.id} value={tk.id}>
+                    {t("judges.judgeNumber", { number: tk.judgeNumber ?? 0 })}{tk.name ? ` — ${tk.name}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -181,34 +214,32 @@ function FallbackScoringModal({
           </div>
 
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-            <strong>Note:</strong> Scores entered here will be marked as &ldquo;Entered by proxy&rdquo;
-            in the audit log. This action is logged and cannot be undone.
+            {t("judges.fallbackDialog.auditNote")}
           </div>
 
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] p-4 space-y-3">
             <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide">
-              Callback selection (preliminary round)
+              {t("judges.fallbackDialog.callbackSection")}
             </p>
             <p className="text-sm text-[var(--text-secondary)]">
-              In the current round, select which pairs to callback by entering their start numbers
-              or checking them off in the judging interface after the round is opened.
+              {t("judges.fallbackDialog.callbackDesc")}
             </p>
             <p className="text-xs text-[var(--text-tertiary)]">
-              For final rounds, enter placement order (1st, 2nd, 3rd…) per dance.
+              {t("judges.fallbackDialog.finalRoundDesc")}
             </p>
           </div>
 
           <Input
-            label="Reason / note (optional)"
-            placeholder="e.g. Judge device failure, entered by chief adjudicator"
+            label={t("judges.fallbackDialog.reasonLabel")}
+            placeholder={t("judges.fallbackDialog.reasonPlaceholder")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={!selectedJudge} loading={saving} onClick={handleSubmit}>
-            Confirm &amp; mark as proxy entry
+          <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
+          <Button disabled={!selectedJudge} onClick={handleSubmit}>
+            {t("judges.fallbackDialog.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -218,7 +249,8 @@ function FallbackScoringModal({
 
 // ── PinCell — show/hide PIN ───────────────────────────────────────────────────
 function PinCell({ pin }: { pin?: string }) {
-  const [visible, setVisible] = useState(false);
+  const { t } = useLocale();
+  const [visible, setVisible] = useState(true);
   if (!pin) return <span className="text-[var(--text-tertiary)]">—</span>;
   return (
     <div className="flex items-center gap-1">
@@ -228,7 +260,7 @@ function PinCell({ pin }: { pin?: string }) {
       <button
         onClick={() => setVisible((v) => !v)}
         className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
-        title={visible ? "Hide PIN" : "Show PIN"}
+        title={visible ? t("judges.pinHide") : t("judges.pinShow")}
       >
         {visible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
       </button>
@@ -236,21 +268,25 @@ function PinCell({ pin }: { pin?: string }) {
   );
 }
 
-// ── Mock activity log entries ─────────────────────────────────────────────────
-const MOCK_ACTIVITY = [
-  { judgeNumber: 1, event: "Connected", at: "2026-04-15T09:45:00", note: "" },
-  { judgeNumber: 3, event: "Connected", at: "2026-04-15T09:47:00", note: "" },
-  { judgeNumber: 4, event: "Connected", at: "2026-04-15T09:48:00", note: "" },
-  { judgeNumber: 1, event: "Scores submitted", at: "2026-04-15T10:30:00", note: "Round 1 — Waltz, Tango" },
-  { judgeNumber: 3, event: "Scores submitted", at: "2026-04-15T10:32:00", note: "Round 1 — Waltz, Tango" },
-  { judgeNumber: 4, event: "Scores submitted", at: "2026-04-15T10:28:00", note: "Round 1 — Waltz, Tango" },
-  { judgeNumber: 2, event: "Disconnected", at: "2026-04-15T10:15:00", note: "Device offline" },
-  { judgeNumber: 5, event: "Disconnected", at: "2026-04-15T10:00:00", note: "No connection" },
-];
+// ── Derive activity entries from token data ───────────────────────────────────
+function deriveActivityLog(tokens: JudgeTokenDto[]) {
+  const entries: { judgeNumber: number; event: string; at: string; note: string }[] = [];
+  for (const tk of tokens) {
+    if (!tk.judgeNumber) continue;
+    if (tk.connectedAt) {
+      entries.push({ judgeNumber: tk.judgeNumber, event: "Connected", at: tk.connectedAt, note: "" });
+    }
+    if (tk.usedAt) {
+      entries.push({ judgeNumber: tk.judgeNumber, event: "Scores submitted", at: tk.usedAt, note: "" });
+    }
+  }
+  return entries.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+}
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function JudgesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useLocale();
   const [createOpen, setCreateOpen] = useState(false);
   const [count, setCount] = useState("5");
   const [qrToken, setQrToken] = useState<JudgeTokenDto | null>(null);
@@ -267,17 +303,32 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
   });
 
   const createTokens = useMutation({
-    mutationFn: () => judgeTokensApi.create(id, parseInt(count) || 1),
+    mutationFn: async () => {
+      const n = parseInt(count) || 1;
+      const existingNumbers = new Set((tokens ?? []).map((tk) => tk.judgeNumber));
+      let judgeNum = 1;
+      let created = 0;
+      while (created < n) {
+        if (!existingNumbers.has(judgeNum)) {
+          await judgeTokensApi.create(id, { judgeNumber: judgeNum, role: "JUDGE" });
+          created++;
+        }
+        judgeNum++;
+        if (judgeNum > 100) break; // safety
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
       setCreateOpen(false);
-      toast({ title: `${count} tokenů porotců vytvořeno`, variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("judges.createDialog.tokensCreated", { count }), variant: "success" } as Parameters<typeof toast>[0]);
     },
   });
 
   const revokeToken = useMutation({
     mutationFn: (tokenId: string) => judgeTokensApi.revoke(id, tokenId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["judge-tokens", id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
+    },
   });
 
   const handlePrintAll = () => {
@@ -291,23 +342,24 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
   };
 
   const activeTokens = tokens?.filter((t) => t.active) ?? [];
+  const getTokenRaw = (tk: JudgeTokenDto) => tk.rawToken ?? tk.token;
 
   // Print view
   if (printMode) {
     return (
       <div className="min-h-screen bg-white p-8">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold">QR kódy porotců</h1>
-          <p className="text-sm text-gray-500">Soutěž ID: {id}</p>
+          <h1 className="text-2xl font-bold">{t("judges.qrCodes")}</h1>
+          <p className="text-sm text-gray-500">{id}</p>
         </div>
         <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
-          {activeTokens.map((t) => (
-            <JudgeQRCard key={t.id} token={t} judgeUrl={judgeBaseUrl} />
+          {activeTokens.map((tk) => (
+            <JudgeQRCard key={tk.id} token={tk} judgeUrl={judgeBaseUrl} rawToken={getTokenRaw(tk)} />
           ))}
         </div>
         <div className="mt-6 flex justify-center print:hidden">
           <Button variant="outline" onClick={() => setPrintMode(false)}>
-            <X className="h-4 w-4" /> Zpět
+            <X className="h-4 w-4" /> {t("judges.back")}
           </Button>
         </div>
       </div>
@@ -322,24 +374,25 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
             <>
               <Button size="sm" variant="outline" onClick={() => setFallbackOpen(true)}>
                 <ClipboardList className="h-4 w-4" />
-                Fallback scoring
+                {t("judges.fallbackScoring")}
               </Button>
               <Button size="sm" variant="outline" onClick={handlePrintAll}>
                 <Printer className="h-4 w-4" />
-                Tisknout QR kódy
+                {t("judges.printQr")}
               </Button>
             </>
           )}
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
-            Vytvořit tokeny
+            {t("judges.createTokens")}
           </Button>
         </div>
       }
     >
       <PageHeader
-        title="Tokeny porotců"
-        description="Sdílejte QR kódy s porotci. Po naskenování se přihlásí bez registrace."
+        title={t("judges.title")}
+        description={t("judges.description")}
+        backHref={`/dashboard/competitions/${id}`}
       />
 
       {/* Tokens table */}
@@ -347,11 +400,11 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-20">Porotce</TableHead>
-              <TableHead>Token</TableHead>
-              <TableHead>PIN</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-36">Akce</TableHead>
+              <TableHead className="w-20">{t("judges.table.judge")}</TableHead>
+              <TableHead>{t("judges.table.token")}</TableHead>
+              <TableHead>{t("judges.table.pin")}</TableHead>
+              <TableHead>{t("judges.table.status")}</TableHead>
+              <TableHead className="w-36">{t("judges.table.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -365,20 +418,20 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                   ))}
                 </TableRow>
               ))}
-            {tokens?.map((t) => (
-              <TableRow key={t.id}>
-                <TableCell className="font-bold">#{t.judgeNumber}</TableCell>
+            {tokens?.map((tk) => (
+              <TableRow key={tk.id}>
+                <TableCell className="font-bold">#{tk.judgeNumber}</TableCell>
                 <TableCell>
                   <code className="rounded bg-[var(--surface-secondary)] px-2 py-0.5 text-xs">
-                    {t.token.slice(0, 16)}…
+                    {getTokenRaw(tk)?.slice(0, 16) ?? "—"}…
                   </code>
                 </TableCell>
                 <TableCell>
-                  <PinCell pin={(t as JudgeTokenDto & { pin?: string }).pin} />
+                  <PinCell pin={tk.rawPin ?? tk.pin} />
                 </TableCell>
                 <TableCell>
-                  <Badge variant={t.active ? "success" : "secondary"}>
-                    {t.active ? "Aktivní" : "Zrušen"}
+                  <Badge variant={tk.active ? "success" : "secondary"}>
+                    {tk.active ? t("judges.active") : t("judges.revoked")}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -386,18 +439,21 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      title="Zobrazit QR kód"
-                      onClick={() => setQrToken(t)}
+                      title={t("judges.showQr")}
+                      onClick={() => setQrToken(tk)}
                     >
                       <QrCode className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      title="Kopírovat odkaz"
+                      title={t("judges.copyLinkTitle")}
+                      disabled={!getTokenRaw(tk)}
                       onClick={() => {
-                        navigator.clipboard.writeText(`${judgeBaseUrl}/${t.token}`);
-                        toast({ title: "Odkaz zkopírován" } as Parameters<typeof toast>[0]);
+                        const raw = getTokenRaw(tk);
+                        if (!raw) return;
+                        navigator.clipboard.writeText(`${judgeBaseUrl}/${raw}`);
+                        toast({ title: t("judges.linkCopied") } as Parameters<typeof toast>[0]);
                       }}
                     >
                       <Copy className="h-3.5 w-3.5" />
@@ -405,9 +461,9 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      title="Zrušit token"
+                      title={t("judges.revokeToken")}
                       className="text-[var(--text-tertiary)] hover:text-[var(--destructive)]"
-                      onClick={() => revokeToken.mutate(t.id)}
+                      onClick={() => revokeToken.mutate(tk.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -418,7 +474,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
             {!isLoading && !tokens?.length && (
               <TableRow>
                 <TableCell colSpan={5} className="py-12 text-center text-[var(--text-secondary)]">
-                  Žádné tokeny. Vytvořte tokeny pro porotce.
+                  {t("judges.noTokens")}
                 </TableCell>
               </TableRow>
             )}
@@ -430,20 +486,20 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
       {activeTokens.length > 0 && (
         <div className="mt-6">
           <p className="mb-3 text-sm font-medium text-[var(--text-secondary)]">
-            Náhled QR kódů ({activeTokens.length} aktivních)
+            {t("judges.qrPreview", { count: activeTokens.length })}
           </p>
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {activeTokens.map((t) => (
+            {activeTokens.map((tk) => (
               <button
-                key={t.id}
-                onClick={() => setQrToken(t)}
+                key={tk.id}
+                onClick={() => setQrToken(tk)}
                 className="flex flex-col items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center transition-all hover:border-[var(--accent)]/40 hover:shadow-md"
               >
                 <p className="text-xs font-semibold text-[var(--text-secondary)]">
-                  Porotce #{t.judgeNumber}
+                  {t("judges.judgeNumber", { number: tk.judgeNumber ?? 0 })}
                 </p>
-                <QRCanvas url={`${judgeBaseUrl}/${t.token}`} size={100} />
-                <p className="text-xs text-[var(--text-tertiary)]">Kliknutím zvětšit</p>
+                <QRCanvas url={getTokenRaw(tk) ? `${judgeBaseUrl}/${getTokenRaw(tk)}` : null} size={100} />
+                <p className="text-xs text-[var(--text-tertiary)]">{t("judges.clickToEnlarge")}</p>
               </button>
             ))}
           </div>
@@ -454,52 +510,62 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
       <div className="mt-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Judge activity log</CardTitle>
+            <CardTitle className="text-sm">{t("judges.activityLog")}</CardTitle>
           </CardHeader>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Judge</TableHead>
-                <TableHead>Event</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Note</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {MOCK_ACTIVITY.sort(
-                (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
-              ).map((entry, i) => (
-                <TableRow key={i}>
-                  <TableCell className="font-medium">Judge #{entry.judgeNumber}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        entry.event === "Scores submitted"
-                          ? "success"
-                          : entry.event === "Connected"
-                          ? "default"
-                          : "warning"
-                      }
-                    >
-                      {entry.event}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-[var(--text-secondary)]">
-                    {formatTime(entry.at)}
-                  </TableCell>
-                  <TableCell className="text-xs text-[var(--text-tertiary)]">
-                    {entry.note || "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {(() => {
+            const activity = deriveActivityLog(tokens ?? []);
+            if (!activity.length) {
+              return (
+                <div className="py-10 text-center text-sm text-[var(--text-secondary)]">
+                  {t("judges.noActivity")}
+                </div>
+              );
+            }
+            return (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("judges.judge")}</TableHead>
+                    <TableHead>{t("judges.event")}</TableHead>
+                    <TableHead>{t("judges.time")}</TableHead>
+                    <TableHead>{t("common.note")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activity.map((entry, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-medium">{t("judges.judgeNumber", { number: entry.judgeNumber })}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            entry.event === "Scores submitted"
+                              ? "success"
+                              : entry.event === "Connected"
+                              ? "default"
+                              : "warning"
+                          }
+                        >
+                          {entry.event}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-[var(--text-secondary)]">
+                        {formatTime(entry.at)}
+                      </TableCell>
+                      <TableCell className="text-xs text-[var(--text-tertiary)]">
+                        {entry.note || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            );
+          })()}
         </Card>
       </div>
 
       {/* QR detail modal */}
       {qrToken && (
-        <QRModal token={qrToken} judgeUrl={judgeBaseUrl} onClose={() => setQrToken(null)} />
+        <QRModal token={qrToken} judgeUrl={judgeBaseUrl} rawToken={getTokenRaw(qrToken)} onClose={() => setQrToken(null)} />
       )}
 
       {/* Fallback scoring modal */}
@@ -514,10 +580,10 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Vytvořit tokeny porotců</DialogTitle>
+            <DialogTitle>{t("judges.createDialog.title")}</DialogTitle>
           </DialogHeader>
           <Input
-            label="Počet porotců"
+            label={t("judges.createDialog.countLabel")}
             type="number"
             min={1}
             max={20}
@@ -525,14 +591,14 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
             onChange={(e) => setCount(e.target.value)}
           />
           <p className="text-xs text-[var(--text-secondary)]">
-            Každý porotce dostane unikátní odkaz + QR kód. Po naskenování se přihlásí bez registrace.
+            {t("judges.createDialog.description")}
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Zrušit
+              {t("common.cancel")}
             </Button>
             <Button onClick={() => createTokens.mutate()} loading={createTokens.isPending}>
-              Vytvořit
+              {t("common.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

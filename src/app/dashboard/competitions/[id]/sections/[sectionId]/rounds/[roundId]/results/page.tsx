@@ -35,7 +35,7 @@ export default function RoundResultsPage({
 }: {
   params: Promise<{ id: string; sectionId: string; roundId: string }>;
 }) {
-  const { roundId } = use(params);
+  const { id: competitionId, sectionId, roundId } = use(params);
   const { t } = useLocale();
   const [showWorkbook, setShowWorkbook] = useState(false);
 
@@ -67,6 +67,7 @@ export default function RoundResultsPage({
       <PageHeader
         title={t("roundResults.title", { type: round?.roundType ?? "" })}
         description={t("roundResults.roundNumber", { number: round?.roundNumber ?? "" })}
+        backHref={`/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}`}
         actions={<Badge variant="success">{t("roundResults.calculated")}</Badge>}
       />
 

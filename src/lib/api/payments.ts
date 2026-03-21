@@ -1,5 +1,16 @@
 import apiClient from "@/lib/api-client";
 
+export interface InvoiceDto {
+  id: string;
+  competitionId: string;
+  amount: number;
+  currency: string;
+  status: "DRAFT" | "SENT" | "PAID" | "REFUNDED";
+  invoiceNumber?: string;
+  paidAt?: string;
+}
+
+
 export interface PaymentRecord {
   id: string;
   pairId: string;
@@ -62,4 +73,19 @@ export const paymentsApi = {
         a.click();
         URL.revokeObjectURL(url);
       }),
+};
+
+/** Backend invoice system: /competitions/{id}/invoices */
+export const invoicesApi = {
+  list: (competitionId: string) =>
+    apiClient.get<InvoiceDto[]>(`/competitions/${competitionId}/invoices`).then((r) => r.data),
+
+  create: (competitionId: string, data: { pairId?: string; amount: number; currency: string }) =>
+    apiClient.post<InvoiceDto>(`/competitions/${competitionId}/invoices`, data).then((r) => r.data),
+
+  markPaid: (competitionId: string, invoiceId: string) =>
+    apiClient.post<void>(`/competitions/${competitionId}/invoices/${invoiceId}/mark-paid`).then((r) => r.data),
+
+  send: (competitionId: string, invoiceId: string) =>
+    apiClient.post<InvoiceDto>(`/competitions/${competitionId}/invoices/${invoiceId}/send`).then((r) => r.data),
 };

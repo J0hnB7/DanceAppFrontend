@@ -2,12 +2,13 @@
 
 import { use, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Maximize2, Minimize2, Trophy, RefreshCw, Filter } from "lucide-react";
+import { Maximize2, Minimize2, Trophy, RefreshCw, Filter, AlertTriangle } from "lucide-react";
 import { useSSE } from "@/hooks/use-sse";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { sectionsApi } from "@/lib/api/sections";
 import { scoringApi } from "@/lib/api/scoring";
+import { useLocale } from "@/contexts/locale-context";
 
 interface LiveResultRow {
   startNumber: number;
@@ -50,6 +51,7 @@ export default function ScoreboardPage({
   params: Promise<{ competitionId: string }>;
 }) {
   const { competitionId } = use(params);
+  const { t } = useLocale();
   const [sseResults, setSseResults] = useState<LiveResultRow[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -58,9 +60,10 @@ export default function ScoreboardPage({
   const [loadingResults, setLoadingResults] = useState(false);
 
   // Load sections for filtering
-  const { data: sections } = useQuery({
+  const { data: sections, isError: sectionsError } = useQuery({
     queryKey: ["sections", competitionId, "list"],
     queryFn: () => sectionsApi.list(competitionId),
+    retry: 2,
   });
 
   // Load results for completed sections
@@ -116,7 +119,7 @@ export default function ScoreboardPage({
 
   // Section tabs
   const sectionOptions = [
-    { id: "all", name: "All sections" },
+    { id: "all", name: t("scoreboard.allSections") },
     ...(sections?.filter((s) => s.status === "COMPLETED").map((s) => ({ id: s.id, name: s.name })) ?? []),
   ];
 
@@ -126,13 +129,13 @@ export default function ScoreboardPage({
       <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
         <div className="flex items-center gap-3">
           <Trophy className="h-6 w-6 text-[#ffd60a]" />
-          <h1 className="text-lg font-bold tracking-wide">LIVE RESULTS</h1>
+          <h1 className="text-lg font-bold tracking-wide">{t("scoreboard.liveResults")}</h1>
           <div className="ml-2 flex h-2.5 w-2.5 animate-pulse rounded-full bg-[#30d158]" />
         </div>
         <div className="flex items-center gap-4">
           {lastUpdate && (
             <p className="text-xs text-white/40">
-              Updated {lastUpdate.toLocaleTimeString("sk-SK")}
+              {t("scoreboard.updatedAt", { time: lastUpdate.toLocaleTimeString("sk-SK") })}
             </p>
           )}
           {loadingResults && (
@@ -170,15 +173,21 @@ export default function ScoreboardPage({
 
       {/* Results */}
       <div className="p-6">
-        {displayResults.length === 0 ? (
+        {sectionsError ? (
+          <div className="flex flex-col items-center gap-6 py-32 text-center">
+            <AlertTriangle className="h-16 w-16 text-red-500/40" />
+            <p className="text-xl font-semibold text-white/40">{t("scoreboard.loadError")}</p>
+            <p className="text-sm text-white/20">{t("scoreboard.loadErrorBody")}</p>
+          </div>
+        ) : displayResults.length === 0 ? (
           <div className="flex flex-col items-center gap-6 py-32 text-center">
             <Trophy className="h-20 w-20 text-white/10" />
             <p className="text-xl font-semibold text-white/40">
-              {loadingResults ? "Loading results..." : "Waiting for results..."}
+              {loadingResults ? t("scoreboard.loadingResults") : t("scoreboard.waitingForResults")}
             </p>
             {!loadingResults && (
               <p className="text-sm text-white/20">
-                Results will appear here as sections complete.
+                {t("scoreboard.resultsWillAppear")}
               </p>
             )}
           </div>
@@ -188,20 +197,20 @@ export default function ScoreboardPage({
               <thead>
                 <tr className="border-b border-white/10 bg-white/5">
                   <th className="px-6 py-4 text-left text-xs font-semibold tracking-widest text-white/40 uppercase">
-                    Place
+                    {t("scoreboard.place")}
                   </th>
                   <th className="px-4 py-4 text-left text-xs font-semibold tracking-widest text-white/40 uppercase">
-                    #
+                    {t("scoreboard.number")}
                   </th>
                   <th className="px-4 py-4 text-left text-xs font-semibold tracking-widest text-white/40 uppercase">
-                    Pair
+                    {t("scoreboard.pair")}
                   </th>
                   <th className="px-4 py-4 text-left text-xs font-semibold tracking-widest text-white/40 uppercase">
-                    Section
+                    {t("scoreboard.section")}
                   </th>
                   {displayResults.some((r) => r.totalSum !== undefined) && (
                     <th className="px-4 py-4 text-right text-xs font-semibold tracking-widest text-white/40 uppercase">
-                      Score
+                      {t("scoreboard.score")}
                     </th>
                   )}
                 </tr>

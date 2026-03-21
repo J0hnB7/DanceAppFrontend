@@ -2,75 +2,79 @@
 import type { CompetitionDto, CompetitionNewsItem } from "@/lib/api/competitions";
 import type { SectionDto } from "@/lib/api/sections";
 import type { PairDto } from "@/lib/api/pairs";
+import { japSections, japPairs } from "./jap-2026-data";
 
 export const mockUser = {
   id: "00000000-0000-0000-0000-000000000001",
   email: "admin@danceapp.sk",
-  firstName: "Admin",
-  lastName: "User",
+  name: "Admin User",
   role: "ORGANIZER" as const,
   emailVerified: true,
   twoFactorEnabled: false,
 };
 
-export const mockAuthResponse = {
+export const mockTokenResponse = {
   accessToken: "mock-access-token",
   refreshToken: "mock-refresh-token",
   expiresIn: 3600,
-  user: mockUser,
 };
 
 // ── Competitions ───────────────────────────────────────────────────────────────
 export const competitions: CompetitionDto[] = [
   {
+    id: "comp-jap-2026",
+    name: "Jarní Pohár Astra Praha 2026 - neděle",
+    description: "Jarní Pohár Astra Praha 2026 – neděle 15. 3. 2026",
+    venue: "Praha, Česká republika",
+    eventDate: "2026-03-15",
+    status: "COMPLETED",
+    registrationOpen: false,
+    organizerId: mockUser.id,
+    pairsVisibility: "PUBLIC",
+    contactEmail: "info@astrapraha.cz",
+  },
+  {
     id: "comp-001",
     name: "Slovak Dance Cup 2026",
     description: "Annual ballroom competition",
-    location: "Bratislava, Slovakia",
-    startDate: "2026-04-15T09:00:00",
-    endDate: "2026-04-15T20:00:00",
-    status: "REGISTRATION_OPEN",
+    venue: "Bratislava, Slovakia",
+    eventDate: "2026-04-15",
+    status: "PUBLISHED",
+    registrationOpen: true,
     organizerId: mockUser.id,
     registrationDeadline: "2026-04-10T23:59:00",
     maxPairs: 200,
-    registeredPairsCount: 47,
-    createdAt: "2026-01-10T10:00:00",
     pairsVisibility: "HIDDEN",
     numberOfRounds: 2,
     contactEmail: "info@slovakdancecup.sk",
-    propozice: "Soutěž se řídí pravidly WDSF. Každý pár může startovat v jedné věkové kategorii. Hudba musí být nahrána ve formátu MP3. Soutěžní oblečení musí splňovat pravidla WDSF pro danou kategorii. Výsledky jsou vyhlašovány průběžně po každé kategorii.",
-    paymentInfo: "IBAN: SK89 0900 0000 0051 8743 2198\nBIC: GIBASKBX\nVariabilný symbol: startovní číslo páru\nDo poznámky uveďte jméno a příjmení.",
   },
   {
     id: "comp-002",
     name: "Bratislava Open 2026",
     description: "International open competition",
-    location: "Bratislava, Slovakia",
-    startDate: "2026-06-20T10:00:00",
-    endDate: "2026-06-21T18:00:00",
+    venue: "Bratislava, Slovakia",
+    eventDate: "2026-06-20",
     status: "DRAFT",
+    registrationOpen: false,
     organizerId: mockUser.id,
-    registeredPairsCount: 0,
-    createdAt: "2026-02-01T09:00:00",
     pairsVisibility: "HIDDEN",
   },
   {
     id: "comp-003",
     name: "Winter Championship 2025",
     description: "Season finale",
-    location: "Košice, Slovakia",
-    startDate: "2025-11-30T09:00:00",
-    endDate: "2025-11-30T19:00:00",
+    venue: "Košice, Slovakia",
+    eventDate: "2025-11-30",
     status: "COMPLETED",
+    registrationOpen: false,
     organizerId: mockUser.id,
-    registeredPairsCount: 63,
-    createdAt: "2025-09-01T08:00:00",
     pairsVisibility: "PUBLIC",
   },
 ];
 
 // ── Sections ───────────────────────────────────────────────────────────────────
 export const sections: SectionDto[] = [
+  ...japSections,
   {
     id: "sec-001",
     competitionId: "comp-001",
@@ -171,6 +175,7 @@ export interface PairWithPresence extends PairDto {
 
 // ── Pairs ──────────────────────────────────────────────────────────────────────
 export const pairs: PairWithPresence[] = [
+  ...japPairs,
   { id: "pair-001", competitionId: "comp-001", sectionId: "sec-001", startNumber: 1, dancer1FirstName: "Martin", dancer1LastName: "Novák", dancer1Club: "DC Bratislava", dancer2FirstName: "Eva", dancer2LastName: "Nováková", dancer2Club: "DC Bratislava", email: "martin.novak@email.sk", registeredAt: "2026-02-01T10:00:00", paymentStatus: "PAID", registrationStatus: "CONFIRMED", presenceStatus: "CHECKED_IN" },
   { id: "pair-002", competitionId: "comp-001", sectionId: "sec-001", startNumber: 2, dancer1FirstName: "Peter", dancer1LastName: "Horváth", dancer1Club: "TK Košice", dancer2FirstName: "Anna", dancer2LastName: "Horváthová", dancer2Club: "TK Košice", email: "peter.horvath@email.sk", registeredAt: "2026-02-03T11:00:00", paymentStatus: "PAID", registrationStatus: "CONFIRMED", presenceStatus: "CHECKED_IN" },
   { id: "pair-003", competitionId: "comp-001", sectionId: "sec-001", startNumber: 3, dancer1FirstName: "Lukáš", dancer1LastName: "Kováč", dancer1Club: "SD Žilina", dancer2FirstName: "Monika", dancer2LastName: "Kováčová", dancer2Club: "SD Žilina", registeredAt: "2026-02-05T09:30:00", paymentStatus: "PENDING", registrationStatus: "UNCONFIRMED", presenceStatus: "ON_FLOOR" },
@@ -218,12 +223,16 @@ export const rounds = [
 ];
 
 // ── Judge tokens ───────────────────────────────────────────────────────────────
-export const judgeTokens = [
-  { id: "jt-001", competitionId: "comp-001", judgeNumber: 1, token: "JUDGE1TOKEN", pin: "1234", role: "JUDGE", connected: true },
-  { id: "jt-002", competitionId: "comp-001", judgeNumber: 2, token: "JUDGE2TOKEN", pin: "2345", role: "JUDGE", connected: false },
-  { id: "jt-003", competitionId: "comp-001", judgeNumber: 3, token: "JUDGE3TOKEN", pin: "3456", role: "JUDGE", connected: true },
-  { id: "jt-004", competitionId: "comp-001", judgeNumber: 4, token: "JUDGE4TOKEN", pin: "4567", role: "JUDGE", connected: true },
-  { id: "jt-005", competitionId: "comp-001", judgeNumber: 5, token: "JUDGE5TOKEN", pin: "5678", role: "JUDGE", connected: false },
+export const judgeTokens: {
+  id: string; competitionId: string; judgeNumber: number;
+  token: string; rawToken: string; active: boolean;
+  pin: string; role: string;
+}[] = [
+  { id: "jt-001", competitionId: "comp-001", judgeNumber: 1, token: "JUDGE1TOKEN", rawToken: "JUDGE1TOKEN", active: true,  pin: "123456", role: "JUDGE" },
+  { id: "jt-002", competitionId: "comp-001", judgeNumber: 2, token: "JUDGE2TOKEN", rawToken: "JUDGE2TOKEN", active: true,  pin: "234567", role: "JUDGE" },
+  { id: "jt-003", competitionId: "comp-001", judgeNumber: 3, token: "JUDGE3TOKEN", rawToken: "JUDGE3TOKEN", active: true,  pin: "345678", role: "JUDGE" },
+  { id: "jt-004", competitionId: "comp-001", judgeNumber: 4, token: "JUDGE4TOKEN", rawToken: "JUDGE4TOKEN", active: true,  pin: "456789", role: "JUDGE" },
+  { id: "jt-005", competitionId: "comp-001", judgeNumber: 5, token: "JUDGE5TOKEN", rawToken: "JUDGE5TOKEN", active: false, pin: "567890", role: "JUDGE" },
 ];
 
 // ── Check-in tokens ────────────────────────────────────────────────────────────

@@ -25,41 +25,7 @@ interface AlertsState {
 }
 
 export const useAlertsStore = create<AlertsState>((set, get) => ({
-  alerts: [
-    // Seed with demo alerts so UI is visually interesting out of the box
-    {
-      id: "alert-001",
-      level: "warning",
-      title: "Judge #2 offline > 3 min",
-      description: "Judge 2 has not responded since 10:32",
-      competitionId: "comp-001",
-      createdAt: new Date(Date.now() - 4 * 60_000),
-      read: false,
-      actionLabel: "Manage judges",
-      actionHref: "/dashboard/competitions/comp-001/judges",
-    },
-    {
-      id: "alert-002",
-      level: "success",
-      title: "Results ready for approval",
-      description: "Junior I Standard C — final calculated",
-      competitionId: "comp-001",
-      sectionId: "sec-003",
-      createdAt: new Date(Date.now() - 10 * 60_000),
-      read: false,
-      actionLabel: "View results",
-      actionHref: "/dashboard/competitions/comp-001/sections/sec-003/results",
-    },
-    {
-      id: "alert-003",
-      level: "info",
-      title: "Registration closed",
-      description: "Slovak Dance Cup 2026 deadline passed",
-      competitionId: "comp-001",
-      createdAt: new Date(Date.now() - 60 * 60_000),
-      read: true,
-    },
-  ],
+  alerts: [],
 
   addAlert: (alert) =>
     set((state) => ({

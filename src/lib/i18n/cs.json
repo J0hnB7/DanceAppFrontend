@@ -158,6 +158,7 @@
     "noRounds": "Zatím žádná kola. Vytvořte předkolo nebo finále a zahajte soutěž.",
     "addPreliminary": "Předkolo",
     "addFinal": "Finále",
+    "completeRoundFirst": "Nejprve dokončete aktivní kolo",
     "rounds": "Kola",
     "results": "Výsledky",
     "present": "Prezentace",
@@ -954,14 +955,16 @@
   },
 
   "ageCategory": {
-    "CHILDREN_I": "Děti I",
-    "CHILDREN_II": "Děti II",
-    "JUNIOR_I": "Junioři I",
-    "JUNIOR_II": "Junioři II",
-    "YOUTH": "Mládež",
-    "ADULT": "Dospělí",
-    "SENIOR_I": "Senioři I",
-    "SENIOR_II": "Senioři II"
+    "CHILDREN_I": "Děti I (do 10 let)",
+    "CHILDREN_II": "Děti II (11–12 let)",
+    "JUVENILE_I": "Juvenilní I (do 10 let)",
+    "JUVENILE_II": "Juvenilní II (11–12 let)",
+    "JUNIOR_I": "Junioři I (13–14 let)",
+    "JUNIOR_II": "Junioři II (15–16 let)",
+    "YOUTH": "Mládež (17–18 let)",
+    "ADULT": "Dospělí (19+ let)",
+    "SENIOR_I": "Senioři I (35+ let)",
+    "SENIOR_II": "Senioři II (45+ let)"
   },
 
   "danceStyle": {
@@ -1176,6 +1179,7 @@
     "namePlaceholder": "např. Děti I C Standardní tance",
     "nameRequired": "Název je povinný",
     "ageCategoryLabel": "Věková kategorie",
+    "ageCategoryPlaceholder": "Věková kategorie",
     "levelLabel": "Výkonnostní třída",
     "levelPlaceholder": "Třída",
     "danceStyleLabel": "Disciplína",
@@ -1184,8 +1188,8 @@
     "competitionTypePlaceholder": "Typ",
     "competitorTypeLabel": "Soutěžící",
     "competitorTypePlaceholder": "Soutěžící",
-    "seriesLabel": "Seriál",
-    "seriesPlaceholder": "Seriál",
+    "seriesLabel": "Kategorie soutěže",
+    "seriesPlaceholder": "Kategorie soutěže",
     "selectPlaceholder": "Vyberte...",
     "entryFeeTitle": "Startovné",
     "entryFeeLabel": "Cena za přihlášení",
@@ -1354,5 +1358,16 @@
     "connected": "Pripojený",
     "scoresSubmitted": "Skóre odoslané",
     "disconnected": "Odpojený"
+  },
+  "scoring": {
+    "title": "Sledování hodnocení",
+    "received": "Přijato:",
+    "calculate": "Spočítat výsledky",
+    "waiting": "Čeká...",
+    "offline_badge": "Offline",
+    "submitted_at": "Odesláno",
+    "conflict": "Konflikt marks",
+    "resolve_online": "Zachovat online",
+    "resolve_offline": "Zachovat offline"
   }
 }

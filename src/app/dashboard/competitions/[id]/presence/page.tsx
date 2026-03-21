@@ -10,10 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import apiClient from "@/lib/api-client";
 import { useCompetition } from "@/hooks/queries/use-competitions";
-import { competitionKeys } from "@/hooks/queries/use-competitions";
 import type { SectionDto } from "@/lib/api/sections";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
 
 type PresenceStatus = "ABSENT" | "CHECKED_IN" | "ON_FLOOR" | "DONE";
 type PaymentStatus = "PAID" | "PENDING" | "WAIVED";
@@ -48,6 +48,7 @@ function StatCard({ icon: Icon, label, value, accent }: { icon: React.ElementTyp
 }
 
 function PairRow({ pair, sectionName }: { pair: PairPresence; sectionName: string }) {
+  const { t } = useLocale();
   const isPaid = pair.paymentStatus === "PAID" || pair.paymentStatus === "WAIVED";
   const isPresent = pair.presenceStatus === "CHECKED_IN" || pair.presenceStatus === "ON_FLOOR" || pair.presenceStatus === "DONE";
   return (
@@ -63,7 +64,7 @@ function PairRow({ pair, sectionName }: { pair: PairPresence; sectionName: strin
       </span>
       <span className="text-xs text-[var(--text-tertiary)]">{sectionName}</span>
       {!isPaid && isPresent && (
-        <span className="rounded-full bg-[var(--warning)]/10 px-1.5 py-0.5 text-xs text-[var(--warning)]">nezaplaceno</span>
+        <span className="rounded-full bg-[var(--warning)]/10 px-1.5 py-0.5 text-xs text-[var(--warning)]">{t("presence.unpaidBadge")}</span>
       )}
     </div>
   );
@@ -71,6 +72,7 @@ function PairRow({ pair, sectionName }: { pair: PairPresence; sectionName: strin
 
 export default function PresencePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useLocale();
   const router = useRouter();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -78,7 +80,6 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
   const [showCloseDialog, setShowCloseDialog] = useState(false);
 
   const { data: competition } = useCompetition(id);
-  const isClosed = competition?.presenceClosed ?? false;
 
   const { data: presencePairs = [], isLoading } = useQuery<PairPresence[]>({
     queryKey: ["presence", id],
@@ -90,6 +91,12 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
     queryKey: ["sections", id, "list"],
     queryFn: () => apiClient.get(`/competitions/${id}/sections`).then((r) => r.data),
   });
+
+  // Is the currently filtered section (or all) closed?
+  const activeSection = sections.find((s) => s.id === sectionFilter);
+  const isClosed = sectionFilter === "all"
+    ? sections.length > 0 && sections.every((s) => s.presenceClosed)
+    : (activeSection?.presenceClosed ?? false);
 
   const setStatus = useMutation({
     mutationFn: ({ pairId, status }: { pairId: string; status: PresenceStatus }) =>
@@ -121,20 +128,28 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
     onSettled: () => qc.invalidateQueries({ queryKey: ["presence", id] }),
   });
 
-  const closePresence = useMutation({
-    mutationFn: () => apiClient.post(`/competitions/${id}/presence/close`).then((r) => r.data),
+  const closeSectionPresence = useMutation({
+    mutationFn: (sectionId: string) =>
+      apiClient.post(`/competitions/${id}/sections/${sectionId}/presence/close`).then((r) => r.data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: competitionKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: ["sections", id, "list"] });
       setShowCloseDialog(false);
-      toast({ title: "Prezence uzavřena", description: "Páry byly rozděleny do skupin." });
+      toast({ title: t("presence.closedToast"), description: t("presence.closedToastDesc") });
+    },
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
     },
   });
 
-  const reopenPresence = useMutation({
-    mutationFn: () => apiClient.post(`/competitions/${id}/presence/reopen`).then((r) => r.data),
+  const reopenSectionPresence = useMutation({
+    mutationFn: (sectionId: string) =>
+      apiClient.post(`/competitions/${id}/sections/${sectionId}/presence/reopen`).then((r) => r.data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: competitionKeys.detail(id) });
-      toast({ title: "Prezence znovu otevřena", description: "Nyní lze upravovat prezenci a platby." });
+      qc.invalidateQueries({ queryKey: ["sections", id, "list"] });
+      toast({ title: t("presence.reopenPresenceToast"), description: t("presence.reopenPresenceToastDesc") });
+    },
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
     },
   });
 
@@ -191,77 +206,79 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
         className="mb-4 flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
       >
         <ArrowLeft className="h-4 w-4" />
-        {competition?.name ?? "Zpět na soutěž"}
+        {competition?.name ?? t("common.back")}
       </button>
 
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Prezence</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Check-in účastníků v den soutěže</p>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">{t("presence.title")}</h1>
+          <p className="text-sm text-[var(--text-secondary)]">{t("presence.description")}</p>
         </div>
-        {isClosed ? (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-full bg-[var(--surface-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-tertiary)]">
-              <Lock className="h-3.5 w-3.5" />
-              Prezence uzavřena
+        {sectionFilter !== "all" && activeSection ? (
+          isClosed ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 rounded-full bg-[var(--surface-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-tertiary)]">
+                <Lock className="h-3.5 w-3.5" />
+                {t("presence.closedBanner")}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => reopenSectionPresence.mutate(activeSection.id)}
+                loading={reopenSectionPresence.isPending}
+                className="shrink-0"
+              >
+                {t("presence.editPresence")}
+              </Button>
             </div>
+          ) : (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => reopenPresence.mutate()}
-              loading={reopenPresence.isPending}
-              className="shrink-0"
+              onClick={() => setShowCloseDialog(true)}
+              className="shrink-0 border-[var(--destructive)]/30 text-[var(--destructive)] hover:bg-[var(--destructive)]/5"
             >
-              Upravit prezenci
+              <Lock className="h-3.5 w-3.5" />
+              {t("presence.closePresence")}
             </Button>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCloseDialog(true)}
-            className="shrink-0 border-[var(--destructive)]/30 text-[var(--destructive)] hover:bg-[var(--destructive)]/5"
-          >
-            <Lock className="h-3.5 w-3.5" />
-            Uzavřít prezenci
-          </Button>
-        )}
+          )
+        ) : null}
       </div>
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-3 gap-3">
-        <StatCard icon={Users}        label="Celkem"    value={stats.total}     accent="bg-[var(--text-tertiary)]" />
-        <StatCard icon={CheckCircle2} label="Přítomni"  value={stats.checkedIn} accent="bg-[var(--success)]" />
-        <StatCard icon={CreditCard}   label="Zaplaceno" value={stats.paid}      accent="bg-[var(--success)]" />
+        <StatCard icon={Users}        label={t("presence.total")}   value={stats.total}     accent="bg-[var(--text-tertiary)]" />
+        <StatCard icon={CheckCircle2} label={t("presence.present")} value={stats.checkedIn} accent="bg-[var(--success)]" />
+        <StatCard icon={CreditCard}   label={t("presence.paid")}    value={stats.paid}      accent="bg-[var(--success)]" />
       </div>
 
       {/* Closed banner */}
       {isClosed && (
         <div className="mb-6 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-secondary)] p-4">
-          <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Výsledek uzavření prezence</p>
+          <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">{t("presence.presenceResult")}</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--success)]">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Přítomni a zaplaceni ({activeGroup.length})
+                {t("presence.presentAndPaid", { count: activeGroup.length })}
               </p>
               <div className="space-y-0.5">
                 {activeGroup.map((p) => (
                   <PairRow key={p.id} pair={p} sectionName={sections.find((s) => s.id === p.sectionId)?.name ?? ""} />
                 ))}
-                {activeGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">Žádné páry</p>}
+                {activeGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">{t("presence.noPairs")}</p>}
               </div>
             </div>
             <div>
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--destructive)]">
                 <XCircle className="h-3.5 w-3.5" />
-                Nepřítomni ({absentGroup.length})
+                {t("presence.absent", { count: absentGroup.length })}
               </p>
               <div className="space-y-0.5">
                 {absentGroup.map((p) => (
                   <PairRow key={p.id} pair={p} sectionName={sections.find((s) => s.id === p.sectionId)?.name ?? ""} />
                 ))}
-                {absentGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">Žádné páry</p>}
+                {absentGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">{t("presence.noPairs")}</p>}
               </div>
             </div>
           </div>
@@ -274,7 +291,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-tertiary)]" />
           <input
             type="text"
-            placeholder="Hledat podle jména nebo čísla..."
+            placeholder={t("presence.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] py-2 pl-9 pr-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none"
@@ -290,7 +307,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                 : "bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)]"
             )}
           >
-            Vše ({presencePairs.length})
+            {t("presence.all", { count: presencePairs.length })}
           </button>
           {sections.map((s) => {
             const count = presencePairs.filter((p) => p.sectionId === s.id).length;
@@ -299,12 +316,13 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                 key={s.id}
                 onClick={() => setSectionFilter(s.id)}
                 className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                  "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                   sectionFilter === s.id
                     ? "bg-[var(--accent)] text-white"
                     : "bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)]"
                 )}
               >
+                {s.presenceClosed && <Lock className="h-3 w-3 opacity-70" />}
                 {s.name} ({count})
               </button>
             );
@@ -319,14 +337,16 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
           : filtered.length === 0
           ? (
             <div className="py-16 text-center text-sm text-[var(--text-secondary)]">
-              Žádné páry nenalezeny
+              {t("presence.notFound")}
             </div>
           )
           : filtered.map((pair) => {
             const isPresent = pair.presenceStatus === "CHECKED_IN" || pair.presenceStatus === "ON_FLOOR" || pair.presenceStatus === "DONE";
             const isPaid = pair.paymentStatus === "PAID" || pair.paymentStatus === "WAIVED";
             const isWaived = pair.paymentStatus === "WAIVED";
-            const sectionName = sections.find((s) => s.id === pair.sectionId)?.name ?? "";
+            const pairSection = sections.find((s) => s.id === pair.sectionId);
+            const sectionName = pairSection?.name ?? "";
+            const pairSectionClosed = pairSection?.presenceClosed ?? false;
 
             return (
               <div
@@ -359,11 +379,11 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
 
                 {/* Payment toggle badge */}
                 <button
-                  disabled={isWaived || isClosed}
-                  onClick={() => !isWaived && !isClosed && setPayment.mutate({ pairId: pair.id, paid: !isPaid })}
+                  disabled={isWaived || pairSectionClosed}
+                  onClick={() => !isWaived && !pairSectionClosed && setPayment.mutate({ pairId: pair.id, paid: !isPaid })}
                   className={cn(
                     "shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all hidden sm:flex",
-                    isClosed || isWaived
+                    pairSectionClosed || isWaived
                       ? "cursor-default border-[var(--border)] text-[var(--text-tertiary)]"
                       : isPaid
                       ? "border-[var(--success)]/40 bg-[var(--success)]/8 text-[var(--success)] hover:bg-[var(--success)]/15"
@@ -371,16 +391,16 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                   )}
                 >
                   <CreditCard className="h-3 w-3" />
-                  {isWaived ? "Prominuto" : isPaid ? "Zaplaceno" : "Nezaplaceno"}
+                  {isWaived ? t("presence.waived") : isPaid ? t("presence.paid") : t("presence.notPaid")}
                 </button>
 
                 {/* Presence toggle badge */}
                 <button
-                  disabled={isClosed}
-                  onClick={() => !isClosed && setStatus.mutate({ pairId: pair.id, status: isPresent ? "ABSENT" : "CHECKED_IN" })}
+                  disabled={pairSectionClosed}
+                  onClick={() => !pairSectionClosed && setStatus.mutate({ pairId: pair.id, status: isPresent ? "ABSENT" : "CHECKED_IN" })}
                   className={cn(
                     "shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all flex",
-                    isClosed
+                    pairSectionClosed
                       ? "cursor-default border-[var(--border)] text-[var(--text-tertiary)]"
                       : isPresent
                       ? "border-[var(--success)]/40 bg-[var(--success)]/8 text-[var(--success)] hover:bg-[var(--success)]/15"
@@ -388,7 +408,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                   )}
                 >
                   <UserCheck className="h-3 w-3" />
-                  {isPresent ? "Přítomen" : "Nepřítomen"}
+                  {isPresent ? t("presence.checkedIn") : t("presence.notCheckedIn")}
                 </button>
               </div>
             );
@@ -399,9 +419,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
       {/* Summary footer */}
       {!isLoading && presencePairs.length > 0 && (
         <p className="mt-6 text-center text-xs text-[var(--text-tertiary)]">
-          {stats.checkedIn} / {stats.total} přítomno
-          {stats.absent > 0 && ` · ${stats.absent} chybí`}
-          {" · "}{stats.paid} / {stats.total} zaplaceno
+          {t("presence.statusSummary", { present: stats.checkedIn, total: stats.total, paid: stats.paid })}
         </p>
       )}
 
@@ -410,9 +428,9 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowCloseDialog(false)} />
           <div className="relative w-full max-w-lg rounded-[var(--radius-xl)] bg-[var(--surface)] p-6 shadow-[0_24px_64px_rgba(0,0,0,0.15)]">
-            <h2 className="mb-1 text-lg font-bold text-[var(--text-primary)]">Uzavřít prezenci</h2>
+            <h2 className="mb-1 text-lg font-bold text-[var(--text-primary)]">{t("presence.closePresenceTitle")}</h2>
             <p className="mb-5 text-sm text-[var(--text-secondary)]">
-              Páry budou rozděleny do dvou skupin. Po uzavření nelze měnit prezenci ani platby.
+              {t("presence.closePresenceDesc")}
             </p>
 
             <div className="mb-5 grid gap-4 sm:grid-cols-2">
@@ -420,7 +438,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
               <div className="rounded-[var(--radius-lg)] border border-[var(--success)]/30 bg-[var(--success)]/5 p-3">
                 <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--success)]">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Přítomni a zaplaceni — {activeGroup.length} párů
+                  {t("presence.presentAndPaid", { count: activeGroup.length })}
                 </p>
                 <div className="max-h-40 space-y-0.5 overflow-y-auto">
                   {activeGroup.map((p) => (
@@ -429,7 +447,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                       <span className="truncate">{p.dancer1FirstName} {p.dancer1LastName}{p.dancer2FirstName && ` & ${p.dancer2FirstName} ${p.dancer2LastName}`}</span>
                     </div>
                   ))}
-                  {activeGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">Žádné páry</p>}
+                  {activeGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">{t("presence.noPairs")}</p>}
                 </div>
               </div>
 
@@ -437,7 +455,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
               <div className="rounded-[var(--radius-lg)] border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 p-3">
                 <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--destructive)]">
                   <XCircle className="h-3.5 w-3.5" />
-                  Nepřítomni — {absentGroup.length} párů
+                  {t("presence.absent", { count: absentGroup.length })}
                 </p>
                 <div className="max-h-40 space-y-0.5 overflow-y-auto">
                   {absentGroup.map((p) => (
@@ -446,7 +464,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                       <span className="truncate">{p.dancer1FirstName} {p.dancer1LastName}{p.dancer2FirstName && ` & ${p.dancer2FirstName} ${p.dancer2LastName}`}</span>
                     </div>
                   ))}
-                  {absentGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">Žádné páry</p>}
+                  {absentGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">{t("presence.noPairs")}</p>}
                 </div>
               </div>
             </div>
@@ -454,25 +472,25 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
             {presentUnpaidGroup.length > 0 && (
               <div className="mb-5 rounded-[var(--radius-lg)] border border-[var(--warning)]/30 bg-[var(--warning)]/5 p-3">
                 <p className="mb-1 text-xs font-semibold text-[var(--warning)]">
-                  Upozornění: {presentUnpaidGroup.length} přítomných párů s nezaplaceným startovným
+                  {t("presence.unpaidWarning", { count: presentUnpaidGroup.length })}
                 </p>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  Tyto páry nejsou zahrnuty ve skupině „Přítomni a zaplaceni".
+                  {t("presence.unpaidWarningDesc")}
                 </p>
               </div>
             )}
 
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowCloseDialog(false)}>
-                Zrušit
+                {t("common.cancel")}
               </Button>
               <Button
-                onClick={() => closePresence.mutate()}
-                loading={closePresence.isPending}
+                onClick={() => activeSection && closeSectionPresence.mutate(activeSection.id)}
+                loading={closeSectionPresence.isPending}
                 className="bg-[var(--destructive)] text-white hover:bg-[var(--destructive)]/90"
               >
                 <Lock className="h-3.5 w-3.5" />
-                Uzavřít prezenci
+                {t("presence.closePresenceAction")}
               </Button>
             </div>
           </div>

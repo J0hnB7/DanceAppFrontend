@@ -1,23 +1,24 @@
 import apiClient from "@/lib/api-client";
-import type { RoundType } from "./sections";
 
-export type RoundStatus = "PENDING" | "OPEN" | "IN_PROGRESS" | "CLOSED" | "CALCULATED";
+export type RoundStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "OPEN" | "CLOSED" | "CALCULATED";
+export type RoundType = "HEAT" | "SEMIFINAL" | "FINAL" | "SINGLE_ROUND" | "PRELIMINARY";
 
 export interface RoundDto {
   id: string;
-  sectionId: string;
+  sectionId?: string;
   roundType: RoundType;
   roundNumber: number;
   status: RoundStatus;
   pairsToAdvance?: number;
-  judgeCount: number;
+  judgeCount?: number;
   startedAt?: string;
   closedAt?: string;
+  completedAt?: string;
 }
 
-export interface CreateRoundRequest {
-  roundType: RoundType;
+export interface CompleteRoundRequest {
   pairsToAdvance?: number;
+  advancingPairIds?: string[];
 }
 
 export interface SubmissionStatusResponse {
@@ -34,30 +35,38 @@ export interface JudgeSubmissionStatus {
 }
 
 export const roundsApi = {
-  list: (sectionId: string) =>
-    apiClient.get<RoundDto[]>(`/sections/${sectionId}/rounds`).then((r) => r.data),
+  /** Backend: GET /competitions/{cId}/sections/{sId}/rounds */
+  list: (competitionId: string, sectionId: string) =>
+    apiClient.get<RoundDto[]>(`/competitions/${competitionId}/sections/${sectionId}/rounds`).then((r) => r.data),
 
-  get: (roundId: string) =>
-    apiClient.get<RoundDto>(`/rounds/${roundId}`).then((r) => r.data),
+  /** Backend: POST /competitions/{cId}/sections/{sId}/rounds/open */
+  open: (competitionId: string, sectionId: string) =>
+    apiClient.post<RoundDto>(`/competitions/${competitionId}/sections/${sectionId}/rounds/open`).then((r) => r.data),
 
-  create: (sectionId: string, data: CreateRoundRequest) =>
-    apiClient.post<RoundDto>(`/sections/${sectionId}/rounds`, data).then((r) => r.data),
+  /** Backend: POST /competitions/{cId}/sections/{sId}/rounds/{roundId}/complete */
+  complete: (competitionId: string, sectionId: string, roundId: string, data?: CompleteRoundRequest) =>
+    apiClient.post<RoundDto>(`/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}/complete`, data ?? {}).then((r) => r.data),
 
-  open: (roundId: string) =>
-    apiClient.post<RoundDto>(`/rounds/${roundId}/open`).then((r) => r.data),
-
-  start: (roundId: string) =>
-    apiClient.post<RoundDto>(`/rounds/${roundId}/start`).then((r) => r.data),
-
-  close: (roundId: string) =>
-    apiClient.post<RoundDto>(`/rounds/${roundId}/close`).then((r) => r.data),
-
+  // Scoring endpoints (direct /rounds/:id paths)
   getSubmissionStatus: (roundId: string) =>
     apiClient.get<SubmissionStatusResponse>(`/rounds/${roundId}/submission-status`).then((r) => r.data),
 
   calculateResults: (roundId: string) =>
     apiClient.post(`/rounds/${roundId}/calculate`).then((r) => r.data),
 
+  resolveTie: (roundId: string, choice: "more" | "less") =>
+    apiClient.post(`/rounds/${roundId}/calculate`, null, { params: { tieBreak: choice.toUpperCase() } }).then((r) => r.data),
+
   getResults: (roundId: string) =>
     apiClient.get(`/rounds/${roundId}/results`).then((r) => r.data),
+
+  // Legacy/mock-only endpoints kept for backward compat with mock layer
+  get: (roundId: string) =>
+    apiClient.get<RoundDto>(`/rounds/${roundId}`).then((r) => r.data),
+
+  start: (roundId: string) =>
+    apiClient.post<RoundDto>(`/rounds/${roundId}/start`).then((r) => r.data),
+
+  close: (roundId: string) =>
+    apiClient.post<RoundDto>(`/rounds/${roundId}/close`).then((r) => r.data),
 };

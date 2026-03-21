@@ -11,10 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useSection } from "@/hooks/queries/use-sections";
-import { useRounds, useCreateRound } from "@/hooks/queries/use-rounds";
+import { useRounds, useOpenRound } from "@/hooks/queries/use-rounds";
 import { usePairs } from "@/hooks/queries/use-pairs";
 import { WithdrawalModal, PenaltyModal } from "@/components/competition/crisis-modals";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
+import { getRoundStatusBadgeVariant, getErrorMessage } from "@/lib/utils";
 
 export default function SectionDetailPage({
   params,
@@ -22,23 +24,25 @@ export default function SectionDetailPage({
   params: Promise<{ id: string; sectionId: string }>;
 }) {
   const { id: competitionId, sectionId } = use(params);
+  const { t } = useLocale();
   const router = useRouter();
   const { data: section, isLoading } = useSection(competitionId, sectionId);
-  const { data: rounds } = useRounds(sectionId);
+  const { data: rounds } = useRounds(competitionId, sectionId);
   const { data: pairs } = usePairs(competitionId, sectionId);
-  const createRound = useCreateRound(sectionId);
+  const createRound = useOpenRound(competitionId, sectionId);
 
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
   const [penaltyOpen, setPenaltyOpen] = useState(false);
 
-  const handleCreatePreliminary = async () => {
-    await createRound.mutateAsync({ roundType: "PRELIMINARY", pairsToAdvance: 12 });
-    toast({ title: "Preliminary round created", variant: "success" } as Parameters<typeof toast>[0]);
-  };
-
-  const handleCreateFinal = async () => {
-    await createRound.mutateAsync({ roundType: "FINAL" });
-    toast({ title: "Final round created", variant: "success" } as Parameters<typeof toast>[0]);
+  const handleCreateRound = async (type: "PRELIMINARY" | "FINAL") => {
+    try {
+      await createRound.mutateAsync();
+      const key = type === "PRELIMINARY" ? "section.roundCreatedPreliminary" : "section.roundCreatedFinal";
+      toast({ title: t(key), variant: "success" } as Parameters<typeof toast>[0]);
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, t("common.error"));
+      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+    }
   };
 
   if (isLoading || !section) {
@@ -51,6 +55,7 @@ export default function SectionDetailPage({
   }
 
   const hasResults = rounds?.some((r) => r.status === "CALCULATED");
+  const hasActiveRound = rounds?.some((r) => r.status === "OPEN" || r.status === "IN_PROGRESS");
 
   return (
     <AppShell
@@ -68,7 +73,7 @@ export default function SectionDetailPage({
                 }
               >
                 <BarChart3 className="h-4 w-4" />
-                Results
+                {t("section.results")}
               </Button>
               <Button
                 size="sm"
@@ -80,7 +85,7 @@ export default function SectionDetailPage({
                 }
               >
                 <Presentation className="h-4 w-4" />
-                Present
+                {t("section.present")}
               </Button>
             </>
           )}
@@ -91,13 +96,14 @@ export default function SectionDetailPage({
         title={section.name}
         description={`${section.ageCategory} · ${section.level} · ${section.danceStyle}`}
         actions={<Badge variant="secondary">{section.status}</Badge>}
+        backHref={`/dashboard/competitions/${competitionId}`}
       />
 
       {/* Pairs summary */}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-[var(--text-secondary)]">Registered pairs</CardTitle>
+            <CardTitle className="text-xs text-[var(--text-secondary)]">{t("section.registeredPairs")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{pairs?.length ?? 0}</p>
@@ -105,7 +111,7 @@ export default function SectionDetailPage({
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-[var(--text-secondary)]">Dances</CardTitle>
+            <CardTitle className="text-xs text-[var(--text-secondary)]">{t("section.danceCount")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{section.dances.length}</p>
@@ -116,7 +122,7 @@ export default function SectionDetailPage({
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-[var(--text-secondary)]">Rounds</CardTitle>
+            <CardTitle className="text-xs text-[var(--text-secondary)]">{t("section.roundCount")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{rounds?.length ?? 0}</p>
@@ -126,24 +132,28 @@ export default function SectionDetailPage({
 
       {/* Rounds */}
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-semibold text-[var(--text-primary)]">Rounds</h3>
+        <h3 className="font-semibold text-[var(--text-primary)]">{t("section.rounds")}</h3>
         <div className="flex gap-2">
           <Button
             size="sm"
             variant="outline"
-            onClick={handleCreatePreliminary}
+            onClick={() => handleCreateRound("PRELIMINARY")}
             loading={createRound.isPending}
+            disabled={hasActiveRound}
+            title={hasActiveRound ? t("section.completeRoundFirst") : undefined}
           >
             <Plus className="h-4 w-4" />
-            Preliminary
+            {t("section.addPreliminary")}
           </Button>
           <Button
             size="sm"
-            onClick={handleCreateFinal}
+            onClick={() => handleCreateRound("FINAL")}
             loading={createRound.isPending}
+            disabled={hasActiveRound}
+            title={hasActiveRound ? t("section.completeRoundFirst") : undefined}
           >
             <Trophy className="h-4 w-4" />
-            Final
+            {t("section.addFinal")}
           </Button>
         </div>
       </div>
@@ -151,7 +161,7 @@ export default function SectionDetailPage({
       <div className="flex flex-col gap-3">
         {!rounds?.length && (
           <p className="py-8 text-center text-sm text-[var(--text-secondary)]">
-            No rounds yet. Create a preliminary or final round to start the competition.
+            {t("section.noRounds")}
           </p>
         )}
         {rounds?.map((round) => (
@@ -167,29 +177,21 @@ export default function SectionDetailPage({
             <CardContent className="flex items-center justify-between py-4">
               <div>
                 <p className="font-medium text-sm">
-                  {round.roundType} — Round {round.roundNumber}
+                  {round.roundType} — {t("section.rounds")} {round.roundNumber}
                 </p>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  {round.judgeCount} judges
-                  {round.pairsToAdvance && ` · ${round.pairsToAdvance} advance`}
+                  {round.judgeCount} {t("judges.title")}
+                  {round.pairsToAdvance && ` · ${round.pairsToAdvance} ${t("round.pairsToAdvance")}`}
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Badge
-                  variant={
-                    round.status === "CALCULATED"
-                      ? "success"
-                      : round.status === "IN_PROGRESS" || round.status === "OPEN"
-                      ? "warning"
-                      : "secondary"
-                  }
-                >
+                <Badge variant={getRoundStatusBadgeVariant(round.status)}>
                   {round.status}
                 </Badge>
                 {(round.status === "OPEN" || round.status === "IN_PROGRESS") && (
                   <Button size="sm" variant="ghost">
                     <PlayCircle className="h-4 w-4" />
-                    Manage
+                    {t("section.manage")}
                   </Button>
                 )}
                 {round.status === "CALCULATED" && (
@@ -204,7 +206,7 @@ export default function SectionDetailPage({
                     }}
                   >
                     <BarChart3 className="h-4 w-4" />
-                    Results
+                    {t("section.results")}
                   </Button>
                 )}
               </div>
@@ -226,7 +228,7 @@ export default function SectionDetailPage({
           }
         >
           <Swords className="h-4 w-4" />
-          Dance-offs
+          {t("section.danceOffs")}
         </Button>
         {hasResults && (
           <Button
@@ -239,14 +241,14 @@ export default function SectionDetailPage({
             }
           >
             <BarChart3 className="h-4 w-4" />
-            Section results
+            {t("section.sectionResults")}
           </Button>
         )}
       </div>
 
       {/* Crisis actions */}
       <div className="mt-4">
-        <p className="mb-2 text-xs font-semibold text-[var(--text-tertiary)]">CRISIS ACTIONS</p>
+        <p className="mb-2 text-xs font-semibold text-[var(--text-tertiary)]">{t("section.crisisActions")}</p>
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
@@ -255,7 +257,7 @@ export default function SectionDetailPage({
             onClick={() => setWithdrawalOpen(true)}
           >
             <XCircle className="h-4 w-4" />
-            Withdrawal
+            {t("section.withdrawal")}
           </Button>
           <Button
             size="sm"
@@ -264,7 +266,7 @@ export default function SectionDetailPage({
             onClick={() => setPenaltyOpen(true)}
           >
             <ShieldAlert className="h-4 w-4" />
-            Penalty
+            {t("section.penalty")}
           </Button>
         </div>
       </div>

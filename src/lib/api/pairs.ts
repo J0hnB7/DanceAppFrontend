@@ -1,43 +1,81 @@
 import apiClient from "@/lib/api-client";
 
+export type PairStatus = "REGISTERED" | "CONFIRMED" | "WITHDRAWN" | "DISQUALIFIED";
+/** @deprecated Use PairStatus instead */
 export type RegistrationStatus = "UNCONFIRMED" | "CONFIRMED" | "CANCELLED";
+
+export interface PairSectionAssignment {
+  sectionId: string;
+  sectionName?: string;
+  paymentStatus: "PENDING" | "PAID" | "WAIVED";
+}
 
 export interface PairDto {
   id: string;
-  competitionId: string;
-  sectionId: string;
+  /** Competition ID — may not be in backend response; used for frontend routing */
+  competitionId?: string;
   startNumber: number;
-  dancer1FirstName: string;
-  dancer1LastName: string;
+  /** Backend: full name in one field */
+  dancer1Name?: string;
+  dancer2Name?: string;
+  club?: string;
+  email?: string;
+  status?: PairStatus;
+  sections?: PairSectionAssignment[];
+  // Frontend-split name fields (used in mock / legacy code)
+  dancer1FirstName?: string;
+  dancer1LastName?: string;
   dancer1Club?: string;
   dancer2FirstName?: string;
   dancer2LastName?: string;
   dancer2Club?: string;
-  email?: string;
-  registeredAt: string;
-  paymentStatus: "PENDING" | "PAID" | "WAIVED";
-  registrationStatus: RegistrationStatus;
+  registeredAt?: string;
+  paymentStatus?: "PENDING" | "PAID" | "WAIVED";
+  /** @deprecated Use status instead */
+  registrationStatus?: RegistrationStatus;
   adminNote?: string;
+  sectionId?: string;
+  // Extended fields from external competition system
+  externalId?: string;
+  externalSectionId?: string;
+  country?: string;
+  presenceDeadline?: string;
+  feePerPerson?: number;
+  feeTotal?: number;
+  starts?: boolean;
+  withdrawalDate?: string;
+  startType?: string;
+  startsFromRound?: number;
+  classValue?: string;
+  finaleCount?: number;
+  points?: number;
+  ranklistPosition?: number;
 }
 
 export interface CreatePairRequest {
-  sectionId: string;
-  startNumber?: number;
-  dancer1FirstName: string;
-  dancer1LastName: string;
+  startNumber: number;
+  dancer1Name: string;
+  dancer2Name?: string;
+  club?: string;
+  email?: string;
+  /** Frontend also sends these for legacy/mock support */
+  sectionId?: string;
+  dancer1FirstName?: string;
+  dancer1LastName?: string;
   dancer1Club?: string;
   dancer2FirstName?: string;
   dancer2LastName?: string;
   dancer2Club?: string;
+  markAsPaid?: boolean;
 }
 
 export const pairsApi = {
   list: (competitionId: string, sectionId?: string) =>
     apiClient
-      .get<PairDto[]>(`/competitions/${competitionId}/pairs`, {
+      .get<{ content: PairDto[] } | PairDto[]>(`/competitions/${competitionId}/pairs`, {
         params: sectionId ? { sectionId } : undefined,
       })
-      .then((r) => r.data),
+      .then((r) => (Array.isArray(r.data) ? r.data : (r.data as { content: PairDto[] }).content)),
 
   get: (competitionId: string, pairId: string) =>
     apiClient.get<PairDto>(`/competitions/${competitionId}/pairs/${pairId}`).then((r) => r.data),
@@ -52,6 +90,12 @@ export const pairsApi = {
 
   delete: (competitionId: string, pairId: string) =>
     apiClient.delete(`/competitions/${competitionId}/pairs/${pairId}`).then((r) => r.data),
+
+  withdraw: (competitionId: string, pairId: string) =>
+    apiClient.post<PairDto>(`/competitions/${competitionId}/pairs/${pairId}/withdraw`).then((r) => r.data),
+
+  addToSection: (competitionId: string, pairId: string, sectionId: string) =>
+    apiClient.post<PairDto>(`/competitions/${competitionId}/pairs/${pairId}/sections/${sectionId}`).then((r) => r.data),
 
   setRegistrationStatus: (competitionId: string, pairId: string, status: RegistrationStatus) =>
     apiClient

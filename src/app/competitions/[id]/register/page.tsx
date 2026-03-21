@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { CheckCircle2, Trophy, ArrowLeft, FileText, AlertTriangle, Mail, Building2 } from "lucide-react";
+import { CheckCircle2, Trophy, ArrowLeft, FileText, AlertTriangle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,18 +17,21 @@ import type { CompetitionDto } from "@/lib/api/competitions";
 import type { SectionDto } from "@/lib/api/sections";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { getT } from "@/lib/i18n";
+
+const _t = getT();
 
 const schema = z.object({
-  sectionId: z.string().min(1, "Vyberte prosím kategorii"),
-  dancer1FirstName: z.string().min(1, "Povinné pole"),
-  dancer1LastName: z.string().min(1, "Povinné pole"),
+  sectionId: z.string().min(1, _t("auth.validationSelectCategory")),
+  dancer1FirstName: z.string().min(1, _t("auth.validationRequired")),
+  dancer1LastName: z.string().min(1, _t("auth.validationRequired")),
   dancer1Club: z.string().optional(),
   dancer2FirstName: z.string().optional(),
   dancer2LastName: z.string().optional(),
   dancer2Club: z.string().optional(),
   discountCode: z.string().optional(),
-  email: z.string().email("Zadejte platný email"),
-  gdpr: z.literal(true, "Souhlas s GDPR je povinný"),
+  email: z.string().email(_t("auth.validationEmail")),
+  gdpr: z.literal(true, _t("auth.validationGdpr")),
 });
 
 type RegisterForm = z.infer<typeof schema>;
@@ -39,18 +42,13 @@ interface RegistrationResult {
   sectionName: string;
   amountDue: number;
   currency: string;
-  paymentMethod?: string;
-  paymentConfig?: Record<string, string>;
-  confirmationEmail?: { subject: string; body: string };
 }
 
 export default function PairRegistrationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const [t] = useState(() => getT());
   const [result, setResult] = useState<RegistrationResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
-  const [pendingValues, setPendingValues] = useState<RegisterForm | null>(null);
-
   const { data: competition, isLoading: compLoading } = useQuery({
     queryKey: ["competitions", "detail", id],
     queryFn: () => apiClient.get<CompetitionDto>(`/competitions/${id}`).then((r) => r.data),
@@ -82,36 +80,21 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
 
   const doSubmit = async (values: RegisterForm) => {
     setLoading(true);
-    setConflictWarning(null);
-    setPendingValues(null);
     try {
       const res = await apiClient.post<RegistrationResult>(
-        `/competitions/${id}/public-registration`,
+        `/competitions/${id}/pairs/public-registration`,
         values
       );
       setResult(res.data);
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
-      toast({ title: apiErr?.message ?? "Přihlášení se nezdařilo", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: apiErr?.message ?? t("publicReg.registrationFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
     } finally {
       setLoading(false);
     }
   };
 
   const onSubmit = async (values: RegisterForm) => {
-    // Task 9: Check for double registration conflicts
-    try {
-      const conflictRes = await apiClient.get<{ hasConflict: boolean; conflictingCompetition: string | null }>(
-        `/competitions/${id}/check-conflicts`
-      );
-      if (conflictRes.data.hasConflict) {
-        setConflictWarning(conflictRes.data.conflictingCompetition ?? "jiná soutěž");
-        setPendingValues(values);
-        return;
-      }
-    } catch {
-      // If check fails, proceed anyway
-    }
     await doSubmit(values);
   };
 
@@ -127,9 +110,9 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 text-center">
         <Trophy className="h-12 w-12 text-[var(--text-tertiary)]" />
-        <p className="font-medium text-[var(--text-primary)]">Soutěž nenalezena</p>
-        <p className="text-sm text-[var(--text-secondary)]">Tento odkaz může být neplatný.</p>
-        <Link href="/competitions"><Button variant="outline">Procházet soutěže</Button></Link>
+        <p className="font-medium text-[var(--text-primary)]">{t("publicReg.competitionNotFound")}</p>
+        <p className="text-sm text-[var(--text-secondary)]">{t("publicReg.invalidLink")}</p>
+        <Link href="/competitions"><Button variant="outline">{t("publicReg.browseCompetitions")}</Button></Link>
       </div>
     );
   }
@@ -144,13 +127,13 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
               <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--success)]/10">
                 <CheckCircle2 className="h-7 w-7 text-[var(--success)]" />
               </div>
-              <CardTitle>Přihláška potvrzena!</CardTitle>
+              <CardTitle>{t("publicReg.registrationConfirmed")}</CardTitle>
               <CardDescription>{competition.name}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="rounded-[var(--radius-lg)] bg-[var(--surface-secondary)] p-4 text-left">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="text-xs text-[var(--text-secondary)]">Startovní číslo</span>
+                  <span className="text-xs text-[var(--text-secondary)]">{t("publicReg.startNumber")}</span>
                   <span className="text-2xl font-black text-[var(--text-primary)]">#{result.startNumber}</span>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)]">{result.sectionName}</p>
@@ -158,90 +141,26 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
             </CardContent>
           </Card>
 
-          {/* Task 7: Bank transfer info */}
-          {result.paymentMethod === "BANK_TRANSFER" && result.amountDue > 0 && (
+          {result.amountDue > 0 && (
             <Card className="mb-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Building2 className="h-4 w-4 text-[var(--accent)]" />
-                  Platba bankovním převodem
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-3 text-xs text-[var(--text-secondary)]">
-                  Proveďte prosím platbu s níže uvedenými údaji. Bez správného referenčního čísla nemůžeme přiřadit platbu k vaší přihlášce.
-                </p>
-                <div className="space-y-2 text-sm">
-                  {result.paymentConfig?.holder && (
-                    <div className="flex justify-between">
-                      <span className="text-[var(--text-secondary)]">Majitel účtu</span>
-                      <span className="font-medium">{result.paymentConfig.holder}</span>
-                    </div>
-                  )}
-                  {result.paymentConfig?.iban && (
-                    <div className="flex justify-between">
-                      <span className="text-[var(--text-secondary)]">IBAN</span>
-                      <span className="font-mono font-medium">{result.paymentConfig.iban}</span>
-                    </div>
-                  )}
-                  {result.paymentConfig?.bic && (
-                    <div className="flex justify-between">
-                      <span className="text-[var(--text-secondary)]">BIC / SWIFT</span>
-                      <span className="font-mono font-medium">{result.paymentConfig.bic}</span>
-                    </div>
-                  )}
-                  {result.paymentConfig?.address && (
-                    <div className="flex justify-between">
-                      <span className="text-[var(--text-secondary)]">Banka</span>
-                      <span className="font-medium text-right max-w-[60%]">{result.paymentConfig.address}</span>
-                    </div>
-                  )}
-                  <div className="mt-2 border-t border-[var(--border)] pt-2">
-                    <div className="flex justify-between">
-                      <span className="text-[var(--text-secondary)]">Částka</span>
-                      <span className="font-bold text-[var(--text-primary)]">{formatCurrency(result.amountDue, result.currency)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[var(--text-secondary)]">Referenční číslo</span>
-                      <span className="font-mono font-bold text-[var(--accent)]">{result.pairId.slice(-6).toUpperCase()}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Task 8: Confirmation email preview */}
-          {result.confirmationEmail && (
-            <Card className="mb-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-[var(--success)]" />
-                  Potvrzení odesláno emailem
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-secondary)] p-3">
-                  <p className="mb-1 text-xs font-semibold text-[var(--text-secondary)]">
-                    Předmět: {result.confirmationEmail.subject}
-                  </p>
-                  <pre className="whitespace-pre-wrap font-sans text-xs text-[var(--text-secondary)] leading-relaxed">
-                    {result.confirmationEmail.body}
-                  </pre>
+              <CardContent className="pt-4 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-secondary)]">{t("publicReg.entryFee")}</span>
+                  <span className="font-bold text-[var(--text-primary)]">{formatCurrency(result.amountDue, result.currency)}</span>
                 </div>
               </CardContent>
             </Card>
           )}
 
           <Link href={`/competitions/${id}`}>
-            <Button variant="outline" className="w-full">Zpět na stránku soutěže</Button>
+            <Button variant="outline" className="w-full">{t("publicReg.backToCompetition")}</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  const isOpen = competition.status === "REGISTRATION_OPEN";
+  const isOpen = competition.registrationOpen === true;
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -252,29 +171,40 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
           href={`/competitions/${id}`}
           className="mb-6 flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
         >
-          <ArrowLeft className="h-4 w-4" /> Zpět na soutěž
+          <ArrowLeft className="h-4 w-4" /> {t("publicReg.backToCompetitionShort")}
         </Link>
 
         {/* Competition header */}
         <div className="mb-6">
           <h1 className="text-xl font-bold text-[var(--text-primary)]">{competition.name}</h1>
           <p className="text-sm text-[var(--text-secondary)]">
-            {competition.location} · {formatDate(competition.startDate)}
+            {competition.venue} · {formatDate(competition.eventDate)}
           </p>
           {competition.registrationDeadline && (
             <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--warning)]">
               <AlertTriangle className="h-3.5 w-3.5" />
-              Uzávěrka: {formatDate(competition.registrationDeadline)}
+              {t("publicReg.deadline")} {formatDate(competition.registrationDeadline)}
             </p>
           )}
         </div>
+
+        {/* Contact email */}
+        {competition.contactEmail && (
+          <div className="mb-4 flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+            <Mail className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+            <span>{t("publicReg.contact")} </span>
+            <a href={`mailto:${competition.contactEmail}`} className="text-[var(--accent)] hover:underline">
+              {competition.contactEmail}
+            </a>
+          </div>
+        )}
 
         {/* Propozice */}
         {competition.propozice && (
           <div className="mb-6 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
             <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
               <FileText className="h-4 w-4 text-[var(--accent)]" />
-              <span className="text-sm font-medium text-[var(--text-primary)]">Propozice</span>
+              <span className="text-sm font-medium text-[var(--text-primary)]">{t("publicReg.propozice")}</span>
             </div>
             <div className="px-4 py-4">
               <pre className="whitespace-pre-wrap font-sans text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -288,12 +218,12 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
           <Card>
             <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
               <AlertTriangle className="h-10 w-10 text-[var(--warning)]" />
-              <p className="font-medium text-[var(--text-primary)]">Registrace není otevřena</p>
+              <p className="font-medium text-[var(--text-primary)]">{t("publicReg.registrationClosed")}</p>
               <p className="text-sm text-[var(--text-secondary)]">
-                Přihlašování pro tuto soutěž momentálně neprobíhá.
+                {t("publicReg.registrationClosedDesc")}
               </p>
               <Link href={`/competitions/${id}`}>
-                <Button variant="outline">Zpět na soutěž</Button>
+                <Button variant="outline">{t("publicReg.backToCompetitionShort")}</Button>
               </Link>
             </CardContent>
           </Card>
@@ -302,7 +232,7 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
             {/* 1. Section selection */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">1. Vyberte kategorii</CardTitle>
+                <CardTitle className="text-sm">{t("publicReg.stepCategory")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Controller
@@ -312,7 +242,7 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
                     <div className="flex flex-col gap-2">
                       {sections?.map((section) => {
                         const spotsLeft = section.maxPairs
-                          ? section.maxPairs - section.registeredPairsCount
+                          ? section.maxPairs - (section.registeredPairsCount ?? 0)
                           : null;
                         const isFull = spotsLeft !== null && spotsLeft <= 0;
                         const almostFull = spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 5;
@@ -332,15 +262,16 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <p className="text-sm font-medium">{section.name}</p>
-                                {isFull && <Badge variant="destructive" className="text-xs">Obsazeno</Badge>}
-                                {almostFull && <Badge variant="warning" className="text-xs">Poslední místa</Badge>}
+                                {isFull && <Badge variant="destructive" className="text-xs">{t("publicReg.full")}</Badge>}
+                                {almostFull && <Badge variant="warning" className="text-xs">{t("publicReg.almostFull")}</Badge>}
                               </div>
                               <p className="text-xs text-[var(--text-secondary)]">
-                                {section.ageCategory} · {section.level} · {section.dances.map((d) => d.name).join(", ")}
+                                {[section.ageCategory, section.level].filter(Boolean).join(" · ")}
+                                {section.dances?.length ? ` · ${section.dances.map((d) => d.danceName).join(", ")}` : ""}
                               </p>
                               {spotsLeft !== null && !isFull && (
                                 <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
-                                  {spotsLeft} volných míst
+                                  {t("publicReg.spotsLeft", { count: spotsLeft })}
                                 </p>
                               )}
                             </div>
@@ -350,7 +281,7 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
                                   {formatCurrency(section.entryFee, section.entryFeeCurrency ?? "EUR")}
                                 </p>
                               ) : (
-                                <Badge variant="secondary">{section.registeredPairsCount} párů</Badge>
+                                <Badge variant="secondary">{section.registeredPairsCount} {t("publicReg.pairs")}</Badge>
                               )}
                             </div>
                           </button>
@@ -370,7 +301,7 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
                     <span className="font-semibold text-[var(--text-primary)]">
                       {formatCurrency(selectedSection.entryFee, selectedSection.entryFeeCurrency ?? "EUR")}
                     </span>
-                    <span className="text-xs text-[var(--text-tertiary)]"> / pár</span>
+                    <span className="text-xs text-[var(--text-tertiary)]"> {t("publicReg.perPair")}</span>
                   </div>
                 )}
               </CardContent>
@@ -379,23 +310,23 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
             {/* 2. Dancer info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">2. Informace o tančících</CardTitle>
+                <CardTitle className="text-sm">{t("publicReg.stepDancers")}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <p className="text-xs font-semibold text-[var(--text-tertiary)]">PRVNÍ TANČÍCÍ</p>
+                <p className="text-xs font-semibold text-[var(--text-tertiary)]">{t("publicReg.dancer1")}</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <Input label="Jméno" placeholder="Jana" error={errors.dancer1FirstName?.message} {...register("dancer1FirstName")} />
-                  <Input label="Příjmení" placeholder="Nováková" error={errors.dancer1LastName?.message} {...register("dancer1LastName")} />
+                  <Input label={t("publicReg.firstName")} placeholder="Jana" error={errors.dancer1FirstName?.message} {...register("dancer1FirstName")} />
+                  <Input label={t("publicReg.lastName")} placeholder="Nováková" error={errors.dancer1LastName?.message} {...register("dancer1LastName")} />
                 </div>
-                <Input label="Klub / tanečná škola (volitelné)" placeholder="Taneční klub Bratislava" {...register("dancer1Club")} />
+                <Input label={t("publicReg.club")} placeholder="Taneční klub Bratislava" {...register("dancer1Club")} />
 
                 <div className="border-t border-[var(--border)] pt-4">
-                  <p className="mb-3 text-xs font-semibold text-[var(--text-tertiary)]">PARTNER / PARTNERKA (VOLITELNÉ)</p>
+                  <p className="mb-3 text-xs font-semibold text-[var(--text-tertiary)]">{t("publicReg.dancer2")}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <Input label="Jméno" placeholder="Peter" {...register("dancer2FirstName")} />
-                    <Input label="Příjmení" placeholder="Kováč" {...register("dancer2LastName")} />
+                    <Input label={t("publicReg.firstName")} placeholder="Peter" {...register("dancer2FirstName")} />
+                    <Input label={t("publicReg.lastName")} placeholder="Kováč" {...register("dancer2LastName")} />
                   </div>
-                  <Input label="Klub / tanečná škola (volitelné)" placeholder="Taneční klub Bratislava" {...register("dancer2Club")} className="mt-3" />
+                  <Input label={t("publicReg.club")} placeholder="Taneční klub Bratislava" {...register("dancer2Club")} className="mt-3" />
                 </div>
               </CardContent>
             </Card>
@@ -403,20 +334,20 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
             {/* 3. Contact & discount */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">3. Kontakt a platba</CardTitle>
+                <CardTitle className="text-sm">{t("publicReg.stepContact")}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
                 <Input
-                  label="Email"
+                  label={t("publicReg.email")}
                   type="email"
                   placeholder="vas@email.cz"
-                  hint="Na tento email zašleme potvrzení přihlášky"
+                  hint={t("publicReg.emailHint")}
                   error={errors.email?.message}
                   {...register("email")}
                 />
                 <Input
-                  label="Slevový kód (volitelné)"
-                  placeholder="EARLYBIRD"
+                  label={t("publicReg.discountCode")}
+                  placeholder={t("publicReg.discountCodePlaceholder")}
                   {...register("discountCode")}
                 />
               </CardContent>
@@ -438,9 +369,9 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
                 )}
               />
               <label htmlFor="gdpr" className="cursor-pointer text-sm text-[var(--text-secondary)]">
-                Souhlasím se zpracováním osobních údajů za účelem organizace a průběhu soutěže.{" "}
+                {t("publicReg.gdprConsent")}{" "}
                 <Link href="/privacy" className="text-[var(--accent)] hover:underline">
-                  Zásady ochrany osobních údajů
+                  {t("publicReg.privacyPolicy")}
                 </Link>
                 .
               </label>
@@ -449,41 +380,8 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
               <p className="-mt-4 text-xs text-[var(--destructive)]">{errors.gdpr.message}</p>
             )}
 
-            {/* Task 9: Double registration conflict warning */}
-            {conflictWarning && (
-              <div className="rounded-[var(--radius-lg)] border border-[var(--warning)]/40 bg-[var(--warning)]/5 p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warning)]" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[var(--text-primary)]">Možný konflikt registrace</p>
-                    <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                      Tento pár je pravděpodobně přihlášen na jinou soutěž ve stejném termínu: <strong>{conflictWarning}</strong>.
-                    </p>
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => { setConflictWarning(null); setPendingValues(null); }}
-                      >
-                        Zrušit
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => pendingValues && doSubmit(pendingValues)}
-                        loading={loading}
-                      >
-                        Přesto se přihlásit
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <Button type="submit" size="lg" loading={loading} className="w-full">
-              Odeslat přihlášku
+              {t("publicReg.submit")}
             </Button>
           </form>
         )}
@@ -493,6 +391,7 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
 }
 
 function PublicNav() {
+  const t = getT();
   return (
     <nav className="border-b border-[var(--border)] bg-[var(--surface)]">
       <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
@@ -501,7 +400,7 @@ function PublicNav() {
           DanceApp
         </Link>
         <Link href="/login" className="text-sm text-[var(--accent)] hover:underline">
-          Organizer login →
+          {t("publicReg.organizerLogin")}
         </Link>
       </div>
     </nav>

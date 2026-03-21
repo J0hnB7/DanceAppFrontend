@@ -1,18 +1,56 @@
 import apiClient from "@/lib/api-client";
 
+export type ScheduleBlockType = "ROUND" | "BREAK" | "JUDGE_BREAK" | "AWARD_CEREMONY" | "CUSTOM";
+export type BlockLiveStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
+export type ScheduleStatus = "DRAFT" | "PUBLISHED";
+
 export interface ScheduleSlot {
   id: string;
   competitionId: string;
-  sectionId: string;
-  sectionName: string;
-  roundType: "PRELIMINARY" | "SEMIFINAL" | "FINAL";
-  startsAt: string; // ISO
+  sectionId: string | null;
+  roundId: string | null;
+  label: string;
+  startTime: string; // LocalDateTime as ISO string
   durationMinutes: number;
-  floor: string;
-  notes?: string;
   orderIndex: number;
+  type: ScheduleBlockType;
+  liveStatus: BlockLiveStatus;
+  manuallyMoved: boolean;
+  suggested: boolean;
+  durationLocked: boolean;
+  roundNumber: number | null;
 }
 
+export interface CompetitionSchedule {
+  id: string;
+  status: ScheduleStatus;
+  publishedAt: string | null;
+  version: number;
+}
+
+export interface SectionMerge {
+  id: string;
+  competitionId: string;
+  primarySectionId: string;
+  mergedSectionId: string;
+  mergedLabel: string;
+}
+
+export interface ProgressionRound {
+  roundNumber: number;
+  type: string;
+  startingPairs: number;
+  advancing: number;
+  heatCount: number;
+  estimatedMinutes: number;
+}
+
+export interface ProgressionPreview {
+  rounds: ProgressionRound[];
+  totalEstimatedMinutes: number;
+}
+
+// Legacy fields kept for backward compatibility
 export interface CreateSlotRequest {
   sectionId: string;
   roundType: "PRELIMINARY" | "SEMIFINAL" | "FINAL";
@@ -22,23 +60,89 @@ export interface CreateSlotRequest {
   notes?: string;
 }
 
-export interface UpdateSlotRequest extends Partial<CreateSlotRequest> {
-  orderIndex?: number;
+export interface ScheduleConfig {
+  scheduleStartTime?: string;
+  danceDurationSeconds?: number;
+  transitionDurationSeconds?: number;
+  maxPairsOnFloor?: number;
+  breakDurationMinutes?: number;
+  breakRule?: "AFTER_ROUND" | "BETWEEN_CATEGORIES" | "BOTH";
+  judgeBreakAfterMinutes?: number;
+  judgeBreakDurationMinutes?: number;
+  slotBufferMinutes?: number;
 }
 
 export const scheduleApi = {
   list: (competitionId: string) =>
     apiClient.get<ScheduleSlot[]>(`/competitions/${competitionId}/schedule`).then((r) => r.data),
 
-  create: (competitionId: string, data: CreateSlotRequest) =>
-    apiClient.post<ScheduleSlot>(`/competitions/${competitionId}/schedule`, data).then((r) => r.data),
+  generate: (competitionId: string, startTime?: string) =>
+    apiClient
+      .post<ScheduleSlot[]>(`/competitions/${competitionId}/schedule/generate`, { startTime })
+      .then((r) => r.data),
 
-  update: (competitionId: string, slotId: string, data: UpdateSlotRequest) =>
-    apiClient.put<ScheduleSlot>(`/competitions/${competitionId}/schedule/${slotId}`, data).then((r) => r.data),
+  publish: (competitionId: string) =>
+    apiClient
+      .post<CompetitionSchedule>(`/competitions/${competitionId}/schedule/publish`)
+      .then((r) => r.data),
+
+  getStatus: (competitionId: string) =>
+    apiClient
+      .get<CompetitionSchedule>(`/competitions/${competitionId}/schedule/status`)
+      .then((r) => r.data),
+
+  reorderSlot: (competitionId: string, slotId: string, newPosition: number) =>
+    apiClient
+      .patch<ScheduleSlot[]>(`/competitions/${competitionId}/schedule/slots/${slotId}/reorder`, { newPosition })
+      .then((r) => r.data),
+
+  insertBreak: (competitionId: string, slotId: string, durationMinutes?: number) =>
+    apiClient
+      .post<ScheduleSlot[]>(`/competitions/${competitionId}/schedule/slots/${slotId}/break`, {
+        durationMinutes,
+      })
+      .then((r) => r.data),
+
+  updateBlockStatus: (competitionId: string, slotId: string, liveStatus: BlockLiveStatus) =>
+    apiClient
+      .patch<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots/${slotId}/status`, { liveStatus })
+      .then((r) => r.data),
+
+  getMySections: (competitionId: string) =>
+    apiClient
+      .get<{ sectionIds: string[] }>(`/competitions/${competitionId}/schedule/my-sections`)
+      .then((r) => r.data),
+
+  getProgressionPreview: (competitionId: string, pairCount: number, finalSize: number) =>
+    apiClient
+      .get<ProgressionPreview>(
+        `/competitions/${competitionId}/schedule/progression-preview?pairCount=${pairCount}&finalSize=${finalSize}`
+      )
+      .then((r) => r.data),
+
+  // Legacy CRUD (kept for backward compat)
+  create: (competitionId: string, data: CreateSlotRequest) =>
+    apiClient.post<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots`, data).then((r) => r.data),
+
+  update: (competitionId: string, slotId: string, data: Partial<CreateSlotRequest>) =>
+    apiClient.put<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots/${slotId}`, data).then((r) => r.data),
 
   remove: (competitionId: string, slotId: string) =>
-    apiClient.delete(`/competitions/${competitionId}/schedule/${slotId}`).then((r) => r.data),
+    apiClient.delete(`/competitions/${competitionId}/schedule/slots/${slotId}`).then((r) => r.data),
 
-  reorder: (competitionId: string, orderedIds: string[]) =>
-    apiClient.put(`/competitions/${competitionId}/schedule/reorder`, { orderedIds }).then((r) => r.data),
+  export: (competitionId: string, format: "pdf" | "xlsx" = "pdf") =>
+    apiClient.get(`/competitions/${competitionId}/schedule/export?format=${format}`, { responseType: "blob" }),
+};
+
+export const sectionsApi2 = {
+  mergeSections: (competitionId: string, data: { primarySectionId: string; mergedSectionId: string; mergedLabel?: string }) =>
+    apiClient.post<SectionMerge>(`/competitions/${competitionId}/sections/merge`, data).then((r) => r.data),
+
+  unmergeSections: (competitionId: string, mergeId: string) =>
+    apiClient.delete(`/competitions/${competitionId}/sections/merge/${mergeId}`).then((r) => r.data),
+};
+
+export const scheduleConfigApi = {
+  update: (competitionId: string, config: ScheduleConfig) =>
+    apiClient.patch(`/competitions/${competitionId}/schedule-config`, config).then((r) => r.data),
 };

@@ -12,23 +12,25 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/store/auth-store";
+import { useLocale } from "@/contexts/locale-context";
 
 const registerSchema = z.object({
-  firstName: z.string().min(1, "First name required"),
-  lastName: z.string().min(1, "Last name required"),
-  email: z.string().email("Enter a valid email"),
+  name: z.string().min(1),
+  email: z.string().email(),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Must contain an uppercase letter")
-    .regex(/[0-9]/, "Must contain a number"),
+    .min(8)
+    .regex(/[A-Z]/)
+    .regex(/[0-9]/),
+  organizationName: z.string().optional(),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  const { t } = useLocale();
   const router = useRouter();
-  const { setUser } = useAuthStore();
+  const { loginWithTokens } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -42,12 +44,18 @@ export default function RegisterPage() {
   const onSubmit = async (values: RegisterForm) => {
     setLoading(true);
     try {
-      const data = await authApi.register(values);
-      setUser(data.user, data.accessToken);
+      const tokens = await authApi.register({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        organizationName: values.organizationName,
+        gdprAccepted: true,
+      });
+      await loginWithTokens(tokens.accessToken);
       router.replace("/verify-email?sent=true");
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
-      setError("email", { message: apiErr?.message ?? "Registration failed" });
+      setError("email", { message: apiErr?.message ?? t("auth.registrationFailed") });
     } finally {
       setLoading(false);
     }
@@ -65,40 +73,39 @@ export default function RegisterPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Create account</CardTitle>
-            <CardDescription>Start managing your competitions</CardDescription>
+            <CardTitle>{t("auth.createAccount")}</CardTitle>
+            <CardDescription>{t("auth.createAccountDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="First name"
-                  placeholder="Jan"
-                  error={errors.firstName?.message}
-                  {...register("firstName")}
-                />
-                <Input
-                  label="Last name"
-                  placeholder="Novák"
-                  error={errors.lastName?.message}
-                  {...register("lastName")}
-                />
-              </div>
+              <Input
+                label={t("auth.name")}
+                placeholder={t("auth.namePlaceholder")}
+                error={errors.name?.message}
+                {...register("name")}
+              />
 
               <Input
-                label="Email"
+                label={t("auth.organizationOptional")}
+                placeholder={t("auth.organizationPlaceholder")}
+                error={errors.organizationName?.message}
+                {...register("organizationName")}
+              />
+
+              <Input
+                label={t("auth.email")}
                 type="email"
                 autoComplete="email"
-                placeholder="you@example.com"
+                placeholder={t("auth.emailPlaceholder")}
                 error={errors.email?.message}
                 {...register("email")}
               />
 
               <Input
-                label="Password"
+                label={t("auth.passwordLabel")}
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                placeholder="Min. 8 chars, uppercase, number"
+                placeholder={t("auth.passwordPlaceholder")}
                 error={errors.password?.message}
                 rightIcon={
                   <button
@@ -113,13 +120,13 @@ export default function RegisterPage() {
               />
 
               <Button type="submit" loading={loading} className="w-full">
-                Create account
+                {t("auth.createAccount")}
               </Button>
 
               <p className="text-center text-sm text-[var(--text-secondary)]">
-                Already have an account?{" "}
+                {t("auth.hasAccount")}{" "}
                 <Link href="/login" className="text-[var(--accent)] hover:underline">
-                  Sign in
+                  {t("auth.signIn")}
                 </Link>
               </p>
             </form>

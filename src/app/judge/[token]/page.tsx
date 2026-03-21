@@ -1,7 +1,9 @@
 "use client";
 
-import { use, useState, useEffect, useCallback } from "react";
-import { CheckSquare, Send, Trophy, Wifi, WifiOff, CloudOff, AlertTriangle } from "lucide-react";
+import { use, useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useOnline } from "@/hooks/use-online";
+import { CheckSquare, Send, Trophy, Wifi, WifiOff, CloudOff, AlertTriangle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +13,7 @@ import type { PairDto } from "@/lib/api/pairs";
 import type { RoundDto } from "@/lib/api/rounds";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 
 interface JudgeSession {
   judgeTokenId: string;
@@ -62,6 +65,15 @@ function clearDraft(token: string) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function JudgeTokenPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
+  const router = useRouter();
+  const [locale] = useState<Locale>(() => detectLocale());
+
+  // PIN login state
+  const [needsPin, setNeedsPin] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinSubmitting, setPinSubmitting] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const [session, setSession] = useState<JudgeSession | null>(null);
   const [activeRound, setActiveRound] = useState<(RoundDto & { dances?: DanceDto[] }) | null>(null);
@@ -71,54 +83,92 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
+  const isOnline = useOnline();
   const [hasDraft, setHasDraft] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Online/offline tracking
-  useEffect(() => {
-    const update = () => setIsOnline(navigator.onLine);
-    setIsOnline(navigator.onLine);
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
-    };
-  }, []);
-
-  // Auto-save draft when selection changes
+  // Auto-save draft — debounced to avoid hammering localStorage on every tap
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistDraft = useCallback((roundId: string, sel: Set<string>, pl: Record<string, Record<string, number>>) => {
-    saveDraft(token, roundId, sel, pl);
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      saveDraft(token, roundId, sel, pl);
+    }, 500);
   }, [token]);
 
-  // Load session + active round
+  // Step 1: Validate QR token, check if PIN needed
   useEffect(() => {
     if (!token) return;
+    // Check if already authenticated (deviceToken in localStorage)
+    const existingDevice = localStorage.getItem("judge_device_token");
+    const existingCompetition = localStorage.getItem("judge_competition_id");
+
     apiClient
       .post<JudgeSession>("/judge-tokens/validate", { token })
       .then((r) => {
         setSession(r.data);
-        return apiClient.get<ActiveRoundResponse>("/judge/active-round", { params: { competitionId: r.data.competitionId } });
-      })
-      .then((r) => {
-        const round = r.data.round;
-        const roundPairs = r.data.pairs;
-        setActiveRound(round);
-        setPairs(roundPairs);
-        // Restore draft if available
-        const draft = loadDraft(token, round.id);
-        if (draft) {
-          setSelected(new Set(draft.selected));
-          setPlacements(draft.placements);
-          setHasDraft(true);
+        setSessionId(r.data.judgeTokenId);
+
+        // If no device token stored, require PIN login
+        if (!existingDevice || !existingCompetition) {
+          setNeedsPin(true);
+          setLoading(false);
+          return;
         }
+
+        // Already logged in — load round data
+        return apiClient.get<ActiveRoundResponse>("/judge/active-round", { params: { competitionId: r.data.competitionId } })
+          .then((r2) => {
+            const round = r2.data.round;
+            const roundPairs = r2.data.pairs;
+            setActiveRound(round);
+            setPairs(roundPairs);
+            const draft = loadDraft(token, round.id);
+            if (draft) {
+              setSelected(new Set(draft.selected));
+              setPlacements(draft.placements);
+              setHasDraft(true);
+            }
+          })
+          .catch((e) => {
+            if (e?.status === 404) return;
+            setError(e?.message ?? "No active round");
+          })
+          .finally(() => setLoading(false));
       })
       .catch((e) => {
-        setError(e?.response?.data?.message ?? e?.message ?? "Invalid or expired judge token");
-      })
-      .finally(() => setLoading(false));
+        setError(e?.message ?? "Invalid or expired judge token");
+        setLoading(false);
+      });
   }, [token]);
+
+  const handlePinSubmit = async () => {
+    if (!sessionId || pin.length < 4) return;
+    setPinSubmitting(true);
+    setPinError(null);
+    try {
+      const res = await apiClient.post("/judge-access/connect", { token, pin });
+      const { accessToken, adjudicatorId, competitionId, competitionName, deviceToken } = res.data;
+      localStorage.setItem("judge_access_token", accessToken);
+      localStorage.setItem("judge_device_token", deviceToken);
+      localStorage.setItem("judge_competition_id", competitionId);
+      localStorage.setItem("judge_adjudicator_id", adjudicatorId);
+
+      setSession({ judgeTokenId: adjudicatorId, judgeNumber: session?.judgeNumber ?? 0, competitionId, competitionName });
+      setNeedsPin(false);
+      // Redirect to lobby
+      router.push(`/judge/${token}/lobby`);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 423) {
+        setPinError(t("judge.pin_locked", locale));
+      } else {
+        setPinError(t("judge.pin_wrong", locale));
+      }
+    } finally {
+      setPinSubmitting(false);
+    }
+  };
 
   const togglePair = (pairId: string) => {
     setSelected((prev) => {
@@ -140,7 +190,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
   const handleSubmit = async () => {
     if (!activeRound || !session) return;
     if (!isOnline) {
-      toast({ title: "Jste offline — hodnocení uloženo lokálně", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("judge.offline_warning", locale), variant: "destructive" } as Parameters<typeof toast>[0]);
       return;
     }
     setSubmitting(true);
@@ -159,13 +209,56 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
       clearDraft(token);
       setHasDraft(false);
       setSubmitted(true);
-      toast({ title: "Hodnocení odesláno", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("judge.submitted", locale), variant: "success" } as Parameters<typeof toast>[0]);
     } catch {
-      toast({ title: "Odeslání selhalo — hodnocení uloženo offline", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("judge.submit_failed", locale), variant: "destructive" } as Parameters<typeof toast>[0]);
     } finally {
       setSubmitting(false);
     }
   };
+
+  // ── PIN prompt ───────────────────────────────────────────────────────────────
+  if (needsPin) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-4 bg-[var(--background)]">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent)]/10">
+          <Lock className="h-8 w-8 text-[var(--accent)]" />
+        </div>
+        <div className="text-center">
+          <h1 className="text-lg font-semibold text-[var(--text-primary)]">{t("judge.pin_prompt", locale)}</h1>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">{session?.competitionName}</p>
+        </div>
+
+        <div className="w-full max-w-xs space-y-4">
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={4}
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => e.key === "Enter" && handlePinSubmit()}
+            placeholder="• • • •"
+            className="w-full rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 text-center text-2xl font-bold tracking-[0.4em] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-colors"
+          />
+
+          {pinError && (
+            <p className="text-center text-sm font-medium text-[var(--destructive)]">{pinError}</p>
+          )}
+
+          <Button
+            className="w-full"
+            size="lg"
+            loading={pinSubmitting}
+            disabled={pin.length < 4 || pinSubmitting}
+            onClick={handlePinSubmit}
+          >
+            {pinSubmitting ? t("judge.connecting", locale) : t("judge.login_button", locale)}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
@@ -183,7 +276,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--destructive)]/10">
           <AlertTriangle className="h-8 w-8 text-[var(--destructive)]" />
         </div>
-        <h1 className="text-lg font-semibold">Přístup odepřen</h1>
+        <h1 className="text-lg font-semibold">{t("judge.access_denied", locale)}</h1>
         <p className="max-w-xs text-sm text-[var(--text-secondary)]">{error}</p>
       </div>
     );
@@ -197,9 +290,9 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
           <Trophy className="h-8 w-8 text-[var(--accent)]" />
         </div>
         <div>
-          <h1 className="text-lg font-semibold text-[var(--text-primary)]">Čekání na kolo</h1>
+          <h1 className="text-lg font-semibold text-[var(--text-primary)]">{t("judge.waiting_title", locale)}</h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Přihlášen jako <strong>Porotce {session?.judgeNumber}</strong>. Organizátor brzy otevře kolo.
+            {t("judge.label", locale)} <strong>{session?.judgeNumber}</strong>. {t("judge.waiting_body", locale)}
           </p>
         </div>
         <Spinner />
@@ -223,9 +316,9 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
           <div>
             <p className="text-xs text-[var(--text-tertiary)]">{session.competitionName}</p>
             <h1 className="text-sm font-semibold text-[var(--text-primary)]">
-              Porotce {session.judgeNumber}
+              {t("judge.label", locale)} {session.judgeNumber}
               <span className="ml-2 text-[var(--text-secondary)]">
-                — {activeRound.roundType === "PRELIMINARY" ? "Předkolo" : "Finále"} · Kolo {activeRound.roundNumber}
+                — {activeRound.roundType === "PRELIMINARY" ? t("round.preliminary", locale) : t("round.final", locale)} · {t("round.label", locale)} {activeRound.roundNumber}
               </span>
             </h1>
           </div>
@@ -233,7 +326,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
             {!isOnline && (
               <div className="flex items-center gap-1 rounded-full bg-[var(--warning)]/10 px-2 py-1 text-xs font-medium text-[var(--warning)]">
                 <CloudOff className="h-3 w-3" />
-                Offline
+                {t("judge.offline_badge", locale)}
               </div>
             )}
             {isOnline ? (
@@ -242,7 +335,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
               <WifiOff className="h-4 w-4 text-[var(--warning)]" />
             )}
             {activeRound.roundType === "PRELIMINARY" && (
-              <Badge variant="secondary">{selected.size} vybráno</Badge>
+              <Badge variant="secondary">{selected.size} {t("judge.selected_count", locale)}</Badge>
             )}
           </div>
         </div>
@@ -251,7 +344,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
       {/* Offline/draft banner */}
       {hasDraft && !submitted && (
         <div className="border-b border-[var(--warning)]/20 bg-[var(--warning)]/5 px-4 py-2 text-center text-xs text-[var(--warning)]">
-          Obnoveno z lokálního záznamu — zkontrolujte hodnocení před odesláním
+          {t("judge.draft_restored", locale)}
         </div>
       )}
 
@@ -259,8 +352,8 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
       {pairs.length === 0 ? (
         <div className="flex flex-col items-center gap-4 py-20 text-center px-4">
           <AlertTriangle className="h-10 w-10 text-[var(--warning)]" />
-          <p className="font-medium text-[var(--text-primary)]">Žádné přítomné páry</p>
-          <p className="text-sm text-[var(--text-secondary)]">Prezence zatím nepotvrdila žádné páry v této kategorii.</p>
+          <p className="font-medium text-[var(--text-primary)]">{t("judge.no_pairs", locale)}</p>
+          <p className="text-sm text-[var(--text-secondary)]">{t("judge.no_pairs_body", locale)}</p>
         </div>
       ) : (
         /* Content */
@@ -270,9 +363,9 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success)]/10">
                 <CheckSquare className="h-8 w-8 text-[var(--success)]" />
               </div>
-              <h2 className="text-lg font-semibold">Odesláno!</h2>
+              <h2 className="text-lg font-semibold">{t("judge.done_title", locale)}</h2>
               <p className="text-sm text-[var(--text-secondary)]">
-                Vaše hodnocení bylo zaznamenáno. Čekání na ostatní porotce...
+                {t("judge.done_body", locale)}
               </p>
             </div>
           ) : activeRound.roundType === "PRELIMINARY" ? (
@@ -281,6 +374,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
               selected={selected}
               onToggle={togglePair}
               pairsToAdvance={activeRound.pairsToAdvance}
+              locale={locale}
             />
           ) : (
             <FinalScoring
@@ -288,6 +382,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
               dances={dances}
               placements={placements}
               onSetPlacement={setPlacement}
+              locale={locale}
             />
           )}
         </div>
@@ -299,7 +394,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
           <div className="mx-auto max-w-lg">
             {!isOnline && (
               <p className="mb-2 text-center text-xs text-[var(--warning)]">
-                Jste offline. Hodnocení bude uloženo lokálně.
+                {t("judge.offline_bottom", locale)}
               </p>
             )}
             <Button
@@ -310,7 +405,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
               disabled={!isComplete}
             >
               <Send className="h-5 w-5" />
-              {isOnline ? "Odeslat hodnocení" : "Uložit offline"}
+              {isOnline ? t("judge.submit_online", locale) : t("judge.submit_offline", locale)}
             </Button>
           </div>
         </div>
@@ -321,18 +416,23 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
 
 // ── Preliminary scoring ───────────────────────────────────────────────────────
 function PreliminaryScoring({
-  pairs, selected, onToggle, pairsToAdvance,
+  pairs, selected, onToggle, pairsToAdvance, locale,
 }: {
   pairs: PairDto[];
   selected: Set<string>;
   onToggle: (id: string) => void;
   pairsToAdvance?: number | null;
+  locale: Locale;
 }) {
   return (
     <div>
       <p className="mb-4 text-sm text-[var(--text-secondary)]">
-        Vyberte páry postupující do dalšího kola.
-        {pairsToAdvance && <span className="ml-1 font-medium text-[var(--accent)]">Doporučeno: {pairsToAdvance} párů.</span>}
+        {t("prelim.instruction", locale)}
+        {pairsToAdvance && (
+          <span className="ml-1 font-medium text-[var(--accent)]">
+            {t("prelim.recommended", locale)} {pairsToAdvance} {t("prelim.recommended_pairs", locale)}
+          </span>
+        )}
       </p>
       <div className="grid gap-2 sm:grid-cols-2">
         {pairs.map((pair) => {
@@ -380,15 +480,16 @@ function PreliminaryScoring({
 
 // ── Final scoring ─────────────────────────────────────────────────────────────
 function FinalScoring({
-  pairs, dances, placements, onSetPlacement,
+  pairs, dances, placements, onSetPlacement, locale,
 }: {
   pairs: PairDto[];
   dances: DanceDto[];
   placements: Record<string, Record<string, number>>;
   onSetPlacement: (danceId: string, pairId: string, placement: number) => void;
+  locale: Locale;
 }) {
   const [activeDanceIdx, setActiveDanceIdx] = useState(0);
-  const activeDances = dances.length > 0 ? dances : [{ id: "demo-dance-1", name: "Tanec 1" }];
+  const activeDances = dances;
   const dance = activeDances[activeDanceIdx];
   const dancePlacements = placements[dance.id] ?? {};
   const usedPlacements = new Set(Object.values(dancePlacements));
@@ -420,7 +521,7 @@ function FinalScoring({
       )}
 
       <p className="mb-3 text-sm text-[var(--text-secondary)]">
-        Přiřaďte pořadí (1 = nejlepší). Každé místo lze použít jen jednou.
+        {t("final.instruction", locale)}
       </p>
 
       <div className="flex flex-col gap-2">

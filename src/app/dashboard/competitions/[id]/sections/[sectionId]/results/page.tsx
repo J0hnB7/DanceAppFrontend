@@ -30,8 +30,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { scoringApi, type SectionFinalSummaryResponse } from "@/lib/api/scoring";
 import { sectionsApi } from "@/lib/api/sections";
 import { pairsApi } from "@/lib/api/pairs";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
 
 // Medal display for top 3 placements
 function PlacementCell({ placement }: { placement: number }) {
@@ -64,6 +65,7 @@ function AuditTrailRow({
   row: SectionFinalSummaryResponse["rankings"][0];
   danceNames: string[];
 }) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -79,11 +81,10 @@ function AuditTrailRow({
         </TableCell>
         <TableCell className="font-mono font-semibold">{row.startNumber}</TableCell>
         <TableCell>
-          {/* Pair name fetched separately; show start number as fallback */}
-          <span className="font-medium">Pair #{row.startNumber}</span>
+          <span className="font-medium">{t("results.pair")} #{row.startNumber}</span>
           {row.tieResolution !== "NONE" && (
             <Badge variant="warning" className="ml-2 text-xs">
-              Tie resolved
+              {t("results.tieResolved")}
             </Badge>
           )}
         </TableCell>
@@ -107,7 +108,7 @@ function AuditTrailRow({
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <p className="mb-1 text-xs font-semibold text-[var(--text-tertiary)]">
-                  PER-DANCE PLACEMENTS
+                  {t("results.perDancePlacements").toUpperCase()}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {danceNames.map((d) => (
@@ -123,12 +124,12 @@ function AuditTrailRow({
               </div>
               <div>
                 <p className="mb-1 text-xs font-semibold text-[var(--text-tertiary)]">
-                  SKATING SYSTEM DETAIL
+                  {t("results.skatingDetail").toUpperCase()}
                 </p>
                 <div className="space-y-1 text-xs text-[var(--text-secondary)]">
-                  <p>Total sum of placements: <strong>{row.totalSum}</strong></p>
+                  <p>{t("results.totalSumOf")} <strong>{row.totalSum}</strong></p>
                   <p>
-                    Tie resolution:{" "}
+                    {t("results.tieResolution")}{" "}
                     <Badge variant={row.tieResolution === "NONE" ? "secondary" : "warning"} className="text-xs">
                       {row.tieResolution}
                     </Badge>
@@ -149,6 +150,7 @@ export default function SectionResultsPage({
   params: Promise<{ id: string; sectionId: string }>;
 }) {
   const { id: competitionId, sectionId } = use(params);
+  const { t } = useLocale();
   const router = useRouter();
   const qc = useQueryClient();
   const [approved, setApproved] = useState(false);
@@ -172,7 +174,10 @@ export default function SectionResultsPage({
     mutationFn: () => scoringApi.calculateSectionSummary(sectionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["section-summary", sectionId] });
-      toast({ title: "Summary calculated", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("results.summaryCalculated"), variant: "success" } as Parameters<typeof toast>[0]);
+    },
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
     },
   });
 
@@ -180,11 +185,14 @@ export default function SectionResultsPage({
     mutationFn: () => scoringApi.approveResults(sectionId),
     onSuccess: () => {
       setApproved(true);
-      toast({ title: "Results approved and published!", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("results.approved"), variant: "success" } as Parameters<typeof toast>[0]);
+    },
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
     },
   });
 
-  const danceNames = section?.dances.map((d) => d.name) ?? [];
+  const danceNames = (section?.dances.map((d) => d.name).filter(Boolean) ?? []) as string[];
 
   // Build pair name map from pairs data
   const pairNames = Object.fromEntries(
@@ -193,6 +201,8 @@ export default function SectionResultsPage({
       `${p.dancer1FirstName} ${p.dancer1LastName}${p.dancer2FirstName ? ` & ${p.dancer2FirstName} ${p.dancer2LastName}` : ""}`,
     ])
   );
+
+  void refetch;
 
   if (sectionLoading) {
     return (
@@ -215,20 +225,20 @@ export default function SectionResultsPage({
               loading={calculate.isPending}
             >
               <BarChart3 className="h-4 w-4" />
-              Calculate summary
+              {t("results.calculateSummary")}
             </Button>
           )}
           {summary && !approved && (
             <Button
               size="sm"
               onClick={() => {
-                if (confirm("Approve and publish results? This will be visible to all participants."))
+                if (confirm(t("results.approveConfirm")))
                   approve.mutate();
               }}
               loading={approve.isPending}
             >
               <CheckCircle2 className="h-4 w-4" />
-              Approve & publish
+              {t("results.approveAndPublish")}
             </Button>
           )}
           {summary && (
@@ -242,20 +252,21 @@ export default function SectionResultsPage({
               }
             >
               <Presentation className="h-4 w-4" />
-              Present
+              {t("results.present")}
             </Button>
           )}
         </div>
       }
     >
       <PageHeader
-        title={`${section?.name ?? "Section"} — Results`}
+        title={`${section?.name ?? t("section.title")} — ${t("results.title")}`}
         description={`${section?.ageCategory} · ${section?.level} · ${section?.danceStyle}`}
+        backHref={`/dashboard/competitions/${competitionId}/sections/${sectionId}`}
         actions={
           approved ? (
-            <Badge variant="success">Published</Badge>
+            <Badge variant="success">{t("results.published")}</Badge>
           ) : (
-            <Badge variant="secondary">Draft</Badge>
+            <Badge variant="secondary">{t("results.draft")}</Badge>
           )
         }
       />
@@ -267,14 +278,14 @@ export default function SectionResultsPage({
           <CardContent className="flex flex-col items-center gap-4 py-20 text-center">
             <BarChart3 className="h-12 w-12 text-[var(--text-tertiary)]" />
             <div>
-              <p className="font-medium text-[var(--text-primary)]">No final summary yet</p>
+              <p className="font-medium text-[var(--text-primary)]">{t("results.noSummary")}</p>
               <p className="text-sm text-[var(--text-secondary)]">
-                Run the calculation after all final round votes are submitted.
+                {t("results.noSummaryDesc")}
               </p>
             </div>
             <Button onClick={() => calculate.mutate()} loading={calculate.isPending}>
               <BarChart3 className="h-4 w-4" />
-              Calculate now
+              {t("results.calculateNow")}
             </Button>
           </CardContent>
         </Card>
@@ -297,7 +308,7 @@ export default function SectionResultsPage({
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <PlacementCell placement={row.finalPlacement} />
-                    <span className="text-[var(--text-secondary)]">place</span>
+                    <span className="text-[var(--text-secondary)]">{t("results.place")}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -305,10 +316,10 @@ export default function SectionResultsPage({
                     #{row.startNumber}
                   </p>
                   <p className="text-xs text-[var(--text-secondary)]">
-                    {pairNames[row.pairId] ?? `Pair #${row.startNumber}`}
+                    {pairNames[row.pairId] ?? `${t("results.pair")} #${row.startNumber}`}
                   </p>
                   <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                    Sum: {row.totalSum}
+                    {t("results.sum")}: {row.totalSum}
                   </p>
                 </CardContent>
               </Card>
@@ -319,7 +330,7 @@ export default function SectionResultsPage({
           <Card>
             <CardHeader>
               <CardTitle className="text-sm text-[var(--text-secondary)]">
-                Full rankings — click a row to expand Skating System detail
+                {t("results.fullRankings")}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -327,10 +338,10 @@ export default function SectionResultsPage({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-16">Place</TableHead>
+                      <TableHead className="w-16">{t("results.place")}</TableHead>
                       <TableHead className="w-12">#</TableHead>
-                      <TableHead>Pair</TableHead>
-                      <TableHead className="w-20">Sum</TableHead>
+                      <TableHead>{t("results.pair")}</TableHead>
+                      <TableHead className="w-20">{t("results.sum")}</TableHead>
                       {danceNames.map((d) => (
                         <TableHead key={d} className="w-20 text-center text-xs">
                           {d}
@@ -354,10 +365,9 @@ export default function SectionResultsPage({
             <div className="mt-4 flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--warning)]/30 bg-[var(--warning)]/5 p-4">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
               <div className="text-sm">
-                <p className="font-medium text-[var(--text-primary)]">Results pending approval</p>
+                <p className="font-medium text-[var(--text-primary)]">{t("results.pendingApproval")}</p>
                 <p className="text-[var(--text-secondary)]">
-                  Review the rankings above. Once approved, results will be visible to all
-                  participants and the scoreboard.
+                  {t("results.pendingApprovalDesc")}
                 </p>
               </div>
             </div>

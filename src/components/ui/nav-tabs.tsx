@@ -33,7 +33,7 @@ export function NavTabs({ tabs, activeTab, onChange, className }: NavTabsProps) 
           {tab.icon}
           {tab.label}
           {tab.badge && (
-            <span className="ml-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
+            <span className="ml-0.5 rounded-full bg-[var(--destructive)] px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
               {tab.badge}
             </span>
           )}

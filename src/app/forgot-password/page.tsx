@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authApi } from "@/lib/api/auth";
+import { useLocale } from "@/contexts/locale-context";
 
-const schema = z.object({ email: z.string().email("Enter a valid email") });
+const schema = z.object({ email: z.string().email() });
 type Form = z.infer<typeof schema>;
 
 export default function ForgotPasswordPage() {
+  const { t } = useLocale();
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -40,14 +42,14 @@ export default function ForgotPasswordPage() {
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)]/10">
               <MailCheck className="h-6 w-6 text-[var(--accent)]" />
             </div>
-            <CardTitle>Email sent</CardTitle>
+            <CardTitle>{t("auth.emailSent")}</CardTitle>
             <CardDescription>
-              If <strong>{getValues("email")}</strong> exists, you&apos;ll receive a reset link shortly.
+              {t("auth.emailSentDesc", { email: getValues("email") })}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/login">
-              <Button variant="outline" className="w-full">Back to login</Button>
+              <Button variant="outline" className="w-full">{t("auth.backToLogin")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -60,24 +62,24 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm">
         <Card>
           <CardHeader>
-            <CardTitle>Reset password</CardTitle>
-            <CardDescription>Enter your email and we&apos;ll send a reset link.</CardDescription>
+            <CardTitle>{t("auth.resetPassword")}</CardTitle>
+            <CardDescription>{t("auth.resetPasswordDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <Input
-                label="Email"
+                label={t("auth.email")}
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t("auth.emailPlaceholder")}
                 error={errors.email?.message}
                 {...register("email")}
               />
               <Button type="submit" loading={loading} className="w-full">
-                Send reset link
+                {t("auth.sendResetLink")}
               </Button>
               <Link href="/login">
                 <Button type="button" variant="ghost" className="w-full">
-                  Back to login
+                  {t("auth.backToLogin")}
                 </Button>
               </Link>
             </form>

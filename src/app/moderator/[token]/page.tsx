@@ -2,13 +2,12 @@
 
 import { use, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Music2, Users, Clock, Play, ChevronRight, Volume2, Hash, Star } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Music2, Users, Clock, Play, ChevronRight, Volume2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSSE } from "@/hooks/use-sse";
 import { cn } from "@/lib/utils";
 import apiClient from "@/lib/api-client";
+import { useLocale } from "@/contexts/locale-context";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ModeratorView {
@@ -70,7 +69,7 @@ function StatusDot({ status }: { status: string }) {
   );
 }
 
-function AnnouncementCard({ item, onDismiss }: { item: AnnouncementItem; onDismiss: (id: string) => void }) {
+function AnnouncementCard({ item, onDismiss, dismissLabel }: { item: AnnouncementItem; onDismiss: (id: string) => void; dismissLabel: string }) {
   return (
     <div className={cn(
       "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
@@ -84,7 +83,7 @@ function AnnouncementCard({ item, onDismiss }: { item: AnnouncementItem; onDismi
         onClick={() => onDismiss(item.id)}
         className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] shrink-0"
       >
-        Dismiss
+        {dismissLabel}
       </button>
     </div>
   );
@@ -93,6 +92,7 @@ function AnnouncementCard({ item, onDismiss }: { item: AnnouncementItem; onDismi
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function ModeratorPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
+  const { t } = useLocale();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -119,8 +119,8 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
       <div className="flex h-screen items-center justify-center bg-gray-950 text-white">
         <div className="text-center space-y-3">
           <Music2 className="h-12 w-12 mx-auto text-gray-600" />
-          <p className="text-lg font-semibold">Invalid moderator link</p>
-          <p className="text-sm text-gray-400">Token not found or expired.</p>
+          <p className="text-lg font-semibold">{t("moderator.invalidLink")}</p>
+          <p className="text-sm text-gray-400">{t("moderator.invalidLinkDesc")}</p>
         </div>
       </div>
     );
@@ -135,8 +135,8 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
             <Music2 className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold">{data?.competitionName ?? "Loading…"}</h1>
-            <p className="text-xs text-gray-400">Moderator / DJ View</p>
+            <h1 className="text-lg font-bold">{data?.competitionName ?? t("common.loading")}</h1>
+            <p className="text-xs text-gray-400">{t("moderator.viewTitle")}</p>
           </div>
         </div>
         <div className="text-right">
@@ -152,7 +152,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Current round — large card */}
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">Now on floor</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">{t("moderator.nowOnFloor")}</h2>
 
           {isLoading ? (
             <div className="h-48 rounded-2xl bg-gray-900 animate-pulse" />
@@ -175,7 +175,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
                     <Users className="h-3.5 w-3.5" />
-                    Pairs
+                    {t("moderator.pairs")}
                   </div>
                   <p className="text-2xl font-bold">{data.currentRound.pairsCount}</p>
                 </div>
@@ -183,7 +183,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
                     <Music2 className="h-3.5 w-3.5" />
-                    Dances
+                    {t("moderator.dances")}
                   </div>
                   <p className="text-2xl font-bold">{data.currentRound.dances.length}</p>
                 </div>
@@ -191,7 +191,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
                     <Clock className="h-3.5 w-3.5" />
-                    Started
+                    {t("moderator.started")}
                   </div>
                   <p className="text-xl font-bold">
                     {data.currentRound.startedAt
@@ -203,7 +203,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
 
               {/* Dance list */}
               <div className="space-y-1.5">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Dance order</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">{t("moderator.danceOrder")}</p>
                 <div className="flex flex-wrap gap-2">
                   {data.currentRound.dances.map((dance, i) => (
                     <div key={dance} className="flex items-center gap-1.5 rounded-lg bg-gray-800 px-3 py-1.5 text-sm">
@@ -217,7 +217,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-800 py-16 text-center">
               <Play className="h-10 w-10 text-gray-700" />
-              <p className="text-gray-500">No active round</p>
+              <p className="text-gray-500">{t("moderator.noActiveRound")}</p>
             </div>
           )}
         </div>
@@ -226,7 +226,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
         <div className="space-y-4">
           {/* Up next */}
           <div className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">Up next</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">{t("moderator.upNext")}</h2>
             {data?.upNext ? (
               <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 space-y-2">
                 <div className="flex items-center gap-2">
@@ -236,13 +236,13 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
                 <p className="font-semibold text-white">{data.upNext.sectionName}</p>
                 {data.upNext.scheduledAt && (
                   <p className="text-xs text-gray-400">
-                    Scheduled {new Date(data.upNext.scheduledAt).toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
+                    {t("moderator.scheduled", { time: new Date(data.upNext.scheduledAt).toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" }) })}
                   </p>
                 )}
               </div>
             ) : (
               <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 text-center text-sm text-gray-600">
-                Nothing scheduled
+                {t("moderator.nothingScheduled")}
               </div>
             )}
           </div>
@@ -251,7 +251,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
           <div className="space-y-2">
             <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500 flex items-center gap-2">
               <Volume2 className="h-3.5 w-3.5" />
-              Announcements
+              {t("moderator.announcements")}
               {announcements.length > 0 && (
                 <span className="ml-auto rounded-full bg-red-600 px-1.5 py-0.5 text-xs text-white">
                   {announcements.length}
@@ -260,7 +260,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
             </h2>
             {announcements.length === 0 ? (
               <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 text-center text-sm text-gray-600">
-                No pending announcements
+                {t("moderator.noPendingAnnouncements")}
               </div>
             ) : (
               <div className="space-y-2">
@@ -268,6 +268,7 @@ export default function ModeratorPage({ params }: { params: Promise<{ token: str
                   <AnnouncementCard
                     key={a.id}
                     item={a}
+                    dismissLabel={t("moderator.dismiss")}
                     onDismiss={(id) => setDismissed((prev) => new Set([...prev, id]))}
                   />
                 ))}

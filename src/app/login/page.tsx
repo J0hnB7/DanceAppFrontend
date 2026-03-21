@@ -12,21 +12,22 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/store/auth-store";
-import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
 
 const loginSchema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email(),
+  password: z.string().min(1),
   totpCode: z.string().optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
 function LoginPageInner() {
+  const { t } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
-  const { setUser } = useAuthStore();
+  const { loginWithTokens } = useAuthStore();
 
   const [showPassword, setShowPassword] = useState(false);
   const [requireTotp, setRequireTotp] = useState(false);
@@ -42,15 +43,15 @@ function LoginPageInner() {
   const onSubmit = async (values: LoginForm) => {
     setLoading(true);
     try {
-      const data = await authApi.login(values);
-      setUser(data.user, data.accessToken);
+      const tokens = await authApi.login(values);
+      await loginWithTokens(tokens.accessToken);
       router.replace(callbackUrl);
     } catch (err: unknown) {
       const apiErr = err as { status?: number; message?: string };
       if (apiErr?.status === 403 && apiErr?.message?.includes("TOTP")) {
         setRequireTotp(true);
       } else {
-        setError("password", { message: apiErr?.message ?? "Invalid email or password" });
+        setError("password", { message: apiErr?.message ?? t("auth.invalidEmailOrPassword") });
       }
     } finally {
       setLoading(false);
@@ -69,25 +70,25 @@ function LoginPageInner() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Sign in</CardTitle>
-            <CardDescription>Enter your credentials to continue</CardDescription>
+            <CardTitle>{t("auth.signIn")}</CardTitle>
+            <CardDescription>{t("auth.signInDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <Input
-                label="Email"
+                label={t("auth.email")}
                 type="email"
                 autoComplete="email"
-                placeholder="you@example.com"
+                placeholder={t("auth.emailPlaceholder")}
                 error={errors.email?.message}
                 {...register("email")}
               />
 
               <Input
-                label="Password"
+                label={t("auth.passwordLabel")}
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
-                placeholder="••••••••"
+                placeholder={t("auth.passwordPlaceholder")}
                 error={errors.password?.message}
                 rightIcon={
                   <button
@@ -103,11 +104,11 @@ function LoginPageInner() {
 
               {requireTotp && (
                 <Input
-                  label="Authenticator code"
+                  label={t("auth.authenticatorCode")}
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
-                  placeholder="000000"
+                  placeholder={t("auth.authenticatorPlaceholder")}
                   autoFocus
                   error={errors.totpCode?.message}
                   {...register("totpCode")}
@@ -119,18 +120,18 @@ function LoginPageInner() {
                   href="/forgot-password"
                   className="text-sm text-[var(--accent)] hover:underline"
                 >
-                  Forgot password?
+                  {t("auth.forgotPassword")}
                 </Link>
               </div>
 
               <Button type="submit" loading={loading} className="w-full">
-                Sign in
+                {t("auth.signIn")}
               </Button>
 
               <p className="text-center text-sm text-[var(--text-secondary)]">
-                No account?{" "}
+                {t("auth.noAccountLink")}{" "}
                 <Link href="/register" className="text-[var(--accent)] hover:underline">
-                  Sign up
+                  {t("auth.signUp")}
                 </Link>
               </p>
             </form>

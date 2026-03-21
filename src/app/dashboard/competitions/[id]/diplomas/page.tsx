@@ -14,6 +14,7 @@ import { scoringApi } from "@/lib/api/scoring";
 import { printDiploma, printAllDiplomas } from "@/lib/diploma";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/contexts/locale-context";
 
 const MEDAL_COLORS: Record<number, string> = {
   1: "text-yellow-500",
@@ -45,6 +46,7 @@ interface SectionDiplomasProps {
 }
 
 function SectionDiplomas({ sectionId, sectionName, competitionName, competitionDate, competitionLocation }: SectionDiplomasProps) {
+  const { t } = useLocale();
   const { data: summary, isLoading } = useQuery({
     queryKey: ["section-summary", sectionId],
     queryFn: () => scoringApi.getSectionSummary(sectionId),
@@ -54,7 +56,7 @@ function SectionDiplomas({ sectionId, sectionName, competitionName, competitionD
   if (!summary || summary.rankings.length === 0) {
     return (
       <Card className="p-4 text-center text-sm text-[var(--text-secondary)]">
-        No results for {sectionName} yet.
+        {t("diplomas.noResultsYet", { section: sectionName })}
       </Card>
     );
   }
@@ -73,7 +75,7 @@ function SectionDiplomas({ sectionId, sectionName, competitionName, competitionD
           onClick={() => printAllDiplomas(summary.rankings, competitionName, competitionDate, competitionLocation, sectionName)}
         >
           <Printer className="h-3.5 w-3.5" />
-          Print top 3
+          {t("diplomas.printTop3")}
         </Button>
       </div>
 
@@ -88,8 +90,8 @@ function SectionDiplomas({ sectionId, sectionName, competitionName, competitionD
             )}
           >
             <PlacementBadge place={r.finalPlacement} />
-            <p className="text-sm font-medium text-[var(--text-primary)]">Start #{r.startNumber}</p>
-            <p className="text-xs text-[var(--text-secondary)]">Sum: {r.totalSum}</p>
+            <p className="text-sm font-medium text-[var(--text-primary)]">{t("diplomas.startNumber", { number: r.startNumber })}</p>
+            <p className="text-xs text-[var(--text-secondary)]">{t("diplomas.sumLabel", { value: r.totalSum })}</p>
             <Button
               variant="outline"
               size="sm"
@@ -106,7 +108,7 @@ function SectionDiplomas({ sectionId, sectionName, competitionName, competitionD
               }
             >
               <Printer className="h-3 w-3" />
-              Print
+              {t("diplomas.print")}
             </Button>
           </div>
         ))}
@@ -115,15 +117,15 @@ function SectionDiplomas({ sectionId, sectionName, competitionName, competitionD
       {/* Remaining placements */}
       {rest.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Other placements</p>
+          <p className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">{t("diplomas.otherPlacements")}</p>
           {rest.map((r) => (
             <div
               key={r.pairId}
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-[var(--surface-secondary)]"
             >
               <span className="w-6 text-center font-semibold text-[var(--text-secondary)]">{r.finalPlacement}.</span>
-              <span className="flex-1 text-[var(--text-primary)]">Start #{r.startNumber}</span>
-              <span className="text-xs text-[var(--text-tertiary)]">Sum: {r.totalSum}</span>
+              <span className="flex-1 text-[var(--text-primary)]">{t("diplomas.startNumber", { number: r.startNumber })}</span>
+              <span className="text-xs text-[var(--text-tertiary)]">{t("diplomas.sumLabel", { value: r.totalSum })}</span>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -151,6 +153,7 @@ function SectionDiplomas({ sectionId, sectionName, competitionName, competitionD
 
 export default function DiplomasPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: competitionId } = use(params);
+  const { t } = useLocale();
 
   const { data: competition, isLoading: loadingComp } = useQuery({
     queryKey: ["competition", competitionId],
@@ -165,19 +168,19 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
   const completedSections = sections.filter((s) => s.status === "COMPLETED");
 
   return (
-    <AppShell title="Diplomas">
+    <AppShell>
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-[var(--text-primary)]">Diplomas</h1>
+            <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("diplomas.title")}</h1>
             {competition && (
               <p className="text-sm text-[var(--text-secondary)]">
-                {competition.name} · {formatDate(competition.startDate)} · {competition.location}
+                {competition.name} · {formatDate(competition.eventDate)} · {competition.venue}
               </p>
             )}
           </div>
           <Badge variant="default">
-            {completedSections.length} / {sections.length} sections completed
+            {t("diplomas.sectionsCompleted", { completed: completedSections.length, total: sections.length })}
           </Badge>
         </div>
 
@@ -189,7 +192,7 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
           <Card className="flex flex-col items-center gap-3 py-20 text-center">
             <Award className="h-12 w-12 text-[var(--text-tertiary)]" />
             <p className="text-sm text-[var(--text-secondary)]">
-              No completed sections yet. Diplomas will be available once results are approved.
+              {t("diplomas.noCompleted")}
             </p>
           </Card>
         ) : (
@@ -200,8 +203,8 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
                 sectionId={section.id}
                 sectionName={section.name}
                 competitionName={competition?.name ?? ""}
-                competitionDate={competition ? formatDate(competition.startDate) : ""}
-                competitionLocation={competition?.location ?? ""}
+                competitionDate={competition ? formatDate(competition.eventDate) : ""}
+                competitionLocation={competition?.venue ?? ""}
               />
             ))}
           </div>

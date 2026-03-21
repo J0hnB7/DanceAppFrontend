@@ -31,6 +31,7 @@ import { competitionsApi } from "@/lib/api/competitions";
 import { sectionsApi } from "@/lib/api/sections";
 import { formatTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/contexts/locale-context";
 
 interface SSEEvent {
   type: string;
@@ -44,6 +45,7 @@ interface SSEEvent {
 
 export default function LiveDashboardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useLocale();
   const router = useRouter();
   const [lastEvent, setLastEvent] = useState<{ type: string; at: Date } | null>(null);
   const [isOnline, setIsOnline] = useState(true);
@@ -85,7 +87,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
   const activeSection = sections?.find((s) => s.status === "ACTIVE");
   const completedSections = sections?.filter((s) => s.status === "COMPLETED") ?? [];
   const pendingSections = sections?.filter((s) => s.status === "DRAFT") ?? [];
-  const totalPairs = competition?.registeredPairsCount ?? 0;
+  const totalPairs = competition?.registeredPairsCount ?? 0; // optional field
 
   const alertIcon = (level: string) => {
     if (level === "error") return <AlertCircle className="h-4 w-4 shrink-0 text-[var(--destructive)]" />;
@@ -106,25 +108,26 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
       {/* Header with live indicator */}
       <div className="mb-4 flex items-center justify-between">
         <PageHeader
-          title="Live dashboard"
-          description={competition?.name ?? "Loading..."}
+          title={t("live.liveDashboard")}
+          description={competition?.name ?? ""}
           className="mb-0"
+          backHref={`/dashboard/competitions/${id}`}
         />
         <div className="flex items-center gap-3">
           {isOnline ? (
             <div className="flex items-center gap-1.5 text-xs text-[var(--success)]">
               <div className="h-2 w-2 animate-pulse rounded-full bg-[var(--success)]" />
-              Live
+              {t("live.live")}
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-xs text-[var(--warning)]">
               <WifiOff className="h-3.5 w-3.5" />
-              Offline
+              {t("live.offline")}
             </div>
           )}
           {lastEvent && (
             <span className="text-xs text-[var(--text-tertiary)]">
-              Updated {formatTime(lastEvent.at.toISOString())}
+              {t("live.updated", { time: formatTime(lastEvent.at.toISOString()) })}
             </span>
           )}
         </div>
@@ -134,15 +137,15 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
       <div className="mb-6 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/competitions/${id}`)}>
           <Settings className="h-4 w-4" />
-          Manage sections
+          {t("live.manageSections")}
         </Button>
         <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/competitions/${id}/judges`)}>
           <Users className="h-4 w-4" />
-          Judges
+          {t("live.judges")}
         </Button>
         <Button size="sm" variant="outline" onClick={() => router.push(`/scoreboard/${id}`)}>
           <BarChart3 className="h-4 w-4" />
-          Public scoreboard
+          {t("live.publicScoreboard")}
         </Button>
       </div>
 
@@ -154,7 +157,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <Users className="h-4 w-4" /> Pairs
+                  <Users className="h-4 w-4" /> {t("live.pairs")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -165,7 +168,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <Activity className="h-4 w-4" /> Active
+                  <Activity className="h-4 w-4" /> {t("live.active")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -176,19 +179,19 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <CheckCircle2 className="h-4 w-4" /> Done
+                  <CheckCircle2 className="h-4 w-4" /> {t("live.done")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">{completedSections.length}</p>
-                <p className="text-xs text-[var(--text-tertiary)]">of {sections?.length ?? 0}</p>
+                <p className="text-xs text-[var(--text-tertiary)]">{t("common.of")} {sections?.length ?? 0}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <Clock className="h-4 w-4" /> Pending
+                  <Clock className="h-4 w-4" /> {t("live.pending")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -204,7 +207,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <div className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
-                    Active: {activeSection.name}
+                    {t("live.activeSection", { name: activeSection.name })}
                   </CardTitle>
                   <Button
                     size="sm"
@@ -213,7 +216,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
                       router.push(`/dashboard/competitions/${id}/sections/${activeSection.id}`)
                     }
                   >
-                    Manage <ChevronRight className="h-3.5 w-3.5" />
+                    {t("live.manageSection")} <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </CardHeader>
@@ -225,9 +228,9 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
                   <span>·</span>
                   <span>{activeSection.danceStyle}</span>
                   <span>·</span>
-                  <span>{activeSection.registeredPairsCount} pairs</span>
+                  <span>{activeSection.registeredPairsCount} {t("common.pairs")}</span>
                   <span>·</span>
-                  <span>{activeSection.dances.length} dances</span>
+                  <span>{t("section.dances", { count: activeSection.dances.length })}</span>
                 </div>
               </CardContent>
             </Card>
@@ -235,7 +238,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
 
           {/* All sections status */}
           <div>
-            <h3 className="mb-3 font-semibold text-[var(--text-primary)]">All sections</h3>
+            <h3 className="mb-3 font-semibold text-[var(--text-primary)]">{t("live.allSections")}</h3>
             <div className="flex flex-col gap-2">
               {sections?.map((section) => (
                 <Card
@@ -260,13 +263,13 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
                       <div>
                         <p className="text-sm font-medium">{section.name}</p>
                         <p className="text-xs text-[var(--text-secondary)]">
-                          {section.ageCategory} · {section.level} · {section.dances.length} dances
+                          {section.ageCategory} · {section.level} · {t("section.dances", { count: section.dances.length })}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-[var(--text-secondary)]">
-                        {section.registeredPairsCount} pairs
+                        {section.registeredPairsCount} {t("common.pairs")}
                       </span>
                       <Badge
                         variant={
@@ -283,7 +286,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
                         <Button
                           size="sm"
                           variant="ghost"
-                          title="Manage rounds"
+                          title={t("live.manageSection")}
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/dashboard/competitions/${id}/sections/${section.id}`);
@@ -295,7 +298,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
                           <Button
                             size="sm"
                             variant="ghost"
-                            title="View results"
+                            title={t("round.viewResults")}
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(`/dashboard/competitions/${id}/sections/${section.id}/results`);
@@ -307,7 +310,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
                         <Button
                           size="sm"
                           variant="ghost"
-                          title="Dance-offs"
+                          title={t("section.danceOffs")}
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/dashboard/competitions/${id}/sections/${section.id}/dance-offs`);
@@ -327,10 +330,10 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
         {/* Right: Alerts feed */}
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold text-[var(--text-primary)]">Alerts</h3>
+            <h3 className="font-semibold text-[var(--text-primary)]">{t("live.alerts")}</h3>
             {relevantAlerts.filter((a) => !a.read).length > 0 && (
               <span className="rounded-full bg-[var(--destructive)] px-2 py-0.5 text-xs font-bold text-white">
-                {relevantAlerts.filter((a) => !a.read).length} new
+                {t("live.newAlerts", { count: relevantAlerts.filter((a) => !a.read).length })}
               </span>
             )}
           </div>
@@ -339,7 +342,7 @@ export default function LiveDashboardPage({ params }: { params: Promise<{ id: st
             <Card>
               <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
                 <CheckCircle2 className="h-8 w-8 text-[var(--success)]" />
-                <p className="text-sm text-[var(--text-secondary)]">All clear — no alerts</p>
+                <p className="text-sm text-[var(--text-secondary)]">{t("live.allClear")}</p>
               </CardContent>
             </Card>
           ) : (

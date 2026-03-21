@@ -19,8 +19,9 @@ import {
 } from "@/components/ui/dialog";
 import { useRound, useRoundAction, useSubmissionStatus } from "@/hooks/queries/use-rounds";
 import { useSection } from "@/hooks/queries/use-sections";
-import { formatTime, cn } from "@/lib/utils";
+import { formatTime, cn, getRoundStatusBadgeVariant, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
 
 // ── CollisionResolutionDialog ─────────────────────────────────────────────────
 function CollisionResolutionDialog({
@@ -32,35 +33,35 @@ function CollisionResolutionDialog({
   onResolve: (choice: "more" | "less") => void;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-[var(--warning)]" />
-            Collision — callback tie
+            {t("round.collisionTitle")}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-[var(--text-secondary)]">
-            Multiple pairs are tied at the cutoff position. The majority vote cannot determine
-            a clear boundary. Choose how to resolve:
+            {t("round.collisionDesc")}
           </p>
           <div className="rounded-lg border border-[var(--warning)]/30 bg-amber-50 p-3 text-sm dark:bg-amber-950/20">
             <p className="font-semibold text-[var(--text-primary)]">
-              Pairs tied at the cutoff — cannot determine who advances
+              {t("round.collisionTied")}
             </p>
             <p className="text-xs text-[var(--text-tertiary)] mt-1">
-              This may happen when multiple pairs receive equal preference marks from judges.
+              {t("round.collisionNote")}
             </p>
           </div>
         </div>
         <DialogFooter className="flex gap-2">
           <Button variant="outline" onClick={() => onResolve("less")}>
-            Advance fewer pairs
+            {t("round.advanceFewer")}
           </Button>
           <Button onClick={() => onResolve("more")}>
-            Advance more pairs
+            {t("round.advanceMore")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -78,6 +79,7 @@ function JudgesSubmissionMatrix({
   dances: string[];
   onSendReminder: (judgeNumber: number) => void;
 }) {
+  const { t } = useLocale();
   const progressPct =
     submissionStatus.totalJudges > 0
       ? Math.round((submissionStatus.submitted / submissionStatus.totalJudges) * 100)
@@ -86,9 +88,9 @@ function JudgesSubmissionMatrix({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-semibold text-[var(--text-primary)]">Judge submissions</h3>
+        <h3 className="font-semibold text-[var(--text-primary)]">{t("round.judgeSubmissions")}</h3>
         <span className="text-sm text-[var(--text-secondary)]">
-          {submissionStatus.submitted} / {submissionStatus.totalJudges} submitted
+          {t("round.submitted", { submitted: submissionStatus.submitted, total: submissionStatus.totalJudges })}
         </span>
       </div>
 
@@ -100,7 +102,7 @@ function JudgesSubmissionMatrix({
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th className="py-3 pl-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-                  Judge
+                  {t("judges.judge")}
                 </th>
                 {dances.map((d) => (
                   <th
@@ -111,7 +113,7 @@ function JudgesSubmissionMatrix({
                   </th>
                 ))}
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-                  Status
+                  {t("round.status")}
                 </th>
                 <th className="pr-4 py-3" />
               </tr>
@@ -126,7 +128,7 @@ function JudgesSubmissionMatrix({
                   )}
                 >
                   <td className="py-3 pl-4">
-                    <p className="font-medium text-[var(--text-primary)]">Judge {j.judgeNumber}</p>
+                    <p className="font-medium text-[var(--text-primary)]">{t("round.judgeLabel", { number: j.judgeNumber })}</p>
                     {j.submittedAt && (
                       <p className="text-xs text-[var(--text-tertiary)]">
                         {formatTime(j.submittedAt)}
@@ -144,7 +146,7 @@ function JudgesSubmissionMatrix({
                   ))}
                   <td className="px-4 py-3 text-center">
                     <Badge variant={j.submitted ? "success" : "warning"}>
-                      {j.submitted ? "Done" : "Pending"}
+                      {j.submitted ? t("round.statusDone") : t("round.statusPending")}
                     </Badge>
                   </td>
                   <td className="pr-4 py-3 text-right">
@@ -156,7 +158,7 @@ function JudgesSubmissionMatrix({
                         onClick={() => onSendReminder(j.judgeNumber)}
                       >
                         <Bell className="h-3.5 w-3.5" />
-                        Remind
+                        {t("round.remind")}
                       </Button>
                     )}
                   </td>
@@ -177,6 +179,7 @@ export default function RoundDetailPage({
   params: Promise<{ id: string; sectionId: string; roundId: string }>;
 }) {
   const { id: competitionId, sectionId, roundId } = use(params);
+  const { t } = useLocale();
   const { data: round, isLoading } = useRound(roundId);
   const { data: submissionStatus } = useSubmissionStatus(roundId);
   const { data: section } = useSection(competitionId, sectionId);
@@ -184,46 +187,67 @@ export default function RoundDetailPage({
   const router = useRouter();
   const [collisionOpen, setCollisionOpen] = useState(false);
 
-  const dances = section?.dances.map((d) => d.name) ?? [];
+  const dances = (section?.dances.map((d) => d.danceName).filter(Boolean) ?? []) as string[];
 
   const handleOpen = async () => {
-    await actions.open.mutateAsync();
-    toast({ title: "Round opened — judges can now submit" } as Parameters<typeof toast>[0]);
+    try {
+      await actions.start.mutateAsync();
+      toast({ title: t("round.roundOpened") } as Parameters<typeof toast>[0]);
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, t("common.error"));
+      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+    }
   };
 
   const handleClose = async () => {
-    if (!confirm("Close round? Judges will no longer be able to submit.")) return;
-    await actions.close.mutateAsync();
-    toast({ title: "Round closed" } as Parameters<typeof toast>[0]);
+    if (!confirm(t("round.closeRoundConfirm"))) return;
+    try {
+      await actions.close.mutateAsync();
+      toast({ title: t("round.roundClosed") } as Parameters<typeof toast>[0]);
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, t("common.error"));
+      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+    }
   };
 
   const handleCalculate = async () => {
     try {
       await actions.calculate.mutateAsync();
-      toast({ title: "Results calculated", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("round.resultsCalculated"), variant: "success" } as Parameters<typeof toast>[0]);
       router.push(
         `/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}/results`
       );
-    } catch {
-      // Simulate collision scenario
-      setCollisionOpen(true);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        setCollisionOpen(true);
+      } else {
+        const msg = getErrorMessage(err, t("common.error"));
+        toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+      }
     }
   };
 
   const handleCollisionResolve = async (choice: "more" | "less") => {
     setCollisionOpen(false);
-    toast({
-      title: `Resolved: advancing ${choice === "more" ? "more" : "fewer"} pairs`,
-      variant: "success",
-    } as Parameters<typeof toast>[0]);
-    router.push(
-      `/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}/results`
-    );
+    try {
+      await actions.resolveTie.mutateAsync(choice);
+      toast({
+        title: choice === "more" ? t("round.resolvedMore") : t("round.resolvedFewer"),
+        variant: "success",
+      } as Parameters<typeof toast>[0]);
+      router.push(
+        `/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}/results`
+      );
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, t("common.error"));
+      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+    }
   };
 
   const handleReminder = (judgeNumber: number) => {
     toast({
-      title: `Reminder sent to Judge ${judgeNumber}`,
+      title: t("round.reminderSent", { number: judgeNumber }),
       variant: "success",
     } as Parameters<typeof toast>[0]);
   };
@@ -250,9 +274,9 @@ export default function RoundDetailPage({
       headerActions={
         <div className="flex items-center gap-2">
           {round.status === "PENDING" && (
-            <Button size="sm" onClick={handleOpen} loading={actions.open.isPending}>
+            <Button size="sm" onClick={handleOpen} loading={actions.start.isPending}>
               <Play className="h-4 w-4" />
-              Open round
+              {t("round.openRound")}
             </Button>
           )}
           {(round.status === "OPEN" || round.status === "IN_PROGRESS") && (
@@ -264,12 +288,12 @@ export default function RoundDetailPage({
                 loading={actions.close.isPending}
               >
                 <Square className="h-4 w-4" />
-                Close round
+                {t("round.closeRound")}
               </Button>
               {allSubmitted && (
                 <Button size="sm" onClick={handleCalculate} loading={actions.calculate.isPending}>
                   <BarChart3 className="h-4 w-4" />
-                  Calculate results
+                  {t("round.calculateResults")}
                 </Button>
               )}
             </>
@@ -277,7 +301,7 @@ export default function RoundDetailPage({
           {round.status === "CLOSED" && (
             <Button size="sm" onClick={handleCalculate} loading={actions.calculate.isPending}>
               <BarChart3 className="h-4 w-4" />
-              Calculate results
+              {t("round.calculateResults")}
             </Button>
           )}
           {round.status === "CALCULATED" && (
@@ -291,24 +315,19 @@ export default function RoundDetailPage({
               }
             >
               <BarChart3 className="h-4 w-4" />
-              View results
+              {t("round.viewResults")}
             </Button>
           )}
         </div>
       }
     >
       <PageHeader
-        title={`${round.roundType} — Round ${round.roundNumber}`}
-        description={`${round.judgeCount} judges · ${section?.name ?? ""}`}
+        title={`${round.roundType} — ${t("section.rounds")} ${round.roundNumber}`}
+        description={`${round.judgeCount} ${t("judges.title")} · ${section?.name ?? ""}`}
+        backHref={`/dashboard/competitions/${competitionId}/sections/${sectionId}`}
         actions={
           <Badge
-            variant={
-              round.status === "CALCULATED"
-                ? "success"
-                : round.status === "IN_PROGRESS" || round.status === "OPEN"
-                ? "warning"
-                : "secondary"
-            }
+            variant={getRoundStatusBadgeVariant(round.status)}
           >
             {round.status}
           </Badge>
@@ -320,7 +339,7 @@ export default function RoundDetailPage({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-              <Users className="h-4 w-4" /> Judges submitted
+              <Users className="h-4 w-4" /> {t("round.judgesSubmitted")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -333,11 +352,11 @@ export default function RoundDetailPage({
         {majority && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-[var(--text-secondary)]">Majority needed</CardTitle>
+              <CardTitle className="text-xs text-[var(--text-secondary)]">{t("round.majorityNeeded")}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{majority}</p>
-              <p className="text-xs text-[var(--text-tertiary)]">of {round.judgeCount}</p>
+              <p className="text-xs text-[var(--text-tertiary)]">{t("common.of")} {round.judgeCount}</p>
             </CardContent>
           </Card>
         )}
@@ -345,7 +364,7 @@ export default function RoundDetailPage({
         {round.pairsToAdvance && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-[var(--text-secondary)]">Pairs to advance</CardTitle>
+              <CardTitle className="text-xs text-[var(--text-secondary)]">{t("round.pairsToAdvance")}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{round.pairsToAdvance}</p>
@@ -357,7 +376,7 @@ export default function RoundDetailPage({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                <Clock className="h-4 w-4" /> Started at
+                <Clock className="h-4 w-4" /> {t("round.startedAt")}
               </CardTitle>
             </CardHeader>
             <CardContent>

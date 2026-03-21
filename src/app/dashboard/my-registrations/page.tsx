@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { myRegistrationsApi, type MyRegistration, type MyPayment } from "@/lib/api/my-registrations";
 import { formatDate, formatCurrency, cn } from "@/lib/utils";
 import { CountdownTimer } from "@/components/ui/countdown-timer";
+import { useLocale } from "@/contexts/locale-context";
 
 const PAYMENT_COLORS: Record<string, "default" | "success" | "warning" | "destructive"> = {
   PENDING: "warning",
@@ -51,6 +52,7 @@ function daysUntil(date: string): number {
 
 // ── UpcomingCompetitionCard ───────────────────────────────────────────────────
 function UpcomingCompetitionCard({ reg }: { reg: MyRegistration }) {
+  const { t } = useLocale();
   const days = daysUntil(reg.competitionStartDate);
   const isLive = reg.competitionStatus === "IN_PROGRESS";
 
@@ -67,7 +69,7 @@ function UpcomingCompetitionCard({ reg }: { reg: MyRegistration }) {
       {isLive && (
         <div className="absolute right-4 top-4 flex items-center gap-1.5">
           <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--success)]" />
-          <span className="text-xs font-semibold text-[var(--success)]">LIVE NOW</span>
+          <span className="text-xs font-semibold text-[var(--success)]">{t("myRegistrations.liveNow")}</span>
         </div>
       )}
 
@@ -84,7 +86,7 @@ function UpcomingCompetitionCard({ reg }: { reg: MyRegistration }) {
 
       <div className="pr-24">
         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
-          {isLive ? "Competition in progress" : "Next up"}
+          {isLive ? t("myRegistrations.competitionInProgress") : t("myRegistrations.nextUp")}
         </p>
         <h2 className="text-xl font-bold text-[var(--text-primary)]">{reg.competitionName}</h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">{reg.sectionName}</p>
@@ -112,24 +114,24 @@ function UpcomingCompetitionCard({ reg }: { reg: MyRegistration }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Badge variant={PAYMENT_COLORS[reg.paymentStatus]}>
-            {reg.paymentStatus === "PAID" ? "✓ Paid" : reg.paymentStatus === "PENDING" ? "Payment pending" : reg.paymentStatus}
+            {reg.paymentStatus === "PAID" ? t("myRegistrations.paid") : reg.paymentStatus === "PENDING" ? t("myRegistrations.paymentPending") : reg.paymentStatus}
           </Badge>
           {reg.paymentStatus === "PENDING" && reg.amountDue && (
             <span className="text-sm font-semibold text-[var(--warning)]">
-              {formatCurrency(reg.amountDue, reg.currency ?? "EUR")} due
+              {t("myRegistrations.due", { amount: formatCurrency(reg.amountDue, reg.currency ?? "EUR") })}
             </span>
           )}
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" asChild>
             <Link href={`/competitions/${reg.competitionId}`}>
-              View competition <ChevronRight className="h-3.5 w-3.5" />
+              {t("myRegistrations.viewCompetition")} <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
           {isLive && (
             <Button size="sm" asChild>
               <Link href={`/scoreboard/${reg.competitionId}`}>
-                Live results
+                {t("myRegistrations.liveResults")}
               </Link>
             </Button>
           )}
@@ -149,6 +151,7 @@ function RegistrationCard({
   onCancel: (id: string) => void;
   cancelling: boolean;
 }) {
+  const { t } = useLocale();
   const canCancel = ["DRAFT", "PUBLISHED", "REGISTRATION_OPEN"].includes(reg.competitionStatus);
 
   return (
@@ -188,7 +191,7 @@ function RegistrationCard({
         )}
         <div className="flex items-center gap-1.5">
           <Clock className="h-3.5 w-3.5" />
-          Registered {formatDate(reg.registeredAt)}
+          {t("myRegistrations.registered", { date: formatDate(reg.registeredAt) })}
         </div>
       </div>
 
@@ -201,7 +204,7 @@ function RegistrationCard({
         </p>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" className="text-xs" asChild>
-            <Link href={`/competitions/${reg.competitionId}`}>View</Link>
+            <Link href={`/competitions/${reg.competitionId}`}>{t("myRegistrations.viewCompetition")}</Link>
           </Button>
           {canCancel && (
             <Button
@@ -209,12 +212,12 @@ function RegistrationCard({
               size="sm"
               className="text-red-500 hover:text-red-600 hover:bg-red-50 gap-1.5"
               onClick={() => {
-                if (confirm("Cancel this registration?")) onCancel(reg.id);
+                if (confirm(t("myRegistrations.cancelConfirm"))) onCancel(reg.id);
               }}
               loading={cancelling}
             >
               <XCircle className="h-3.5 w-3.5" />
-              Cancel
+              {t("myRegistrations.cancelRegistration")}
             </Button>
           )}
         </div>
@@ -225,6 +228,7 @@ function RegistrationCard({
 
 // ── PaymentRow ────────────────────────────────────────────────────────────────
 function PaymentRow({ payment }: { payment: MyPayment }) {
+  const { t } = useLocale();
   return (
     <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
       <div className="flex-1 min-w-0">
@@ -233,10 +237,10 @@ function PaymentRow({ payment }: { payment: MyPayment }) {
         </p>
         <p className="text-xs text-[var(--text-secondary)]">
           {payment.paidAt
-            ? `Paid ${formatDate(payment.paidAt)}`
+            ? t("myRegistrations.paidDate", { date: formatDate(payment.paidAt) })
             : payment.dueDate
-            ? `Due ${formatDate(payment.dueDate)}`
-            : "No due date"}
+            ? t("myRegistrations.dueDate", { date: formatDate(payment.dueDate) })
+            : t("myRegistrations.noDueDate")}
         </p>
       </div>
       <span className="text-sm font-semibold text-[var(--text-primary)] shrink-0">
@@ -258,6 +262,7 @@ function PaymentRow({ payment }: { payment: MyPayment }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MyRegistrationsPage() {
+  const { t } = useLocale();
   const [tab, setTab] = useState<"registrations" | "payments">("registrations");
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -279,9 +284,9 @@ export default function MyRegistrationsPage() {
     onSettled: () => setCancellingId(null),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-registrations"] });
-      toast({ title: "Registration cancelled", variant: "success" });
+      toast({ title: t("myRegistrations.registrationCancelled"), variant: "success" });
     },
-    onError: () => toast({ title: "Failed to cancel", variant: "destructive" }),
+    onError: () => toast({ title: t("myRegistrations.failedToCancel"), variant: "destructive" }),
   });
 
   // Find the next upcoming registration (soonest future date)
@@ -300,15 +305,15 @@ export default function MyRegistrationsPage() {
   const currency = pendingPayments[0]?.currency ?? "EUR";
 
   return (
-    <AppShell title="My Registrations">
+    <AppShell>
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-[var(--text-primary)]">My Registrations</h1>
+          <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("myRegistrations.title")}</h1>
           {pendingPayments.length > 0 && (
             <div className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm dark:border-amber-800 dark:bg-amber-950">
               <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <span className="font-semibold text-amber-800 dark:text-amber-300">
-                {formatCurrency(pendingTotal, currency)} outstanding
+                {t("myRegistrations.outstanding", { amount: formatCurrency(pendingTotal, currency) })}
               </span>
             </div>
           )}
@@ -322,35 +327,35 @@ export default function MyRegistrationsPage() {
         <div className="grid grid-cols-3 gap-3">
           <Card className="p-4 text-center">
             <p className="text-2xl font-bold text-[var(--text-primary)]">{registrations.length}</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Registrations</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{t("myRegistrations.registrationCount")}</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-2xl font-bold text-green-600">
               {registrations.filter((r) => r.paymentStatus === "PAID").length}
             </p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Paid</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{t("myRegistrations.paidCount")}</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-2xl font-bold text-amber-600">
               {registrations.filter((r) => r.paymentStatus === "PENDING").length}
             </p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Pending payment</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{t("myRegistrations.pendingCount")}</p>
           </Card>
         </div>
 
         <NavTabs
           tabs={[
-            { id: "registrations", label: "Registrations", icon: <Trophy className="h-3.5 w-3.5" /> },
+            { id: "registrations", label: t("myRegistrations.registrations"), icon: <Trophy className="h-3.5 w-3.5" /> },
             {
               id: "payments",
-              label: "Payments",
+              label: t("myRegistrations.payments"),
               icon: <CreditCard className="h-3.5 w-3.5" />,
               badge:
                 pendingPayments.length > 0 ? String(pendingPayments.length) : undefined,
             },
           ]}
           activeTab={tab}
-          onChange={(t) => setTab(t as typeof tab)}
+          onChange={(v) => setTab(v as "registrations" | "payments")}
         />
 
         {tab === "registrations" && (
@@ -360,9 +365,9 @@ export default function MyRegistrationsPage() {
             ) : registrations.length === 0 ? (
               <Card className="flex flex-col items-center gap-3 py-16 text-center">
                 <Trophy className="h-10 w-10 text-[var(--text-tertiary)]" />
-                <p className="text-sm text-[var(--text-secondary)]">No registrations yet.</p>
+                <p className="text-sm text-[var(--text-secondary)]">{t("myRegistrations.noRegistrations")}</p>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/competitions">Browse competitions</Link>
+                  <Link href="/competitions">{t("myRegistrations.browseCompetitions")}</Link>
                 </Button>
               </Card>
             ) : (
@@ -385,7 +390,7 @@ export default function MyRegistrationsPage() {
             ) : payments.length === 0 ? (
               <Card className="flex flex-col items-center gap-3 py-16 text-center">
                 <CreditCard className="h-10 w-10 text-[var(--text-tertiary)]" />
-                <p className="text-sm text-[var(--text-secondary)]">No payments yet.</p>
+                <p className="text-sm text-[var(--text-secondary)]">{t("myRegistrations.noPayments")}</p>
               </Card>
             ) : (
               payments.map((p) => <PaymentRow key={p.id} payment={p} />)

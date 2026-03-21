@@ -1,3 +1,6 @@
+import csDict from "./cs.json";
+import enDict from "./en.json";
+
 export type Locale = "en" | "cs";
 
 export const LOCALES: Locale[] = ["en", "cs"];
@@ -41,25 +44,27 @@ export function createT(dict: TranslationDict) {
 }
 
 export function loadLocale(locale: Locale): TranslationDict {
-  if (locale === "cs") {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("./cs.json") as TranslationDict;
-  }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require("./en.json") as TranslationDict;
+  return (locale === "cs" ? csDict : enDict) as TranslationDict;
 }
+
+// Module-level cache so getT() doesn't rebuild the translator on every call.
+const tCache = new Map<Locale, ReturnType<typeof createT>>();
 
 /** Use outside React (hooks, API handlers) — reads localStorage directly */
 export function getT() {
   const locale = detectLocale();
-  const dict = loadLocale(locale);
-  return createT(dict);
+  if (!tCache.has(locale)) {
+    tCache.set(locale, createT(loadLocale(locale)));
+  }
+  return tCache.get(locale)!;
 }
 
 export function detectLocale(): Locale {
   if (typeof window === "undefined") return DEFAULT_LOCALE;
-  const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-  if (stored === "en" || stored === "cs") return stored;
+  try {
+    const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (stored === "en" || stored === "cs") return stored;
+  } catch { /* Safari private mode may deny localStorage access */ }
   const browserLang = navigator.language.split("-")[0];
   if (browserLang === "cs" || browserLang === "sk") return "cs";
   return DEFAULT_LOCALE;

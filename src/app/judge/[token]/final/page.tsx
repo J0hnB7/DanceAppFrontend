@@ -11,6 +11,7 @@ import type { PairDto } from "@/lib/api/pairs";
 import type { DanceDto } from "@/lib/api/sections";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 
 interface FinalRoundSession {
   judgeTokenId: string;
@@ -98,6 +99,7 @@ function DancePlacementGrid({
 
 export default function JudgeFinalPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
+  const [locale] = useState<Locale>(() => detectLocale());
 
   const [session, setSession] = useState<FinalRoundSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,22 +129,24 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
     if (!session) return;
     const dancePlacements = placements[danceId] ?? {};
     if (Object.keys(dancePlacements).length < session.pairs.length) {
-      toast({ title: "Please assign all placements before submitting", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("final.assign_all", locale), variant: "destructive" } as Parameters<typeof toast>[0]);
       return;
     }
+    // Clear any prior error before each submission attempt
+    setError(null);
     setSubmitting(true);
     try {
       await apiClient.post(`/rounds/${session.roundId}/placements/${danceId}`, {
         pairPlacements: dancePlacements,
       });
       setSubmitted((prev) => new Set([...prev, danceId]));
-      toast({ title: "Dance submitted!", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("final.dance_submitted", locale), variant: "success" } as Parameters<typeof toast>[0]);
       // Auto-advance to next dance
       if (activeDanceIndex < (session.dances.length - 1)) {
         setActiveDanceIndex((i) => i + 1);
       }
     } catch {
-      toast({ title: "Submission failed", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("final.submit_failed", locale), variant: "destructive" } as Parameters<typeof toast>[0]);
     } finally {
       setSubmitting(false);
     }
@@ -165,7 +169,7 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
     );
   }
 
-  const allSubmitted = session.dances.every((d) => submitted.has(d.id));
+  const allSubmitted = session.dances.every((d) => submitted.has(d.id ?? ""));
   const activeDance = session.dances[activeDanceIndex];
   const activePlacements = placements[activeDance?.id ?? ""] ?? {};
   const allPlaced = activeDance
@@ -179,7 +183,7 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-[var(--text-tertiary)]">{session.competitionName}</p>
-            <h1 className="text-sm font-semibold">Judge {session.judgeNumber} — Final</h1>
+            <h1 className="text-sm font-semibold">{t("judge.label", locale)} {session.judgeNumber} — {t("final.header", locale)}</h1>
           </div>
           <div className="flex items-center gap-2">
             {session.dances.map((dance, i) => (
@@ -188,14 +192,14 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
                 onClick={() => setActiveDanceIndex(i)}
                 className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all",
-                  submitted.has(dance.id)
+                  submitted.has(dance.id ?? "")
                     ? "bg-[var(--success)] text-white"
                     : i === activeDanceIndex
                     ? "bg-[var(--accent)] text-white"
                     : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
                 )}
               >
-                {submitted.has(dance.id) ? "✓" : i + 1}
+                {submitted.has(dance.id ?? "") ? "✓" : i + 1}
               </button>
             ))}
           </div>
@@ -207,9 +211,9 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success)]/10">
             <CheckCircle2 className="h-8 w-8 text-[var(--success)]" />
           </div>
-          <h2 className="text-lg font-semibold">All dances submitted!</h2>
+          <h2 className="text-lg font-semibold">{t("final.all_done_title", locale)}</h2>
           <p className="text-sm text-[var(--text-secondary)]">
-            Your scores for all {session.dances.length} dances have been recorded.
+            {t("final.all_done_body_a", locale)} {session.dances.length} {t("final.all_done_body_b", locale)}
           </p>
         </div>
       ) : (
@@ -218,31 +222,31 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
           <div className="mb-4 flex items-center justify-between">
             <div>
               <Badge variant={submitted.has(activeDance?.id ?? "") ? "success" : "secondary"}>
-                {submitted.has(activeDance?.id ?? "") ? "Submitted" : "In progress"}
+                {submitted.has(activeDance?.id ?? "") ? t("final.status_submitted", locale) : t("final.status_in_progress", locale)}
               </Badge>
               <h2 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">
                 {activeDance?.name}
               </h2>
               <p className="text-xs text-[var(--text-secondary)]">
-                Assign placements 1–{session.pairs.length} for each pair
+                {t("final.assign_placements", locale, { n: session.pairs.length })}
               </p>
             </div>
           </div>
 
-          {activeDance && !submitted.has(activeDance.id) && (
+          {activeDance && !submitted.has(activeDance.id ?? "") && (
             <DancePlacementGrid
               pairs={session.pairs}
               placements={activePlacements}
-              onSet={(pairId, placement) => setPlacement(activeDance.id, pairId, placement)}
+              onSet={(pairId, placement) => setPlacement(activeDance.id ?? "", pairId, placement)}
             />
           )}
 
-          {activeDance && submitted.has(activeDance.id) && (
+          {activeDance && submitted.has(activeDance.id ?? "") && (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <CheckCircle2 className="h-10 w-10 text-[var(--success)]" />
-              <p className="font-medium">Submitted for {activeDance.name}</p>
+              <p className="font-medium">{t("final.submitted_for", locale)} {activeDance.name}</p>
               <p className="text-sm text-[var(--text-secondary)]">
-                Use the buttons above to review other dances.
+                {t("final.dance_done_review", locale)}
               </p>
             </div>
           )}
@@ -250,7 +254,7 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
       )}
 
       {/* Bottom bar */}
-      {!allSubmitted && activeDance && !submitted.has(activeDance.id) && (
+      {!allSubmitted && activeDance && !submitted.has(activeDance.id ?? "") && (
         <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--border)] bg-[var(--surface)] p-4">
           <div className="flex items-center gap-3">
             <Button
@@ -266,10 +270,10 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
               size="lg"
               loading={submitting}
               disabled={!allPlaced}
-              onClick={() => submitDance(activeDance.id)}
+              onClick={() => submitDance(activeDance.id ?? "")}
             >
               <Send className="h-5 w-5" />
-              Submit {activeDance.name}
+              {t("final.submit_dance", locale)} {activeDance.name}
               {!allPlaced && (
                 <span className="ml-1 text-xs opacity-70">
                   ({Object.keys(activePlacements).length}/{session.pairs.length})

@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from "msw";
 import {
-  mockUser, mockAuthResponse, competitions, sections, pairs, rounds,
+  mockUser, mockTokenResponse, competitions, sections, pairs, rounds,
   judgeTokens, sectionResults, fees, discounts, notifications,
   scheduleSlots, news,
 } from "./db";
@@ -15,21 +15,19 @@ async function body<T>(req: Request): Promise<T> {
 export const handlers = [
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
-  http.post("/api/v1/auth/register", async ({ request }) => {
+  http.post("/api/v1/auth/register", async () => {
     await delay(D);
-    const data = await body<{ email: string; firstName?: string; lastName?: string }>(request);
-    return HttpResponse.json({ ...mockAuthResponse, user: { ...mockUser, email: data.email } }, { status: 201 });
+    return HttpResponse.json(mockTokenResponse, { status: 201 });
   }),
 
   http.post("/api/v1/auth/login", async () => {
     await delay(D);
-    // Accept any credentials in mock mode
-    return HttpResponse.json(mockAuthResponse);
+    return HttpResponse.json(mockTokenResponse);
   }),
 
   http.post("/api/v1/auth/refresh", async () => {
     await delay(D);
-    return HttpResponse.json(mockAuthResponse);
+    return HttpResponse.json(mockTokenResponse);
   }),
 
   http.post("/api/v1/auth/logout", async () => {
@@ -39,24 +37,24 @@ export const handlers = [
 
   http.get("/api/v1/auth/me", async () => {
     await delay(D);
-    return HttpResponse.json(mockAuthResponse.user);
+    return HttpResponse.json(mockUser);
   }),
 
   // ── Competitions ─────────────────────────────────────────────────────────────
-  http.get("/api/v1/competitions", async ({ request }) => {
+  http.get("/api/v1/competitions", async () => {
     await delay(D);
-    const url = new URL(request.url);
-    const status = url.searchParams.get("status");
-    const filtered = status ? competitions.filter((c) => c.status === status) : competitions;
-    const page = Number(url.searchParams.get("page") ?? 0);
-    const size = Number(url.searchParams.get("size") ?? 20);
-    return HttpResponse.json({
-      content: filtered.slice(page * size, (page + 1) * size),
-      totalElements: filtered.length,
-      totalPages: Math.ceil(filtered.length / size),
-      number: page,
-      size,
-    });
+    // Return as CompetitionSummary array (backend returns array, not page)
+    const summaries = competitions.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug ?? c.id,
+      status: c.status,
+      eventDate: c.eventDate,
+      sectionCount: sections.filter((s) => s.competitionId === c.id).length,
+      pairCount: pairs.filter((p) => p.competitionId === c.id).length,
+      registrationOpen: c.registrationOpen,
+    }));
+    return HttpResponse.json(summaries);
   }),
 
   http.get("/api/v1/competitions/:id", async ({ params }) => {
@@ -69,7 +67,7 @@ export const handlers = [
   http.post("/api/v1/competitions", async ({ request }) => {
     await delay(D);
     const data = await body<Record<string, unknown>>(request);
-    const comp = { id: `comp-${Date.now()}`, ...data, status: "DRAFT", organizerId: mockUser.id, registeredPairsCount: 0, createdAt: new Date().toISOString() };
+    const comp = { id: `comp-${Date.now()}`, slug: `comp-${Date.now()}`, ...data, status: "DRAFT", registrationOpen: false, organizerId: mockUser.id };
     competitions.push(comp as typeof competitions[0]);
     return HttpResponse.json(comp, { status: 201 });
   }),
@@ -91,21 +89,6 @@ export const handlers = [
     return HttpResponse.json(comp);
   }),
 
-  http.post("/api/v1/competitions/:id/open-registration", async ({ params }) => {
-    await delay(D);
-    const comp = competitions.find((c) => c.id === params.id);
-    if (!comp) return new HttpResponse(null, { status: 404 });
-    comp.status = "REGISTRATION_OPEN";
-    return HttpResponse.json(comp);
-  }),
-
-  http.post("/api/v1/competitions/:id/close-registration", async ({ params }) => {
-    await delay(D);
-    const comp = competitions.find((c) => c.id === params.id);
-    if (!comp) return new HttpResponse(null, { status: 404 });
-    comp.status = "PUBLISHED";
-    return HttpResponse.json(comp);
-  }),
 
   // ── Public registration ───────────────────────────────────────────────────────
   http.post("/api/v1/competitions/:id/public-registration", async ({ params, request }) => {
@@ -124,14 +107,14 @@ export const handlers = [
 
     const comp = competitions.find((c) => c.id === params.id);
     if (!comp) return new HttpResponse(null, { status: 404 });
-    if (comp.status !== "REGISTRATION_OPEN") {
+    if (!comp.registrationOpen) {
       return HttpResponse.json({ message: "Registrace není otevřena" }, { status: 400 });
     }
 
     const section = sections.find((s) => s.id === data.sectionId);
     if (!section) return HttpResponse.json({ message: "Kategorie nenalezena" }, { status: 404 });
 
-    if (section.maxPairs && section.registeredPairsCount >= section.maxPairs) {
+    if (section.maxPairs && (section.registeredPairsCount ?? 0) >= section.maxPairs) {
       return HttpResponse.json({ message: "Kapacita kategorie je plná" }, { status: 409 });
     }
 
@@ -152,9 +135,8 @@ export const handlers = [
     };
     pairs.push(pair as typeof pairs[0]);
 
-    // Update counters
-    comp.registeredPairsCount += 1;
-    section.registeredPairsCount += 1;
+    // Update section counter
+    section.registeredPairsCount = (section.registeredPairsCount ?? 0) + 1;
 
     // Mock confirmation email log
     notifications.push({
@@ -305,17 +287,62 @@ export const handlers = [
     return HttpResponse.json(judgeTokens.filter((j) => j.competitionId === params.id));
   }),
 
-  http.post("/api/v1/competitions/:id/judge-tokens", async ({ params }) => {
+  http.post("/api/v1/competitions/:id/judge-tokens", async ({ params, request }) => {
     await delay(D);
-    const num = judgeTokens.filter((j) => j.competitionId === params.id).length + 1;
-    const token = { id: `jt-${Date.now()}`, competitionId: params.id as string, judgeNumber: num, token: `JUDGE${num}TOKEN`, pin: Math.floor(1000 + Math.random() * 9000).toString(), role: "JUDGE", connected: false };
-    judgeTokens.push(token);
-    return HttpResponse.json(token, { status: 201 });
+    const body = await request.json() as { judgeNumber?: number; role?: string };
+    const existing = judgeTokens.filter((j) => j.competitionId === params.id);
+    const num = body.judgeNumber ?? (existing.length + 1);
+    const rawToken = `judge-${params.id}-${num}-${Date.now()}`;
+    const entry = {
+      id: `jt-${Date.now()}-${num}`,
+      competitionId: params.id as string,
+      judgeNumber: num,
+      token: rawToken,
+      rawToken,
+      active: true,
+      pin: String(Math.floor(100000 + Math.random() * 900000)),
+      role: body.role ?? "JUDGE",
+    };
+    judgeTokens.push(entry);
+    return HttpResponse.json(entry, { status: 201 });
+  }),
+
+  http.post("/api/v1/judge-tokens/validate", async ({ request }) => {
+    await delay(D);
+    const { token } = await request.json() as { token: string };
+    const jt = judgeTokens.find((j) => j.token === token || j.rawToken === token);
+    if (!jt || !jt.active) return HttpResponse.json({ message: "Invalid or expired judge token" }, { status: 401 });
+    return HttpResponse.json({
+      judgeTokenId: jt.id,
+      judgeNumber: jt.judgeNumber,
+      competitionId: jt.competitionId,
+      competitionName: "Test Competition",
+      role: jt.role,
+    });
   }),
 
   http.delete("/api/v1/competitions/:id/judge-tokens/:tokenId", async () => {
     await delay(D);
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get("/api/v1/judge/active-round", async ({ request }) => {
+    await delay(D);
+    const url = new URL(request.url);
+    const competitionId = url.searchParams.get("competitionId");
+    const compSections = sections.filter((s) => s.competitionId === competitionId);
+    const activeRound = rounds.find((r) =>
+      compSections.some((s) => s.id === r.sectionId) &&
+      (r.status === "IN_PROGRESS" || r.status === "OPEN")
+    );
+    if (!activeRound) return HttpResponse.json({ message: "No active round" }, { status: 404 });
+    const section = compSections.find((s) => s.id === activeRound.sectionId);
+    const roundPairs = pairs.filter((p) => p.sectionId === activeRound.sectionId);
+    return HttpResponse.json({
+      round: activeRound,
+      dances: section?.dances ?? [],
+      pairs: roundPairs,
+    });
   }),
 
   // ── Scoring ───────────────────────────────────────────────────────────────────

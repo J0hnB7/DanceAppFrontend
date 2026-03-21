@@ -8,7 +8,7 @@ import {
   Plus, Upload, Search, Trash2, ToggleLeft, ToggleRight,
   Users, CreditCard, Clock, QrCode, Copy, Check, Mail,
   FileText, Download, Printer, Info, X, CheckCircle,
-  AlertCircle,
+  AlertCircle, Sheet,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
@@ -49,6 +49,7 @@ import { pairsApi } from "@/lib/api/pairs";
 import type { PairDto, RegistrationStatus } from "@/lib/api/pairs";
 import apiClient from "@/lib/api-client";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
 
 const addPairSchema = z.object({
   sectionId: z.string().min(1, "Required"),
@@ -65,20 +66,21 @@ const addPairSchema = z.object({
 type AddPairForm = z.infer<typeof addPairSchema>;
 
 const REG_STATUS_CONFIG: Record<RegistrationStatus, {
-  label: string;
+  labelKey: string;
   next: RegistrationStatus;
   variant: "secondary" | "success" | "destructive";
   icon: React.ElementType;
 }> = {
-  UNCONFIRMED: { label: "Nepotvrzeno", next: "CONFIRMED", variant: "secondary", icon: AlertCircle },
-  CONFIRMED: { label: "Potvrzeno", next: "CANCELLED", variant: "success", icon: CheckCircle },
-  CANCELLED: { label: "Zrušeno", next: "UNCONFIRMED", variant: "destructive", icon: X },
+  UNCONFIRMED: { labelKey: "pairs.unconfirmed", next: "CONFIRMED", variant: "secondary", icon: AlertCircle },
+  CONFIRMED: { labelKey: "pairs.confirmed", next: "CANCELLED", variant: "success", icon: CheckCircle },
+  CANCELLED: { labelKey: "pairs.cancelled", next: "UNCONFIRMED", variant: "destructive", icon: X },
 };
 
 // ── RegistrationStats ─────────────────────────────────────────────────────────
 function RegistrationStats({ total, paid, pending, maxPairs }: {
   total: number; paid: number; pending: number; maxPairs?: number;
 }) {
+  const { t } = useLocale();
   const capacityPct = maxPairs ? Math.min(100, Math.round((total / maxPairs) * 100)) : null;
   const spotsLeft = maxPairs ? maxPairs - total : null;
 
@@ -87,31 +89,31 @@ function RegistrationStats({ total, paid, pending, maxPairs }: {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-            <Users className="h-4 w-4" /> Celkem registrováno
+            <Users className="h-4 w-4" /> {t("pairs.totalRegistered")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-2xl font-bold">{total}</p>
-          {maxPairs && <p className="text-xs text-[var(--text-tertiary)]">z {maxPairs} max</p>}
+          {maxPairs && <p className="text-xs text-[var(--text-tertiary)]">{t("pairs.ofMax", { max: maxPairs })}</p>}
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-            <CreditCard className="h-4 w-4" /> Potvrzeno / Zaplaceno
+            <CreditCard className="h-4 w-4" /> {t("pairs.confirmedPaid")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-2xl font-bold">{paid}</p>
           <p className="text-xs text-[var(--text-tertiary)]">
-            {total > 0 ? Math.round((paid / total) * 100) : 0}% z celku
+            {total > 0 ? Math.round((paid / total) * 100) : 0}{t("pairs.ofTotal")}
           </p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-            <Clock className="h-4 w-4" /> Čeká na platbu
+            <Clock className="h-4 w-4" /> {t("pairs.pendingPayment")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -121,13 +123,13 @@ function RegistrationStats({ total, paid, pending, maxPairs }: {
       {maxPairs && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-[var(--text-secondary)]">Kapacita</CardTitle>
+            <CardTitle className="text-xs text-[var(--text-secondary)]">{t("pairs.capacity")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-end gap-2">
               <p className="text-2xl font-bold">{capacityPct}%</p>
               {spotsLeft !== null && spotsLeft > 0 && (
-                <p className="mb-0.5 text-xs text-[var(--text-tertiary)]">{spotsLeft} volných</p>
+                <p className="mb-0.5 text-xs text-[var(--text-tertiary)]">{t("pairs.spotsLeft", { count: spotsLeft })}</p>
               )}
             </div>
             <Progress value={capacityPct ?? 0} className="mt-2 h-1.5" />
@@ -140,6 +142,7 @@ function RegistrationStats({ total, paid, pending, maxPairs }: {
 
 // ── NoteCell ──────────────────────────────────────────────────────────────────
 function NoteCell({ pair, competitionId }: { pair: PairDto; competitionId: string }) {
+  const { t } = useLocale();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(pair.adminNote ?? "");
   const qc = useQueryClient();
@@ -149,7 +152,7 @@ function NoteCell({ pair, competitionId }: { pair: PairDto; competitionId: strin
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pairs", competitionId] });
       setEditing(false);
-      toast({ title: "Poznámka uložena", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("pairs.notesSaved"), variant: "success" } as Parameters<typeof toast>[0]);
     },
   });
 
@@ -178,13 +181,13 @@ function NoteCell({ pair, competitionId }: { pair: PairDto; competitionId: strin
     <button
       className="flex items-center gap-1 text-xs text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
       onClick={() => { setDraft(pair.adminNote ?? ""); setEditing(true); }}
-      title={pair.adminNote ?? "Přidat poznámku"}
+      title={pair.adminNote ?? t("pairs.note")}
     >
       <FileText className="h-3.5 w-3.5 shrink-0" />
       {pair.adminNote ? (
         <span className="max-w-[100px] truncate text-[var(--text-secondary)]">{pair.adminNote}</span>
       ) : (
-        <span className="italic">poznámka</span>
+        <span className="italic">{t("pairs.note")}</span>
       )}
     </button>
   );
@@ -192,13 +195,14 @@ function NoteCell({ pair, competitionId }: { pair: PairDto; competitionId: strin
 
 // ── ContactModal ──────────────────────────────────────────────────────────────
 function ContactModal({ pair, onClose }: { pair: PairDto; onClose: () => void }) {
+  const { t } = useLocale();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
   const send = useMutation({
-    mutationFn: () => pairsApi.contactEmail(pair.competitionId, pair.id, { subject, message }),
+    mutationFn: () => pairsApi.contactEmail(pair.competitionId ?? "", pair.id, { subject, message }),
     onSuccess: () => {
-      toast({ title: "Email odeslán", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("pairs.emailSent"), variant: "success" } as Parameters<typeof toast>[0]);
       onClose();
     },
   });
@@ -211,42 +215,42 @@ function ContactModal({ pair, onClose }: { pair: PairDto; onClose: () => void })
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-[var(--accent)]" />
-            Kontaktovat pár
+            {t("pairs.contactPair")}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <p className="mb-1 text-xs text-[var(--text-secondary)]">Komu</p>
+            <p className="mb-1 text-xs text-[var(--text-secondary)]">{t("pairs.to")}</p>
             <p className="rounded border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-2 text-sm">
               {pairName}
               {pair.email && <span className="ml-2 text-xs text-[var(--text-tertiary)]">({pair.email})</span>}
             </p>
           </div>
           <Input
-            label="Předmět"
+            label={t("pairs.subject")}
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            placeholder="Předmět emailu..."
+            placeholder={t("pairs.subjectPlaceholder")}
           />
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Zpráva</label>
+            <label className="mb-1.5 block text-sm font-medium">{t("pairs.message")}</label>
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Text zprávy..."
+              placeholder={t("pairs.messagePlaceholder")}
               className="h-28"
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Zrušit</Button>
+          <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
           <Button
             onClick={() => send.mutate()}
             loading={send.isPending}
             disabled={!subject || !message}
           >
             <Mail className="h-4 w-4" />
-            Odeslat email
+            {t("pairs.sendEmail")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -255,31 +259,46 @@ function ContactModal({ pair, onClose }: { pair: PairDto; onClose: () => void })
 }
 
 // ── Excel export ──────────────────────────────────────────────────────────────
-function exportToExcel(pairs: PairDto[], sections: { id: string; name: string }[]) {
-  const rows = [
-    ["#", "Tanečník 1", "Tanečník 2", "Klub 1", "Klub 2", "Sekce", "Email", "Status registrace", "Platba", "Registrován"],
-    ...pairs.map((p) => [
-      String(p.startNumber).padStart(3, "0"),
-      `${p.dancer1FirstName} ${p.dancer1LastName}`,
-      p.dancer2FirstName ? `${p.dancer2FirstName} ${p.dancer2LastName}` : "",
-      p.dancer1Club ?? "",
-      p.dancer2Club ?? "",
-      sections.find((s) => s.id === p.sectionId)?.name ?? p.sectionId,
-      p.email ?? "",
-      p.registrationStatus,
-      p.paymentStatus,
-      new Date(p.registeredAt).toLocaleDateString("cs-CZ"),
-    ]),
-  ];
+async function exportToExcel(pairs: PairDto[], sections: { id: string; name: string }[], competitionName?: string) {
+  const XLSX = await import("xlsx");
 
-  const tsv = rows.map((r) => r.join("\t")).join("\n");
-  const blob = new Blob(["\uFEFF" + tsv], { type: "text/tab-separated-values;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "registrations.xls";
-  a.click();
-  URL.revokeObjectURL(url);
+  const getSectionName = (p: PairDto) => {
+    const sectionId = p.sectionId ?? p.sections?.[0]?.sectionId;
+    return sections.find((s) => s.id === sectionId)?.name ?? p.sections?.[0]?.sectionName ?? "";
+  };
+  const getName1 = (p: PairDto) =>
+    p.dancer1FirstName && p.dancer1LastName ? `${p.dancer1FirstName} ${p.dancer1LastName}` : (p.dancer1Name ?? "");
+  const getName2 = (p: PairDto) =>
+    p.dancer2FirstName && p.dancer2LastName ? `${p.dancer2FirstName} ${p.dancer2LastName}` : (p.dancer2Name ?? "");
+
+  const data = pairs.map((p) => ({
+    "#": String(p.startNumber).padStart(3, "0"),
+    "Jméno (1)": p.dancer1FirstName ?? (p.dancer1Name?.split(" ")[0] ?? ""),
+    "Příjmení (1)": p.dancer1LastName ?? (p.dancer1Name?.split(" ").slice(1).join(" ") ?? ""),
+    "Jméno (2)": p.dancer2FirstName ?? (p.dancer2Name?.split(" ")[0] ?? ""),
+    "Příjmení (2)": p.dancer2LastName ?? (p.dancer2Name?.split(" ").slice(1).join(" ") ?? ""),
+    "Tanečník 1": getName1(p),
+    "Tanečník 2": getName2(p),
+    "Klub": p.dancer1Club ?? p.club ?? "",
+    "Klub 2": p.dancer2Club ?? "",
+    "Kategorie": getSectionName(p),
+    "Email": p.email ?? "",
+    "Status": p.registrationStatus ?? "",
+    "Platba": p.paymentStatus ?? "",
+    "Registrován": p.registeredAt ? new Date(p.registeredAt).toLocaleDateString("cs-CZ") : "",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  // Column widths
+  ws["!cols"] = [
+    { wch: 5 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
+    { wch: 22 }, { wch: 22 }, { wch: 20 }, { wch: 20 },
+    { wch: 24 }, { wch: 28 }, { wch: 14 }, { wch: 10 }, { wch: 14 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Páry");
+  const filename = `${(competitionName ?? "registrace").replace(/[^a-z0-9]/gi, "_")}_pary.xlsx`;
+  XLSX.writeFile(wb, filename);
 }
 
 // ── PDF start numbers ─────────────────────────────────────────────────────────
@@ -321,6 +340,7 @@ function printStartNumbers(pairs: PairDto[], competitionName: string, sections: 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function PairsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [sectionFilter, setSectionFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -330,6 +350,9 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
   const [copied, setCopied] = useState(false);
   const [contactPair, setContactPair] = useState<PairDto | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const xlsxFileRef = useRef<HTMLInputElement>(null);
+  const [xlsxResult, setXlsxResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
+  const [xlsxImporting, setXlsxImporting] = useState(false);
   const qc = useQueryClient();
 
   const { data: pairs, isLoading } = usePairs(id);
@@ -371,8 +394,8 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
 
   const toggleRegistration = useMutation({
     mutationFn: () => {
-      if (competition?.status === "REGISTRATION_OPEN") {
-        return competitionsApi.update(id, { status: "PUBLISHED" });
+      if (competition?.registrationOpen === true) {
+        return competitionsApi.closeRegistration(id);
       }
       return competitionsApi.openRegistration(id);
     },
@@ -380,7 +403,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
       qc.invalidateQueries({ queryKey: ["competitions", "detail", id] });
       setToggleConfirmOpen(false);
       toast({
-        title: competition?.status === "REGISTRATION_OPEN" ? "Registrace uzavřena" : "Registrace otevřena",
+        title: competition?.registrationOpen === true ? t("competition.registrationClosed") : t("competition.registrationOpened"),
         variant: "success",
       } as Parameters<typeof toast>[0]);
     },
@@ -407,14 +430,17 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
         (p.dancer2FirstName ?? "").toLowerCase().includes(q)
       );
     })();
-    const matchesSection = sectionFilter === "all" || p.sectionId === sectionFilter;
+    const pSectionId = p.sectionId ?? p.sections?.[0]?.sectionId;
+    const matchesSection = sectionFilter === "all" || pSectionId === sectionFilter;
     return matchesSearch && matchesSection;
   });
 
   const onSubmit = async (values: AddPairForm) => {
     await createPair.mutateAsync({
       sectionId: values.sectionId,
-      startNumber: values.startNumber ? Number(values.startNumber) : undefined,
+      startNumber: values.startNumber ? Number(values.startNumber) : 0,
+      dancer1Name: `${values.dancer1FirstName} ${values.dancer1LastName}`,
+      dancer2Name: values.dancer2FirstName ? `${values.dancer2FirstName} ${values.dancer2LastName ?? ""}`.trim() : undefined,
       dancer1FirstName: values.dancer1FirstName,
       dancer1LastName: values.dancer1LastName,
       dancer1Club: values.dancer1Club,
@@ -422,7 +448,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
       dancer2LastName: values.dancer2LastName,
       dancer2Club: values.dancer2Club,
     });
-    toast({ title: "Pár přidán", variant: "success" } as Parameters<typeof toast>[0]);
+    toast({ title: t("pairs.added"), variant: "success" } as Parameters<typeof toast>[0]);
     reset();
     setDialogOpen(false);
   };
@@ -432,14 +458,82 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
     if (!file) return;
     const result = await importPairs.mutateAsync(file);
     toast({
-      title: `Importováno ${result.imported} párů`,
-      description: result.errors.length ? `${result.errors.length} chyb` : undefined,
+      title: t("pairs.importedCount", { count: result.imported }),
+      description: result.errors.length ? t("pairs.importErrors", { count: result.errors.length }) : undefined,
       variant: result.errors.length ? "warning" : "success",
     } as Parameters<typeof toast>[0]);
     e.target.value = "";
   };
 
-  const isRegistrationOpen = competition?.status === "REGISTRATION_OPEN";
+  const handleXlsxImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setXlsxImporting(true);
+    let skipped = 0;
+    try {
+      const XLSX = await import("xlsx");
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 }) as unknown[][];
+      const dataRows = rows.slice(1).filter((r) => (r as unknown[])[4]);
+
+      const batch: Record<string, unknown>[] = [];
+      for (const row of dataRows) {
+        const r = row as (string | number | undefined)[];
+        const externalSectionId = String(r[0] ?? "");
+        const externalCompetitorId = String(r[1] ?? "");
+        const sectionName = String(r[3] ?? "");
+        const firstName1 = String(r[4] ?? "").trim();
+        const lastName1 = String(r[5] ?? "").trim();
+        const firstName2 = String(r[6] ?? "").trim();
+        const lastName2 = String(r[7] ?? "").trim();
+        const country = String(r[8] ?? "").trim();
+        const club = String(r[9] ?? "").trim();
+        const feePerPerson = r[14] != null ? Number(r[14]) : undefined;
+        const feeTotal = r[15] != null ? Number(r[15]) : undefined;
+        const starts = String(r[16]) === "1";
+        const startType = String(r[18] ?? "").trim() || undefined;
+        const startsFromRound = r[19] != null ? Number(r[19]) : undefined;
+        const classValue = String(r[20] ?? "").trim() || undefined;
+        if (!firstName1 || !lastName1) { skipped++; continue; }
+        const section = sections?.find((s) => s.name === sectionName || s.externalId === externalSectionId);
+        batch.push({
+          sectionId: section?.id ?? "",
+          dancer1Name: `${firstName1} ${lastName1}`,
+          dancer1FirstName: firstName1,
+          dancer1LastName: lastName1,
+          dancer2Name: firstName2 ? `${firstName2} ${lastName2}` : undefined,
+          dancer2FirstName: firstName2 || undefined,
+          dancer2LastName: lastName2 || undefined,
+          club: club || undefined,
+          country: country || undefined,
+          externalId: externalCompetitorId,
+          externalSectionId,
+          feePerPerson,
+          feeTotal,
+          starts,
+          startType,
+          startsFromRound,
+          classValue,
+        });
+      }
+
+      const res = await apiClient.post<{ imported: number; errors: string[] }>(
+        `/competitions/${id}/pairs/batch-import`,
+        batch,
+      );
+      qc.invalidateQueries({ queryKey: ["pairs", id] });
+      setXlsxResult({ imported: res.data.imported, skipped, errors: res.data.errors });
+    } catch (err) {
+      setXlsxResult({ imported: 0, skipped, errors: [(err as { message?: string })?.message ?? "Neznámá chyba"] });
+    } finally {
+      setXlsxImporting(false);
+      e.target.value = "";
+    }
+  };
+
+  const isRegistrationOpen = competition?.registrationOpen === true;
 
   return (
     <AppShell
@@ -452,9 +546,9 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
             onClick={() => setToggleConfirmOpen(true)}
           >
             {isRegistrationOpen ? (
-              <><ToggleRight className="h-4 w-4" />Registrace: Otevřená</>
+              <><ToggleRight className="h-4 w-4" />{t("pairs.registrationOpen")}</>
             ) : (
-              <><ToggleLeft className="h-4 w-4" />Registrace: Uzavřená</>
+              <><ToggleLeft className="h-4 w-4" />{t("pairs.registrationClosed")}</>
             )}
           </Button>
 
@@ -465,17 +559,17 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
             loading={generateCheckinLink.isPending}
           >
             <QrCode className="h-4 w-4" />
-            Check-in odkaz
+            {t("pairs.checkinLink")}
           </Button>
 
           <Button
             size="sm"
             variant="outline"
-            onClick={() => exportToExcel(pairs ?? [], sections ?? [])}
+            onClick={() => exportToExcel(pairs ?? [], sections ?? [], competition?.name)}
             disabled={!pairs?.length}
           >
             <Download className="h-4 w-4" />
-            Excel
+            {t("pairs.excelExport")}
           </Button>
 
           <Button
@@ -485,22 +579,27 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
             disabled={!pairs?.length}
           >
             <Printer className="h-4 w-4" />
-            Startovní čísla
+            {t("pairs.startNumbers")}
           </Button>
 
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileImport} />
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} loading={importPairs.isPending}>
             <Upload className="h-4 w-4" />
-            Import CSV
+            {t("pairs.import")}
+          </Button>
+          <input ref={xlsxFileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleXlsxImport} />
+          <Button size="sm" variant="outline" onClick={() => xlsxFileRef.current?.click()} loading={xlsxImporting} title="Import párů z Excel souboru (testovací)">
+            <Sheet className="h-4 w-4" />
+            Import XLSX
           </Button>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
-            Přidat pár
+            {t("pairs.add")}
           </Button>
         </div>
       }
     >
-      <PageHeader title="Páry" description={`${total} párů registrováno`} />
+      <PageHeader title={t("pairs.title")} description={t("pairs.registered", { count: String(total) })} backHref={`/dashboard/competitions/${id}`} />
 
       <RegistrationStats
         total={total}
@@ -512,7 +611,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
       {/* Filters */}
       <div className="mb-4 flex items-center gap-3 flex-wrap">
         <Input
-          placeholder="Hledat jménem nebo startovním číslem..."
+          placeholder={t("pairs.searchPlaceholder")}
           leftIcon={<Search className="h-4 w-4" />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -520,10 +619,10 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
         />
         <Select value={sectionFilter} onValueChange={setSectionFilter}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Všechny sekce" />
+            <SelectValue placeholder={t("section.title")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Všechny sekce</SelectItem>
+            <SelectItem value="all">{t("section.title")}</SelectItem>
             {sections?.map((s) => (
               <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
             ))}
@@ -536,11 +635,12 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
           <TableHeader>
             <TableRow>
               <TableHead className="w-16">#</TableHead>
-              <TableHead>Tanečník 1</TableHead>
-              <TableHead>Tanečník 2</TableHead>
-              <TableHead>Sekce</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Poznámka</TableHead>
+              <TableHead>{t("pairs.dancer1")}</TableHead>
+              <TableHead>{t("pairs.dancer2")}</TableHead>
+              <TableHead>{t("pairs.clubColumn")}</TableHead>
+              <TableHead>{t("pairs.section")}</TableHead>
+              <TableHead>{t("pairs.status")}</TableHead>
+              <TableHead>{t("pairs.note")}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -548,20 +648,23 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 7 }).map((_, j) => (
+                  {Array.from({ length: 8 }).map((_, j) => (
                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                   ))}
                 </TableRow>
               ))}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-[var(--text-secondary)]">
-                  {search || sectionFilter !== "all" ? "Žádné páry neodpovídají filtru" : "Žádné páry zatím neregistrovány"}
+                <TableCell colSpan={8} className="py-12 text-center text-[var(--text-secondary)]">
+                  {search || sectionFilter !== "all" ? t("pairs.noMatchFilter") : t("pairs.noPairsYet")}
                 </TableCell>
               </TableRow>
             )}
             {filtered.map((pair) => {
-              const section = sections?.find((s) => s.id === pair.sectionId);
+              // backend returns pair.sections[]; mock uses pair.sectionId
+              const sectionId = pair.sectionId ?? pair.sections?.[0]?.sectionId;
+              const sectionNameFromPair = pair.sections?.[0]?.sectionName;
+              const section = sections?.find((s) => s.id === sectionId);
               const regStatus = pair.registrationStatus ?? "UNCONFIRMED";
               const statusCfg = REG_STATUS_CONFIG[regStatus];
               return (
@@ -570,40 +673,45 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                     {String(pair.startNumber).padStart(3, "0")}
                   </TableCell>
                   <TableCell>
-                    <div>
-                      <p className="font-medium text-sm">
-                        {pair.dancer1FirstName} {pair.dancer1LastName}
-                      </p>
-                      {pair.dancer1Club && (
-                        <p className="text-xs text-[var(--text-tertiary)]">{pair.dancer1Club}</p>
-                      )}
-                    </div>
+                    <p className="font-medium text-sm">
+                      {pair.dancer1FirstName && pair.dancer1LastName
+                        ? `${pair.dancer1FirstName} ${pair.dancer1LastName}`
+                        : pair.dancer1Name ?? "—"}
+                    </p>
                   </TableCell>
                   <TableCell>
-                    {pair.dancer2FirstName && (
-                      <div>
-                        <p className="text-sm">{pair.dancer2FirstName} {pair.dancer2LastName}</p>
-                        {pair.dancer2Club && (
-                          <p className="text-xs text-[var(--text-tertiary)]">{pair.dancer2Club}</p>
-                        )}
-                      </div>
+                    {(pair.dancer2FirstName || pair.dancer2Name) && (
+                      <p className="text-sm">
+                        {pair.dancer2FirstName && pair.dancer2LastName
+                          ? `${pair.dancer2FirstName} ${pair.dancer2LastName}`
+                          : pair.dancer2Name}
+                      </p>
                     )}
                   </TableCell>
                   <TableCell>
-                    <p className="text-xs text-[var(--text-secondary)]">
-                      {section?.name ?? pair.sectionId.slice(0, 8) + "…"}
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {pair.dancer1Club ?? pair.dancer2Club ?? pair.club ?? "—"}
                     </p>
+                  </TableCell>
+                  <TableCell>
+                    {(section?.name ?? sectionNameFromPair) ? (
+                      <Badge variant="secondary" className="whitespace-nowrap text-xs">
+                        {section?.name ?? sectionNameFromPair}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-[var(--text-tertiary)]">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <button
                       className="group"
-                      title={`Kliknutím změníš na: ${REG_STATUS_CONFIG[statusCfg.next].label}`}
+                      title={t("pairs.cycleStatusTitle", { next: t(REG_STATUS_CONFIG[statusCfg.next].labelKey) })}
                       onClick={() => cycleStatus.mutate({ pairId: pair.id, status: statusCfg.next })}
                       disabled={cycleStatus.isPending}
                     >
                       <Badge variant={statusCfg.variant} className="flex items-center gap-1 cursor-pointer group-hover:opacity-80 transition-opacity">
                         <statusCfg.icon className="h-3 w-3" />
-                        {statusCfg.label}
+                        {t(statusCfg.labelKey)}
                       </Badge>
                     </button>
                   </TableCell>
@@ -618,7 +726,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                           size="icon-sm"
                           className="text-[var(--text-tertiary)] hover:text-[var(--accent)]"
                           onClick={() => setContactPair(pair)}
-                          title="Kontaktovat emailem"
+                          title={t("pairs.contactEmail")}
                         >
                           <Mail className="h-4 w-4" />
                         </Button>
@@ -629,7 +737,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                           size="icon-sm"
                           className="text-[var(--text-tertiary)] hover:text-[var(--accent)]"
                           onClick={() => setContactPair(pair)}
-                          title="Kontaktovat (bez emailu)"
+                          title={t("pairs.contactNoEmail")}
                         >
                           <Mail className="h-4 w-4 opacity-40" />
                         </Button>
@@ -638,7 +746,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                         variant="ghost"
                         size="icon-sm"
                         className="text-[var(--text-tertiary)] hover:text-[var(--destructive)]"
-                        onClick={() => { if (confirm("Smazat tento pár?")) deletePair.mutate(pair.id); }}
+                        onClick={() => { if (confirm(t("pairs.deleteConfirm"))) deletePair.mutate(pair.id); }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -661,18 +769,16 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>
-              {isRegistrationOpen ? "Uzavřít registraci?" : "Otevřít registraci?"}
+              {isRegistrationOpen ? t("pairs.closeRegistrationConfirm") : t("pairs.openRegistrationConfirm")}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-[var(--text-secondary)]">
-            {isRegistrationOpen
-              ? "Páry se již nebudou moci registrovat. Registraci lze kdykoliv znovu otevřít."
-              : "Páry se budou moci registrovat přes veřejný odkaz. Status soutěže bude změněn na Registrace otevřena."}
+            {isRegistrationOpen ? t("pairs.closeRegistrationDesc") : t("pairs.openRegistrationDesc")}
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setToggleConfirmOpen(false)}>Zrušit</Button>
+            <Button variant="outline" onClick={() => setToggleConfirmOpen(false)}>{t("common.cancel")}</Button>
             <Button onClick={() => toggleRegistration.mutate()} loading={toggleRegistration.isPending}>
-              {isRegistrationOpen ? "Uzavřít" : "Otevřít"}
+              {isRegistrationOpen ? t("pairs.closeAction") : t("pairs.openAction")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -684,11 +790,11 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <QrCode className="h-5 w-5 text-[var(--accent)]" />
-              Check-in odkaz pro vstup
+              {t("pairs.checkinLinkTitle")}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-[var(--text-secondary)]">
-            Otevřete tento odkaz na telefonu nebo tabletu u vstupu.
+            {t("pairs.checkinLinkDesc")}
           </p>
           <div className="flex items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-2">
             <p className="flex-1 truncate font-mono text-xs text-[var(--text-primary)]">{checkinUrl}</p>
@@ -700,27 +806,56 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
             </button>
           </div>
           <DialogFooter>
-            <Button onClick={() => setCheckinDialogOpen(false)}>Zavřít</Button>
+            <Button onClick={() => setCheckinDialogOpen(false)}>{t("common.close")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* XLSX import result dialog */}
+      {xlsxResult && (
+        <Dialog open onOpenChange={() => setXlsxResult(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sheet className="h-5 w-5 text-[var(--accent)]" />
+                Výsledek importu XLSX
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 text-sm">
+              <p className="text-[var(--success-text)]">✓ Importováno: <strong>{xlsxResult.imported}</strong></p>
+              {xlsxResult.skipped > 0 && <p className="text-[var(--text-secondary)]">↷ Přeskočeno: {xlsxResult.skipped}</p>}
+              {xlsxResult.errors.length > 0 && (
+                <div>
+                  <p className="text-[var(--destructive)] font-medium">✗ Chyby ({xlsxResult.errors.length}):</p>
+                  <ul className="mt-1 max-h-40 overflow-y-auto rounded border border-[var(--border)] bg-[var(--surface-secondary)] p-2 text-xs space-y-1">
+                    {xlsxResult.errors.map((e, i) => <li key={i} className="text-[var(--destructive)]">{e}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setXlsxResult(null)}>Zavřít</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Add pair dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Přidat pár ručně</DialogTitle>
+            <DialogTitle>{t("pairs.addManually")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Sekce</label>
+              <label className="mb-1.5 block text-sm font-medium">{t("pairs.section")}</label>
               <Controller
                 control={control}
                 name="sectionId"
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
                     <SelectTrigger error={!!errors.sectionId}>
-                      <SelectValue placeholder="Vyberte sekci..." />
+                      <SelectValue placeholder={t("pairs.selectSection")} />
                     </SelectTrigger>
                     <SelectContent>
                       {sections?.map((s) => (
@@ -731,27 +866,27 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                 )}
               />
             </div>
-            <Input label="Startovní číslo (volitelné)" type="number" min={1} {...register("startNumber")} />
+            <Input label={t("pairs.startNumberOptional")} type="number" min={1} {...register("startNumber")} />
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Jméno tanečníka 1" error={errors.dancer1FirstName?.message} {...register("dancer1FirstName")} />
-              <Input label="Příjmení tanečníka 1" error={errors.dancer1LastName?.message} {...register("dancer1LastName")} />
+              <Input label={t("pairs.dancer1FirstName")} error={errors.dancer1FirstName?.message} {...register("dancer1FirstName")} />
+              <Input label={t("pairs.dancer1LastName")} error={errors.dancer1LastName?.message} {...register("dancer1LastName")} />
             </div>
-            <Input label="Klub tanečníka 1 (volitelné)" {...register("dancer1Club")} />
+            <Input label={t("pairs.dancer1ClubOptional")} {...register("dancer1Club")} />
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Jméno tanečníka 2" {...register("dancer2FirstName")} />
-              <Input label="Příjmení tanečníka 2" {...register("dancer2LastName")} />
+              <Input label={t("pairs.dancer2FirstName")} {...register("dancer2FirstName")} />
+              <Input label={t("pairs.dancer2LastName")} {...register("dancer2LastName")} />
             </div>
-            <Input label="Klub tanečníka 2 (volitelné)" {...register("dancer2Club")} />
-            <Input label="Kontaktní email (volitelné)" type="email" {...register("email")} error={errors.email?.message} />
+            <Input label={t("pairs.dancer2ClubOptional")} {...register("dancer2Club")} />
+            <Input label={t("pairs.emailOptional")} type="email" {...register("email")} error={errors.email?.message} />
             <div className="flex items-center gap-2">
               <input type="checkbox" id="markAsPaid" className="h-4 w-4 rounded border-[var(--border)]" {...register("markAsPaid")} />
               <label htmlFor="markAsPaid" className="text-sm text-[var(--text-secondary)]">
-                Označit jako potvrzeno/zaplaceno ihned
+                {t("pairs.markAsPaid")}
               </label>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Zrušit</Button>
-              <Button type="submit" loading={createPair.isPending}>Přidat pár</Button>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
+              <Button type="submit" loading={createPair.isPending}>{t("pairs.add")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -22,48 +22,37 @@ apiClient.interceptors.request.use((config) => {
 });
 
 // Response interceptor — handle 401 → refresh → retry once
-let isRefreshing = false;
-let failedQueue: { resolve: (v: unknown) => void; reject: (e: unknown) => void }[] = [];
-
-function processQueue(error: unknown, token: string | null) {
-  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token)));
-  failedQueue = [];
-}
+// Single shared Promise used as a mutex: all concurrent 401s await the same refresh,
+// eliminating the race window that existed with the old isRefreshing flag approach.
+let refreshPromise: Promise<string> | null = null;
 
 apiClient.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const original = error.config as AxiosRequestConfig & { _retry?: boolean };
-    if (error.response?.status === 401 && !original._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          original.headers = { ...original.headers, Authorization: `Bearer ${token}` };
-          return apiClient(original);
-        });
-      }
+    const isAuthEndpoint = original.url?.includes("/auth/login") || original.url?.includes("/auth/refresh");
+    if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
-      isRefreshing = true;
-      try {
-        const { data } = await axios.post<{ accessToken: string }>(
-          "/api/v1/auth/refresh",
-          {},
-          { withCredentials: true }
-        );
-        setAccessToken(data.accessToken);
-        processQueue(null, data.accessToken);
-        original.headers = { ...original.headers, Authorization: `Bearer ${data.accessToken}` };
-        return apiClient(original);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        clearAccessToken();
-        // Redirect to login — dispatch custom event so auth store can react
-        window.dispatchEvent(new CustomEvent("auth:logout"));
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+      if (!refreshPromise) {
+        refreshPromise = axios
+          .post<{ accessToken: string }>("/api/v1/auth/refresh", {}, { withCredentials: true })
+          .then(({ data }) => {
+            setAccessToken(data.accessToken);
+            return data.accessToken;
+          })
+          .catch((refreshError) => {
+            clearAccessToken();
+            window.dispatchEvent(new CustomEvent("auth:logout"));
+            throw refreshError;
+          })
+          .finally(() => {
+            refreshPromise = null;
+          });
       }
+      return refreshPromise.then((token) => {
+        original.headers = { ...original.headers, Authorization: `Bearer ${token}` };
+        return apiClient(original);
+      });
     }
     return Promise.reject(normalizeError(error));
   }
@@ -73,7 +62,9 @@ function normalizeError(error: AxiosError): ApiError {
   const data = error.response?.data as Record<string, unknown> | undefined;
   return {
     status: error.response?.status ?? 0,
+    // Spring ProblemDetail uses "detail"; fallback to "message"/"error" for other formats
     message:
+      (data?.detail as string) ??
       (data?.message as string) ??
       (data?.error as string) ??
       error.message ??

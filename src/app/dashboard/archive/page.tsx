@@ -2,28 +2,30 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Archive, Trophy, Calendar, MapPin, ChevronRight } from "lucide-react";
+import { Search, Archive, Trophy, Calendar, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { competitionsApi, type CompetitionDto } from "@/lib/api/competitions";
+import { competitionsApi, type CompetitionSummary } from "@/lib/api/competitions";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/contexts/locale-context";
 
 type GroupKey = string; // year string
 
-function groupByYear(competitions: CompetitionDto[]): Record<GroupKey, CompetitionDto[]> {
-  return competitions.reduce<Record<GroupKey, CompetitionDto[]>>((acc, c) => {
-    const year = new Date(c.startDate).getFullYear().toString();
+function groupByYear(competitions: CompetitionSummary[]): Record<GroupKey, CompetitionSummary[]> {
+  return competitions.reduce<Record<GroupKey, CompetitionSummary[]>>((acc, c) => {
+    const year = new Date(c.eventDate).getFullYear().toString();
     (acc[year] ??= []).push(c);
     return acc;
   }, {});
 }
 
-function ArchiveCard({ comp }: { comp: CompetitionDto }) {
+function ArchiveCard({ comp }: { comp: CompetitionSummary }) {
+  const { t } = useLocale();
   return (
     <Link href={`/dashboard/competitions/${comp.id}`} className="block group">
       <div className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 transition-colors hover:bg-[var(--surface-secondary)]">
@@ -35,16 +37,12 @@ function ArchiveCard({ comp }: { comp: CompetitionDto }) {
           <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)] mt-0.5">
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {formatDate(comp.startDate)}
-            </span>
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              {comp.location}
+              {formatDate(comp.eventDate)}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <span className="text-xs text-[var(--text-tertiary)]">{comp.registeredPairsCount} pairs</span>
+          <span className="text-xs text-[var(--text-tertiary)]">{t("archive.pairsCount", { count: comp.pairCount })}</span>
           <Badge variant="default" className="text-xs">{comp.status.replace(/_/g, " ")}</Badge>
           <ChevronRight className="h-4 w-4 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
         </div>
@@ -54,35 +52,35 @@ function ArchiveCard({ comp }: { comp: CompetitionDto }) {
 }
 
 export default function ArchivePage() {
+  const { t } = useLocale();
   const [search, setSearch] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["competitions-archive"],
-    queryFn: () => competitionsApi.list({ size: 200, status: "COMPLETED" }),
+    queryFn: () => competitionsApi.list(),
   });
 
-  const competitions = data?.content ?? [];
+  const competitions = (data ?? []).filter((c) => c.status === "COMPLETED");
 
   const filtered = search.trim()
     ? competitions.filter(
         (c) =>
-          c.name.toLowerCase().includes(search.toLowerCase()) ||
-          c.location.toLowerCase().includes(search.toLowerCase())
+          c.name.toLowerCase().includes(search.toLowerCase())
       )
     : competitions;
 
   const byYear = groupByYear(filtered);
   const years = Object.keys(byYear).sort((a, b) => Number(b) - Number(a));
 
-  const totalPairs = competitions.reduce((s, c) => s + c.registeredPairsCount, 0);
+  const totalPairs = competitions.reduce((s, c) => s + c.pairCount, 0);
 
   return (
-    <AppShell title="Archive">
+    <AppShell>
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-[var(--text-primary)]">Archive</h1>
-            <p className="text-sm text-[var(--text-secondary)]">All past competitions</p>
+            <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("archive.title")}</h1>
+            <p className="text-sm text-[var(--text-secondary)]">{t("archive.description")}</p>
           </div>
         </div>
 
@@ -90,15 +88,15 @@ export default function ArchivePage() {
         <div className="grid grid-cols-3 gap-3">
           <Card className="p-4 text-center">
             <p className="text-2xl font-bold text-[var(--text-primary)]">{competitions.length}</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Competitions</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{t("archive.competitions")}</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-2xl font-bold text-[var(--text-primary)]">{years.length}</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Years</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{t("archive.years")}</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-2xl font-bold text-[var(--text-primary)]">{totalPairs.toLocaleString()}</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Total pairs</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{t("archive.totalPairs")}</p>
           </Card>
         </div>
 
@@ -108,7 +106,7 @@ export default function ArchivePage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search competitions…"
+            placeholder={t("archive.searchPlaceholder")}
             className="pl-9"
           />
         </div>
@@ -122,7 +120,7 @@ export default function ArchivePage() {
           <Card className="flex flex-col items-center gap-3 py-20 text-center">
             <Archive className="h-10 w-10 text-[var(--text-tertiary)]" />
             <p className="text-sm text-[var(--text-secondary)]">
-              {search ? "No competitions match your search." : "No completed competitions yet."}
+              {search ? t("archive.noMatch") : t("archive.noCompleted")}
             </p>
           </Card>
         ) : (
@@ -131,7 +129,7 @@ export default function ArchivePage() {
               <div key={year} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">{year}</h2>
-                  <span className="text-xs text-[var(--text-tertiary)]">{byYear[year].length} events</span>
+                  <span className="text-xs text-[var(--text-tertiary)]">{t("archive.events", { count: byYear[year].length })}</span>
                 </div>
                 {byYear[year].map((comp) => (
                   <ArchiveCard key={comp.id} comp={comp} />

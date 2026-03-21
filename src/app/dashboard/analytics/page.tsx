@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { competitionsApi } from "@/lib/api/competitions";
 import { formatDate } from "@/lib/utils";
+import { useLocale } from "@/contexts/locale-context";
 
 function StatCard({
   icon: Icon,
@@ -41,25 +42,26 @@ function StatCard({
 }
 
 export default function AnalyticsPage() {
+  const { t } = useLocale();
   const { data, isLoading } = useQuery({
     queryKey: ["competitions", "all"],
-    queryFn: () => competitionsApi.list({ size: 100 }),
+    queryFn: () => competitionsApi.list(),
   });
 
-  const competitions = data?.content ?? [];
-  const totalPairs = competitions.reduce((s, c) => s + c.registeredPairsCount, 0);
+  const competitions = data ?? [];
+  const totalPairs = competitions.reduce((s, c) => s + c.pairCount, 0);
   const completed = competitions.filter((c) => c.status === "COMPLETED");
   const upcoming = competitions.filter((c) =>
-    ["DRAFT", "PUBLISHED", "REGISTRATION_OPEN"].includes(c.status)
+    ["DRAFT", "PUBLISHED"].includes(c.status)
   );
   const live = competitions.filter((c) => c.status === "IN_PROGRESS");
 
   // Group by year
   const byYear = competitions.reduce<Record<string, { count: number; pairs: number }>>((acc, c) => {
-    const year = new Date(c.startDate).getFullYear().toString();
+    const year = new Date(c.eventDate).getFullYear().toString();
     if (!acc[year]) acc[year] = { count: 0, pairs: 0 };
     acc[year].count++;
-    acc[year].pairs += c.registeredPairsCount;
+    acc[year].pairs += c.pairCount;
     return acc;
   }, {});
 
@@ -68,13 +70,13 @@ export default function AnalyticsPage() {
 
   // Top competitions by pairs
   const topByPairs = [...competitions]
-    .sort((a, b) => b.registeredPairsCount - a.registeredPairsCount)
+    .sort((a, b) => b.pairCount - a.pairCount)
     .slice(0, 5);
 
   if (isLoading) {
     return (
       <AppShell>
-        <PageHeader title="Analytics" description="Insights across all competitions" />
+        <PageHeader title={t("analytics.title")} description={t("analytics.insightsDescShort")} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-xl" />
@@ -87,36 +89,36 @@ export default function AnalyticsPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Analytics"
-        description="Insights and statistics across all competitions"
+        title={t("analytics.title")}
+        description={t("analytics.insightsDesc")}
       />
 
       {/* KPI row */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={Trophy}
-          label="Total competitions"
+          label={t("analytics.totalCompetitions")}
           value={competitions.length}
-          sub={`${completed.length} completed`}
+          sub={t("analytics.completedCount", { count: completed.length })}
         />
         <StatCard
           icon={Users}
-          label="Total pairs"
+          label={t("analytics.totalPairs")}
           value={totalPairs}
-          sub="across all competitions"
+          sub={t("analytics.acrossAll")}
           accent="text-[var(--accent)]"
         />
         <StatCard
           icon={TrendingUp}
-          label="Upcoming"
+          label={t("analytics.upcoming")}
           value={upcoming.length}
-          sub="awaiting or open for registration"
+          sub={t("analytics.awaitingOrOpen")}
         />
         <StatCard
           icon={BarChart3}
-          label="Live now"
+          label={t("analytics.liveNow")}
           value={live.length}
-          sub={live.length > 0 ? live[0].name : "no competitions live"}
+          sub={live.length > 0 ? live[0].name : t("analytics.noCompetitionsLive")}
           accent={live.length > 0 ? "text-[var(--success)]" : undefined}
         />
       </div>
@@ -127,12 +129,12 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4" />
-              Year-over-year pairs
+              {t("analytics.yearOverYearPairs")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {years.length === 0 ? (
-              <p className="py-8 text-center text-sm text-[var(--text-secondary)]">No data yet</p>
+              <p className="py-8 text-center text-sm text-[var(--text-secondary)]">{t("analytics.noDataYet")}</p>
             ) : (
               years.map((year) => {
                 const d = byYear[year];
@@ -142,7 +144,9 @@ export default function AnalyticsPage() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium text-[var(--text-primary)]">{year}</span>
                       <span className="text-[var(--text-secondary)]">
-                        {d.pairs} pairs · {d.count} competition{d.count !== 1 ? "s" : ""}
+                        {d.count !== 1
+                          ? t("analytics.pairsCompetitionsPlural", { pairs: d.pairs, count: d.count })
+                          : t("analytics.pairsCompetitions", { pairs: d.pairs, count: d.count })}
                       </span>
                     </div>
                     <Progress value={pct} className="h-2" />
@@ -158,12 +162,12 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Users className="h-4 w-4" />
-              Top competitions by pairs
+              {t("analytics.topByPairs")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {topByPairs.length === 0 ? (
-              <p className="py-8 text-center text-sm text-[var(--text-secondary)]">No data yet</p>
+              <p className="py-8 text-center text-sm text-[var(--text-secondary)]">{t("analytics.noDataYet")}</p>
             ) : (
               <div className="space-y-3">
                 {topByPairs.map((c, i) => (
@@ -176,14 +180,14 @@ export default function AnalyticsPage() {
                         {c.name}
                       </p>
                       <p className="text-xs text-[var(--text-tertiary)]">
-                        {formatDate(c.startDate)} · {c.location}
+                        {formatDate(c.eventDate)}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-sm font-bold text-[var(--text-primary)]">
-                        {c.registeredPairsCount}
+                        {c.pairCount}
                       </p>
-                      <p className="text-xs text-[var(--text-tertiary)]">pairs</p>
+                      <p className="text-xs text-[var(--text-tertiary)]">{t("analytics.pairsLabel")}</p>
                     </div>
                     <Badge variant={c.status === "COMPLETED" ? "secondary" : c.status === "IN_PROGRESS" ? "warning" : "success"}>
                       {c.status.replace("_", " ")}
@@ -200,23 +204,22 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <CreditCard className="h-4 w-4" />
-              Status distribution
+              {t("analytics.statusBreakdown")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {[
-              { label: "Draft", status: "DRAFT", color: "bg-[var(--border)]" },
-              { label: "Published", status: "PUBLISHED", color: "bg-blue-400" },
-              { label: "Registration open", status: "REGISTRATION_OPEN", color: "bg-[var(--success)]" },
-              { label: "In progress", status: "IN_PROGRESS", color: "bg-[var(--warning)]" },
-              { label: "Completed", status: "COMPLETED", color: "bg-[var(--text-tertiary)]" },
-            ].map(({ label, status, color }) => {
+              { labelKey: "analytics.draft", status: "DRAFT", color: "bg-[var(--border)]" },
+              { labelKey: "analytics.published", status: "PUBLISHED", color: "bg-blue-400" },
+              { labelKey: "analytics.inProgress", status: "IN_PROGRESS", color: "bg-[var(--warning)]" },
+              { labelKey: "analytics.completed", status: "COMPLETED", color: "bg-[var(--text-tertiary)]" },
+            ].map(({ labelKey, status, color }) => {
               const count = competitions.filter((c) => c.status === status).length;
               const pct = competitions.length > 0 ? Math.round((count / competitions.length) * 100) : 0;
               return (
                 <div key={status} className="flex items-center gap-3">
                   <div className={`h-2 w-2 rounded-full ${color}`} />
-                  <span className="flex-1 text-sm text-[var(--text-secondary)]">{label}</span>
+                  <span className="flex-1 text-sm text-[var(--text-secondary)]">{t(labelKey)}</span>
                   <span className="text-sm font-medium text-[var(--text-primary)]">{count}</span>
                   <span className="w-8 text-right text-xs text-[var(--text-tertiary)]">{pct}%</span>
                 </div>
@@ -230,13 +233,13 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4" />
-              Recent activity
+              {t("analytics.recentActivity")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {[...competitions]
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
                 .slice(0, 5)
                 .map((c) => (
                   <div key={c.id} className="flex items-start gap-3">
@@ -246,11 +249,11 @@ export default function AnalyticsPage() {
                         {c.name}
                       </p>
                       <p className="text-xs text-[var(--text-tertiary)]">
-                        Created {formatDate(c.createdAt)}
+                        {formatDate(c.eventDate)}
                       </p>
                     </div>
                     <Badge variant="secondary" className="shrink-0 text-xs">
-                      {c.registeredPairsCount} pairs
+                      {c.pairCount} {t("analytics.pairsLabel")}
                     </Badge>
                   </div>
                 ))}

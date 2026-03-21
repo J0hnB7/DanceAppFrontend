@@ -6,40 +6,27 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import {
-  Trophy, MapPin, Calendar, Users, Clock, ChevronRight,
-  Newspaper, Info, Mail, FileText, CheckCircle2, AlertTriangle, CreditCard,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import apiClient from "@/lib/api-client";
 import type { CompetitionDto, CompetitionNewsItem } from "@/lib/api/competitions";
 import { competitionKeys } from "@/hooks/queries/use-competitions";
 import type { SectionDto } from "@/lib/api/sections";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-
-
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "Draft", PUBLISHED: "Zveřejněno", REGISTRATION_OPEN: "Registrace otevřena",
-  IN_PROGRESS: "Probíhá", COMPLETED: "Ukončeno", CANCELLED: "Zrušeno",
-};
+import { useLocale } from "@/contexts/locale-context";
 
 const schema = z.object({
-  sectionId: z.string().min(1, "Vyberte prosím kategorii"),
-  dancer1FirstName: z.string().min(1, "Povinné pole"),
-  dancer1LastName: z.string().min(1, "Povinné pole"),
+  sectionId: z.string().min(1),
+  dancer1FirstName: z.string().min(1),
+  dancer1LastName: z.string().min(1),
   dancer1Club: z.string().optional(),
   dancer2FirstName: z.string().optional(),
   dancer2LastName: z.string().optional(),
   dancer2Club: z.string().optional(),
   discountCode: z.string().optional(),
-  email: z.string().email("Zadejte platný email"),
-  gdpr: z.literal(true, { message: "Souhlas je povinný" }),
+  email: z.string().email(),
+  gdpr: z.literal(true, { message: "" }),
 });
 type RegisterForm = z.infer<typeof schema>;
 
@@ -51,24 +38,47 @@ interface RegistrationResult {
   currency: string;
 }
 
-function PublicNav() {
+/* ── shared style helpers ──────────────────────────────── */
+const cardStyle: React.CSSProperties = {
+  background: "#fff",
+  border: "1px solid #E5E7EB",
+  borderRadius: 14,
+  boxShadow: "0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)",
+  overflow: "hidden",
+};
+
+const sectionLabel = (icon: string, text: string) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px", borderBottom: "1px solid #F3F4F6" }}>
+    <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".8rem" }}>{icon}</div>
+    <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".9rem", color: "#111827" }}>{text}</span>
+  </div>
+);
+
+/* ── Nav ───────────────────────────────────────────────── */
+function PublicNav({ organizerLogin }: { organizerLogin: string }) {
   return (
-    <nav className="sticky top-0 z-10 border-b border-[var(--border)] bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
-        <Link href="/competitions" className="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
-          <Trophy className="h-5 w-5 text-[var(--accent)]" />
-          DanceApp
+    <nav style={{
+      position: "sticky", top: 0, zIndex: 50,
+      background: "rgba(255,255,255,.95)", backdropFilter: "blur(20px)",
+      borderBottom: "1px solid #E5E7EB", height: 60,
+      display: "flex", alignItems: "center",
+    }}>
+      <div style={{ maxWidth: 860, margin: "0 auto", width: "100%", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Link href="/competitions" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" style={{ marginRight: 2 }}><polyline points="15 18 9 12 15 6"/></svg>
+          <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff" }}>DA</div>
+          <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1rem", color: "#111827", letterSpacing: "-.02em" }}>DanceApp</span>
         </Link>
-        <Link href="/login" className="text-sm text-[var(--accent)] hover:underline">
-          Organizer login →
-        </Link>
+        <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>{organizerLogin}</Link>
       </div>
     </nav>
   );
 }
 
+/* ── Page ──────────────────────────────────────────────── */
 export default function PublicCompetitionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useLocale();
   const [result, setResult] = useState<RegistrationResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -93,8 +103,10 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
 
   const { register, control, handleSubmit, watch, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(schema),
-    defaultValues: { sectionId: "", dancer1FirstName: "", dancer1LastName: "", dancer1Club: "",
-      dancer2FirstName: "", dancer2LastName: "", dancer2Club: "", discountCode: "", email: "", gdpr: undefined },
+    defaultValues: {
+      sectionId: "", dancer1FirstName: "", dancer1LastName: "", dancer1Club: "",
+      dancer2FirstName: "", dancer2LastName: "", dancer2Club: "", discountCode: "", email: "", gdpr: undefined,
+    },
   });
 
   const selectedSectionId = watch("sectionId");
@@ -103,406 +115,443 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   const onSubmit = async (values: RegisterForm) => {
     setSubmitting(true);
     try {
-      const res = await apiClient.post<RegistrationResult>(`/competitions/${id}/public-registration`, values);
+      const res = await apiClient.post<RegistrationResult>(`/competitions/${id}/pairs/public-registration`, values);
       setResult(res.data);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
-      toast({ title: apiErr?.message ?? "Přihlášení se nezdařilo", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: apiErr?.message ?? t("publicRegister.failed"), variant: "destructive" } as Parameters<typeof toast>[0]);
     } finally {
       setSubmitting(false);
     }
   };
 
+  /* loading */
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--background)]">
-        <PublicNav />
-        <div className="h-60 animate-pulse bg-[var(--surface-secondary)]" />
-        <div className="mx-auto max-w-4xl space-y-4 px-4 py-8">
+      <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
+        <PublicNav organizerLogin={t("publicCompetition.organizerLogin")} />
+        <div style={{ height: 240, background: "#0A1628" }} />
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
           <Skeleton className="h-12" /><Skeleton className="h-40" /><Skeleton className="h-40" />
         </div>
       </div>
     );
   }
 
+  /* not found */
   if (!competition) {
     return (
-      <div className="min-h-screen bg-[var(--background)]">
-        <PublicNav />
-        <div className="flex flex-col items-center gap-4 py-32 text-center">
-          <Trophy className="h-12 w-12 text-[var(--text-tertiary)]" />
-          <p className="font-semibold text-[var(--text-primary)]">Soutěž nenalezena</p>
-          <Link href="/competitions"><Button variant="outline">Všechny soutěže</Button></Link>
+      <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
+        <PublicNav organizerLogin={t("publicCompetition.organizerLogin")} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "96px 24px", textAlign: "center" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 16, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.75rem" }}>🏆</div>
+          <p style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.1rem", color: "#111827" }}>{t("publicCompetition.notFound")}</p>
+          <Link href="/competitions" style={{ padding: "9px 22px", borderRadius: 9, border: "1px solid #E5E7EB", fontSize: ".875rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>{t("publicCompetition.allCompetitions")}</Link>
         </div>
       </div>
     );
   }
 
-  const isOpen = competition.status === "REGISTRATION_OPEN";
-  const capacityPct = competition.maxPairs
-    ? Math.round((competition.registeredPairsCount / competition.maxPairs) * 100) : null;
-  const spotsLeft = competition.maxPairs ? competition.maxPairs - competition.registeredPairsCount : null;
+  const STATUS_LABEL: Record<string, string> = {
+    DRAFT: t("publicCompetition.statusLabels.DRAFT"),
+    PUBLISHED: t("publicCompetition.statusLabels.PUBLISHED"),
+    IN_PROGRESS: t("publicCompetition.statusLabels.IN_PROGRESS"),
+    COMPLETED: t("publicCompetition.statusLabels.COMPLETED"),
+    CANCELLED: t("publicCompetition.statusLabels.CANCELLED"),
+  };
 
-  // ── Registration success ───────────────────────────────────────────────────
+  const isOpen = competition.registrationOpen === true;
+  const isLive = competition.status === "IN_PROGRESS";
+  const capacityPct = competition.maxPairs
+    ? Math.round(((competition.registeredPairsCount ?? 0) / competition.maxPairs) * 100) : null;
+  const spotsLeft = competition.maxPairs ? competition.maxPairs - (competition.registeredPairsCount ?? 0) : null;
+
+  /* ── success screen ─────────────────────────── */
   if (result) {
     return (
-      <div className="min-h-screen bg-[var(--background)]">
-        <PublicNav />
-        <div className="mx-auto max-w-md px-4 py-16 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success)]/10">
-            <CheckCircle2 className="h-8 w-8 text-[var(--success)]" />
-          </div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Přihláška potvrzena!</h1>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">{competition.name}</p>
+      <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
+        <PublicNav organizerLogin={t("publicCompetition.organizerLogin")} />
+        <div style={{ maxWidth: 480, margin: "0 auto", padding: "64px 24px", textAlign: "center" }}>
+          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#059669,#10B981)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", margin: "0 auto 20px" }}>✓</div>
+          <h1 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.4rem", color: "#111827", marginBottom: 6 }}>{t("publicCompetition.registrationConfirmed")}</h1>
+          <p style={{ fontSize: ".9rem", color: "#6B7280", marginBottom: 28 }}>{competition.name}</p>
 
-          <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-left">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[var(--text-secondary)]">Startovní číslo</span>
-              <span className="text-3xl font-black text-[var(--text-primary)]">#{result.startNumber}</span>
+          <div style={{ ...cardStyle, padding: 24, marginBottom: 16, textAlign: "left" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: ".8rem", color: "#9CA3AF" }}>{t("publicCompetition.startNumber")}</span>
+              <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "2.4rem", fontWeight: 800, color: "#4F46E5", lineHeight: 1 }}>#{result.startNumber}</span>
             </div>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">{result.sectionName}</p>
+            <p style={{ fontSize: ".85rem", color: "#6B7280" }}>{result.sectionName}</p>
           </div>
 
           {result.amountDue > 0 && (
-            <div className="mt-3 rounded-2xl border border-[var(--warning)]/30 bg-[var(--warning)]/5 p-4 text-left">
-              <p className="text-sm font-medium text-[var(--text-primary)]">
-                Startovné: {formatCurrency(result.amountDue, result.currency)}
+            <div style={{ ...cardStyle, padding: 18, marginBottom: 16, textAlign: "left", borderColor: "rgba(245,158,11,.3)", background: "#FFFBEB" }}>
+              <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827" }}>
+                {t("publicCompetition.entryFee", { amount: formatCurrency(result.amountDue, result.currency) })}
               </p>
-              <p className="text-xs text-[var(--text-secondary)]">Uhraďte prosím před uzávěrkou přihlášek.</p>
+              <p style={{ fontSize: ".8rem", color: "#6B7280", marginTop: 2 }}>{t("publicCompetition.payBeforeDeadline")}</p>
             </div>
           )}
 
-          <p className="mt-4 text-sm text-[var(--text-secondary)]">Potvrzení bylo odesláno na váš email.</p>
-          <button
-            onClick={() => setResult(null)}
-            className="mt-6 text-sm text-[var(--accent)] hover:underline"
-          >
-            ← Zpět na stránku soutěže
+          <p style={{ fontSize: ".85rem", color: "#9CA3AF", marginBottom: 20 }}>{t("publicCompetition.confirmationSent")}</p>
+          <button onClick={() => setResult(null)} style={{ fontSize: ".875rem", color: "#4F46E5", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+            {t("publicCompetition.backToPage")}
           </button>
         </div>
       </div>
     );
   }
 
+  /* ── main ────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <PublicNav />
+    <>
+      <style>{`
+        @keyframes orb{0%,100%{transform:translate(0,0)}33%{transform:translate(15px,-25px)}66%{transform:translate(-12px,18px)}}
+        .sec-btn{transition:box-shadow .15s,border-color .15s,background .15s}
+        .sec-btn:hover:not(:disabled){border-color:rgba(79,70,229,.4)!important;background:rgba(79,70,229,.03)!important}
+      `}</style>
 
-      {/* Hero */}
-      <div className="relative overflow-hidden" style={{
-        background: competition.bannerUrl
-          ? `url(${competition.bannerUrl}) center/cover no-repeat`
-          : "linear-gradient(135deg, #1d2b6b 0%, #3730a3 60%, #5856d6 100%)",
-        minHeight: 220,
-      }}>
-        <div className="absolute inset-0 bg-black/35" />
-        <div className="relative mx-auto max-w-4xl px-4 py-12">
-          <div className="flex items-end gap-5">
-            {competition.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={competition.logoUrl} alt="Logo"
-                className="h-20 w-20 shrink-0 rounded-2xl border-2 border-white/30 object-cover shadow-lg" />
-            )}
-            <div className="flex-1">
-              <Badge className="mb-3" variant={isOpen ? "success" : "secondary"}>
-                {STATUS_LABEL[competition.status] ?? competition.status}
-              </Badge>
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{competition.name}</h1>
-              {competition.description && (
-                <p className="mt-2 max-w-xl text-sm text-white/75">{competition.description}</p>
+      <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
+        <PublicNav organizerLogin={t("publicCompetition.organizerLogin")} />
+
+        {/* ── HERO ── */}
+        <div style={{ background: "#0A1628", position: "relative", overflow: "hidden", padding: "52px 24px 56px" }}>
+          <div style={{ position: "absolute", width: 500, height: 500, borderRadius: "50%", filter: "blur(90px)", pointerEvents: "none", background: "radial-gradient(circle,rgba(79,70,229,.28) 0%,transparent 65%)", top: -200, right: -40, animation: "orb 9s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", filter: "blur(90px)", pointerEvents: "none", background: "radial-gradient(circle,rgba(6,182,212,.18) 0%,transparent 65%)", bottom: -140, left: -40, animation: "orb 11s ease-in-out -4s infinite" }} />
+
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto" }}>
+            {/* status badge */}
+            <div style={{ marginBottom: 16 }}>
+              {isLive ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".73rem", fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,.12)", border: "1px solid rgba(74,222,128,.25)", padding: "4px 12px", borderRadius: 100 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
+                  {STATUS_LABEL["IN_PROGRESS"] ?? "Probíhá"}
+                </span>
+              ) : isOpen ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".73rem", fontWeight: 700, color: "#6ee7b7", background: "rgba(110,231,183,.1)", border: "1px solid rgba(110,231,183,.2)", padding: "4px 12px", borderRadius: 100 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
+                  {t("publicCompetition.registrationOpen")}
+                </span>
+              ) : (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".73rem", fontWeight: 600, color: "rgba(255,255,255,.5)", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.12)", padding: "4px 12px", borderRadius: 100 }}>
+                  {STATUS_LABEL[competition.status] ?? competition.status}
+                </span>
               )}
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-white/80">
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {formatDate(competition.startDate)}
-                  {competition.startDate !== competition.endDate && <> — {formatDate(competition.endDate)}</>}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5" />{competition.location}
-                </span>
-                {competition.registrationDeadline && (
-                  <span className="flex items-center gap-1.5 text-yellow-300">
-                    <Clock className="h-3.5 w-3.5" />
-                    Uzávěrka: {formatDate(competition.registrationDeadline)}
-                  </span>
-                )}
+            </div>
+
+            {/* title */}
+            <h1 style={{
+              fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800,
+              fontSize: "clamp(1.6rem,4vw,2.8rem)", lineHeight: 1.1, letterSpacing: "-.03em",
+              color: "#fff", marginBottom: 16, maxWidth: 680,
+            }}>
+              {competition.name}
+            </h1>
+
+            {/* meta row */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+              {competition.eventDate && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(255,255,255,.65)" }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity=".7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  {formatDate(competition.eventDate)}
+                </div>
+              )}
+              {competition.venue && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(255,255,255,.65)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity=".7"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {competition.venue}
+                </div>
+              )}
+              {competition.registrationDeadline && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(253,211,77,.85)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity=".8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  {t("publicCompetition.registrationDeadline")}: {formatDate(competition.registrationDeadline)}
+                </div>
+              )}
+              {competition.contactEmail && (
+                <a href={`mailto:${competition.contactEmail}`} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(255,255,255,.65)", textDecoration: "none" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity=".7"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  {competition.contactEmail}
+                </a>
+              )}
+            </div>
+
+            {/* stats chips */}
+            <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
+              <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px" }}>
+                <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Přihlášených párů</div>
+                <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.25rem", color: "#fff" }}>
+                  {competition.registeredPairsCount ?? 0}
+                  {competition.maxPairs && <span style={{ fontSize: ".75rem", fontWeight: 400, color: "rgba(255,255,255,.4)" }}> / {competition.maxPairs}</span>}
+                </div>
               </div>
+              {sections.length > 0 && (
+                <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px" }}>
+                  <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Kategorie</div>
+                  <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.25rem", color: "#fff" }}>{sections.length}</div>
+                </div>
+              )}
+              {capacityPct !== null && (
+                <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px", minWidth: 160 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".65rem", color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>
+                    <span>Kapacita</span><span style={{ color: "#a5b4fc" }}>{capacityPct}%</span>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,.12)", borderRadius: 100, height: 5 }}>
+                    <div style={{ height: 5, borderRadius: 100, background: "linear-gradient(90deg,#818CF8,#a5b4fc)", width: `${Math.min(capacityPct, 100)}%` }} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Stats bar */}
-      <div className="border-b border-[var(--border)] bg-[var(--surface)]">
-        <div className="mx-auto flex max-w-4xl items-center gap-8 px-4 py-3 text-sm">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-[var(--text-tertiary)]" />
-            <span className="font-semibold text-[var(--text-primary)]">{competition.registeredPairsCount}</span>
-            <span className="text-[var(--text-secondary)]">
-              {competition.maxPairs ? `/ ${competition.maxPairs} párů` : "párů přihlášeno"}
-            </span>
+          {/* wave */}
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 40, overflow: "hidden" }}>
+            <svg viewBox="0 0 1440 40" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: "100%" }}>
+              <path d="M0,20 C480,40 960,0 1440,20 L1440,40 L0,40 Z" fill="#F9FAFB" />
+            </svg>
           </div>
-          {capacityPct !== null && (
-            <div className="flex flex-1 items-center gap-2">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--border)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${Math.min(capacityPct, 100)}%` }} />
+        </div>
+
+        {/* ── CONTENT ── */}
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "40px 24px 80px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* General description */}
+          {competition.contentDescription && (
+            <div style={cardStyle}>
+              {sectionLabel("📝", t("publicCompetition.basicInfo").includes("info") ? "Obecný popis" : "Popis")}
+              <div style={{ padding: 20 }}>
+                <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>
+                  {competition.contentDescription}
+                </p>
               </div>
-              <span className="shrink-0 text-xs text-[var(--text-tertiary)]">{capacityPct}%</span>
             </div>
           )}
-        </div>
-      </div>
 
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="flex flex-col gap-8">
-
-          {/* Aktuality */}
-          {newsItems.length > 0 && (
-            <>
-              <div>
-                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--text-primary)]">
-                  <Newspaper className="h-4 w-4" /> Aktuality
-                </h2>
-                <div className="flex flex-col gap-3">
-                  {newsItems.map((item) => (
-                    <Card key={item.id}>
-                      <CardContent className="p-5">
-                        <p className="text-xs text-[var(--text-tertiary)]">
-                          {new Date(item.publishedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}
-                        </p>
-                        <p className="mt-1 font-semibold text-[var(--text-primary)]">{item.title}</p>
-                        <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-secondary)]">{item.content}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-              <Separator />
-            </>
-          )}
-
-          {/* Základní informace */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <Info className="h-4 w-4" /> Základní informace
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex items-start gap-3">
-                  <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
-                  <div>
-                    <p className="text-xs text-[var(--text-tertiary)]">Datum konání</p>
-                    <p className="text-sm font-medium">{formatDate(competition.startDate)}</p>
-                    {competition.startDate !== competition.endDate && (
-                      <p className="text-sm text-[var(--text-secondary)]">— {formatDate(competition.endDate)}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
-                  <div>
-                    <p className="text-xs text-[var(--text-tertiary)]">Místo konání</p>
-                    <p className="text-sm font-medium">{competition.location}</p>
-                  </div>
-                </div>
-                {competition.registrationDeadline && (
-                  <div className="flex items-start gap-3">
-                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
-                    <div>
-                      <p className="text-xs text-[var(--text-tertiary)]">Uzávěrka přihlášek</p>
-                      <p className="text-sm font-medium text-[var(--warning)]">{formatDate(competition.registrationDeadline)}</p>
-                    </div>
-                  </div>
-                )}
-                {competition.maxPairs && (
-                  <div className="flex items-start gap-3">
-                    <Users className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
-                    <div>
-                      <p className="text-xs text-[var(--text-tertiary)]">Kapacita</p>
-                      <p className="text-sm font-medium">
-                        max. {competition.maxPairs} párů
-                        <span className="ml-1 text-[var(--text-secondary)]">({competition.registeredPairsCount} přihlášeno)</span>
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {competition.contactEmail && (
-                  <div className="flex items-start gap-3">
-                    <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
-                    <div>
-                      <p className="text-xs text-[var(--text-tertiary)]">Kontakt</p>
-                      <a href={`mailto:${competition.contactEmail}`} className="text-sm font-medium text-[var(--accent)] hover:underline">
-                        {competition.contactEmail}
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Propozice */}
+          {/* Regulations */}
           {competition.propozice && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                  <FileText className="h-4 w-4" /> Pravidla a propozice
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--text-primary)]">
+            <div style={cardStyle}>
+              {sectionLabel("📋", t("publicCompetition.rulesAndRegulations"))}
+              <div style={{ padding: 20 }}>
+                <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>
                   {competition.propozice}
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
-          <Separator />
+          {/* News */}
+          {newsItems.length > 0 && (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.05rem", color: "#111827" }}>
+                  {t("publicCompetition.news")}
+                </h2>
+                <span style={{ fontSize: ".75rem", fontWeight: 600, padding: "2px 9px", borderRadius: 100, background: "#EEF2FF", color: "#4F46E5" }}>{newsItems.length}</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {newsItems.map((item) => (
+                  <div key={item.id} style={cardStyle}>
+                    <div style={{ padding: "16px 20px" }}>
+                      <p style={{ fontSize: ".71rem", color: "#9CA3AF", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".06em" }}>
+                        {new Date(item.publishedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}
+                      </p>
+                      <p style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".95rem", color: "#111827", marginBottom: 6 }}>{item.title}</p>
+                      <p style={{ fontSize: ".875rem", lineHeight: 1.65, color: "#4B5563" }}>{item.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-          {/* Registration form */}
+          {/* Divider */}
+          <div style={{ height: 1, background: "linear-gradient(90deg,transparent,#E5E7EB,transparent)" }} />
+
+          {/* Registration */}
           {isOpen ? (
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+            <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* heading */}
               <div>
-                <h2 className="mb-1 text-lg font-bold text-[var(--text-primary)]">Přihlásit pár</h2>
+                <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.3rem", color: "#111827", marginBottom: 4 }}>
+                  {t("publicCompetition.registerPair")}
+                </h2>
                 {spotsLeft !== null && spotsLeft > 0 && (
-                  <p className="text-sm text-[var(--text-secondary)]">Zbývá {spotsLeft} volných míst.</p>
+                  <p style={{ fontSize: ".875rem", color: "#6B7280" }}>{t("publicCompetition.spotsLeftCount", { count: spotsLeft })}</p>
                 )}
               </div>
 
-              {/* Způsob platby — inline pod nadpisem */}
-              {competition.paymentInfo && (
-                <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-4">
-                  <p className="mb-1 flex items-center gap-2 text-xs font-semibold text-[var(--text-secondary)]">
-                    <CreditCard className="h-3.5 w-3.5" /> Způsob platby
-                  </p>
-                  <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--text-primary)]">
-                    {competition.paymentInfo}
-                  </p>
-                </div>
-              )}
-
-              {/* 1. Kategorie */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">1. Vyberte kategorii</CardTitle>
-                </CardHeader>
-                <CardContent>
+              {/* 5a — category */}
+              <div style={cardStyle}>
+                {sectionLabel("🏅", t("publicCompetition.selectCategory"))}
+                <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
                   <Controller control={control} name="sectionId" render={({ field }) => (
-                    <div className="flex flex-col gap-2">
+                    <>
                       {sections.map((section) => {
-                        const sl = section.maxPairs ? section.maxPairs - section.registeredPairsCount : null;
+                        const sl = section.maxPairs ? section.maxPairs - (section.registeredPairsCount ?? 0) : null;
                         const isFull = sl !== null && sl <= 0;
                         const almostFull = sl !== null && sl > 0 && sl <= 5;
                         const isSelected = field.value === section.id;
                         return (
                           <button key={section.id} type="button" disabled={isFull}
                             onClick={() => !isFull && field.onChange(section.id)}
-                            className={`flex items-start justify-between rounded-[var(--radius-lg)] border p-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
-                              isSelected ? "border-[var(--accent)] bg-[var(--accent)]/5" : "border-[var(--border)] hover:bg-[var(--surface-secondary)]"
-                            }`}>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-medium">{section.name}</p>
-                                {isFull && <Badge variant="destructive" className="text-xs">Obsazeno</Badge>}
-                                {almostFull && <Badge variant="warning" className="text-xs">Poslední místa</Badge>}
+                            className="sec-btn"
+                            style={{
+                              display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+                              borderRadius: 10, border: isSelected ? "1.5px solid #4F46E5" : "1px solid #E5E7EB",
+                              background: isSelected ? "rgba(79,70,229,.04)" : "#fff",
+                              padding: "12px 14px", textAlign: "left", cursor: isFull ? "not-allowed" : "pointer",
+                              opacity: isFull ? .5 : 1,
+                            }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+                                <p style={{ fontSize: ".9rem", fontWeight: 600, color: "#111827" }}>{section.name}</p>
+                                {isFull && <span style={{ fontSize: ".65rem", fontWeight: 700, color: "#DC2626", background: "#FEF2F2", padding: "1px 7px", borderRadius: 100 }}>{t("publicCompetition.full")}</span>}
+                                {almostFull && <span style={{ fontSize: ".65rem", fontWeight: 700, color: "#D97706", background: "#FFFBEB", padding: "1px 7px", borderRadius: 100 }}>{t("publicCompetition.almostFull")}</span>}
                               </div>
-                              <p className="text-xs text-[var(--text-secondary)]">
+                              <p style={{ fontSize: ".78rem", color: "#9CA3AF" }}>
                                 {section.ageCategory} · {section.level} · {section.dances.map((d) => d.name).join(", ")}
                               </p>
                             </div>
-                            <div className="ml-3 shrink-0 text-right">
+                            <div style={{ marginLeft: 12, textAlign: "right", flexShrink: 0 }}>
                               {section.entryFee
-                                ? <p className="text-sm font-bold">{formatCurrency(section.entryFee, section.entryFeeCurrency ?? "EUR")}</p>
-                                : <Badge variant="secondary">{section.registeredPairsCount} párů</Badge>
+                                ? <p style={{ fontSize: ".9rem", fontWeight: 700, color: "#4F46E5" }}>{formatCurrency(section.entryFee, section.entryFeeCurrency ?? "EUR")}</p>
+                                : <span style={{ fontSize: ".78rem", color: "#9CA3AF" }}>{section.registeredPairsCount} párů</span>
                               }
                             </div>
                           </button>
                         );
                       })}
-                    </div>
+                    </>
                   )} />
                   {errors.sectionId && (
-                    <p className="mt-1 text-xs text-[var(--destructive)]">{errors.sectionId.message}</p>
+                    <p style={{ fontSize: ".78rem", color: "#DC2626" }}>{t("publicRegister.validation.selectCategory")}</p>
                   )}
                   {selectedSection?.entryFee && (
-                    <div className="mt-3 rounded-[var(--radius-lg)] bg-[var(--accent)]/5 px-3 py-2 text-sm">
-                      <span className="text-[var(--text-secondary)]">Startovné: </span>
-                      <span className="font-semibold">{formatCurrency(selectedSection.entryFee, selectedSection.entryFeeCurrency ?? "EUR")}</span>
-                      <span className="text-xs text-[var(--text-tertiary)]"> / pár</span>
+                    <div style={{ borderRadius: 9, background: "#EEF2FF", border: "1px solid rgba(79,70,229,.2)", padding: "10px 14px", fontSize: ".875rem" }}>
+                      <span style={{ color: "#6B7280" }}>{t("publicCompetition.entryFeeDisplay")} </span>
+                      <span style={{ fontWeight: 700, color: "#4F46E5" }}>{formatCurrency(selectedSection.entryFee, selectedSection.entryFeeCurrency ?? "EUR")}</span>
+                      <span style={{ fontSize: ".78rem", color: "#9CA3AF" }}> {t("publicCompetition.perPair")}</span>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              {/* 2. Tančící */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">2. Informace o tančících</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                  <p className="text-xs font-semibold text-[var(--text-tertiary)]">PRVNÍ TANČÍCÍ</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input label="Jméno" placeholder="Jana" error={errors.dancer1FirstName?.message} {...register("dancer1FirstName")} />
-                    <Input label="Příjmení" placeholder="Nováková" error={errors.dancer1LastName?.message} {...register("dancer1LastName")} />
-                  </div>
-                  <Input label="Klub / tanečná škola (volitelné)" placeholder="Taneční klub Bratislava" {...register("dancer1Club")} />
-                  <div className="border-t border-[var(--border)] pt-4">
-                    <p className="mb-3 text-xs font-semibold text-[var(--text-tertiary)]">PARTNER / PARTNERKA (VOLITELNÉ)</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input label="Jméno" placeholder="Peter" {...register("dancer2FirstName")} />
-                      <Input label="Příjmení" placeholder="Kováč" {...register("dancer2LastName")} />
+              {/* 5b — payment info */}
+              {competition.paymentInfo && (
+                <div style={{ ...cardStyle, borderColor: "rgba(79,70,229,.2)", background: "#FAFAFA" }}>
+                  <div style={{ padding: "14px 20px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 8, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".85rem", flexShrink: 0 }}>💳</div>
+                    <div>
+                      <p style={{ fontSize: ".75rem", fontWeight: 700, color: "#4F46E5", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 5 }}>{t("publicCompetition.paymentInfo")}</p>
+                      <p style={{ fontSize: ".875rem", lineHeight: 1.65, color: "#374151", whiteSpace: "pre-line" }}>{competition.paymentInfo}</p>
                     </div>
-                    <Input label="Klub / tanečná škola (volitelné)" placeholder="Taneční klub Bratislava" {...register("dancer2Club")} className="mt-3" />
                   </div>
-                  <div className="border-t border-[var(--border)] pt-4">
-                    <Input label="Email" type="email" placeholder="vas@email.cz"
-                      hint="Na tento email zašleme potvrzení přihlášky"
+                </div>
+              )}
+
+              {competition.paymentConfig && (competition.paymentConfig as Record<string, string>).iban && (
+                <div style={cardStyle}>
+                  {sectionLabel("💳", "Platební údaje")}
+                  <div style={{ padding: "0 20px 16px" }}>
+                    {[
+                      (competition.paymentConfig as Record<string, string>).holder && ["Majitel účtu", (competition.paymentConfig as Record<string, string>).holder],
+                      ["IBAN", (competition.paymentConfig as Record<string, string>).iban],
+                      (competition.paymentConfig as Record<string, string>).bic && ["BIC/SWIFT", (competition.paymentConfig as Record<string, string>).bic],
+                    ].filter(Boolean).map((row) => (
+                      <div key={row![0]} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #F3F4F6" }}>
+                        <span style={{ fontSize: ".85rem", color: "#6B7280" }}>{row![0]}</span>
+                        <span style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827", fontFamily: row![0] === "IBAN" || row![0] === "BIC/SWIFT" ? "monospace" : undefined }}>{row![1]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 5c — dancer info */}
+              <div style={cardStyle}>
+                {sectionLabel("💃", t("publicCompetition.dancerInfo"))}
+                <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+                  <p style={{ fontSize: ".71rem", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".08em" }}>{t("publicCompetition.firstDancer")}</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <Input label={t("publicRegister.firstNameLabel")} placeholder="Jana" error={errors.dancer1FirstName?.message} {...register("dancer1FirstName")} />
+                    <Input label={t("publicRegister.lastNameLabel")} placeholder="Nováková" error={errors.dancer1LastName?.message} {...register("dancer1LastName")} />
+                  </div>
+                  <Input label={t("publicRegister.clubLabel")} placeholder="Taneční klub Praha" {...register("dancer1Club")} />
+
+                  <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
+                    <p style={{ fontSize: ".71rem", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 14 }}>{t("publicCompetition.partner")}</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                      <Input label={t("publicRegister.firstNameLabel")} placeholder="Peter" {...register("dancer2FirstName")} />
+                      <Input label={t("publicRegister.lastNameLabel")} placeholder="Kováč" {...register("dancer2LastName")} />
+                    </div>
+                    <Input label={t("publicRegister.clubLabel")} placeholder="Taneční klub Praha" {...register("dancer2Club")} />
+                  </div>
+
+                  <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
+                    <Input label={t("publicRegister.emailLabel")} type="email" placeholder="vas@email.cz"
+                      hint={t("publicRegister.emailHint")}
                       error={errors.email?.message} {...register("email")} />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* GDPR */}
-              <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-4">
+              <div style={{ ...cardStyle, padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
                 <Controller control={control} name="gdpr" render={({ field }) => (
                   <input type="checkbox" id="gdpr"
-                    className="mt-0.5 h-4 w-4 rounded border-[var(--border)] accent-[var(--accent)]"
+                    style={{ marginTop: 2, width: 16, height: 16, accentColor: "#4F46E5", cursor: "pointer" }}
                     checked={field.value === true}
                     onChange={(e) => field.onChange(e.target.checked ? true : undefined)} />
                 )} />
-                <label htmlFor="gdpr" className="cursor-pointer text-sm text-[var(--text-secondary)]">
-                  Souhlasím se zpracováním osobních údajů za účelem organizace a průběhu soutěže.{" "}
-                  <Link href="/privacy" className="text-[var(--accent)] hover:underline">
-                    Zásady ochrany osobních údajů
+                <label htmlFor="gdpr" style={{ fontSize: ".875rem", color: "#4B5563", cursor: "pointer", lineHeight: 1.6 }}>
+                  {t("publicRegister.gdprText")}{" "}
+                  <Link href="/privacy" style={{ color: "#4F46E5", textDecoration: "none", fontWeight: 600 }}>
+                    {t("publicRegister.gdprLink")}
                   </Link>.
                 </label>
               </div>
               {errors.gdpr && (
-                <p className="-mt-4 text-xs text-[var(--destructive)]">{errors.gdpr.message}</p>
+                <p style={{ marginTop: -8, fontSize: ".78rem", color: "#DC2626" }}>{t("publicRegister.validation.gdprRequired")}</p>
               )}
 
-              <Button type="submit" size="lg" loading={submitting} className="w-full">
-                Odeslat přihlášku <ChevronRight className="h-4 w-4" />
-              </Button>
+              <button type="submit" disabled={submitting} style={{
+                padding: "14px 28px", borderRadius: 10, fontSize: "1rem", fontWeight: 700,
+                background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "#fff",
+                border: "none", cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? .7 : 1,
+                boxShadow: "0 4px 14px rgba(79,70,229,.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                transition: "opacity .2s",
+              }}>
+                {submitting ? "Odesílám…" : t("publicCompetition.submitRegistration")}
+                {!submitting && (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                )}
+              </button>
             </form>
           ) : (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-secondary)] py-12 text-center">
-              <AlertTriangle className="h-8 w-8 text-[var(--warning)]" />
-              <p className="font-semibold text-[var(--text-primary)]">Registrace není otevřena</p>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Přihlašování momentálně neprobíhá.
+            <div style={{ ...cardStyle, padding: "48px 24px", textAlign: "center" }}>
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: "#FFFBEB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", margin: "0 auto 16px" }}>⚠️</div>
+              <p style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1rem", color: "#111827", marginBottom: 8 }}>{t("publicCompetition.registrationNotOpen")}</p>
+              <p style={{ fontSize: ".875rem", color: "#6B7280", lineHeight: 1.6 }}>
+                {t("publicCompetition.registrationNotOpenDesc")}
                 {competition.contactEmail && (
-                  <> Pro dotazy: <a href={`mailto:${competition.contactEmail}`} className="text-[var(--accent)] hover:underline">{competition.contactEmail}</a></>
+                  <> <a href={`mailto:${competition.contactEmail}`} style={{ color: "#4F46E5", fontWeight: 600, textDecoration: "none" }}>{competition.contactEmail}</a></>
                 )}
               </p>
             </div>
           )}
 
         </div>
+
+        {/* Footer */}
+        <div style={{ borderTop: "1px solid #E5E7EB", background: "#fff", padding: "24px", textAlign: "center" }}>
+          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+            <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>DA</div>
+            <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".9rem", color: "#111827" }}>DanceApp</span>
+          </Link>
+          <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2025 DanceApp. Navrženo pro tanec.</p>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

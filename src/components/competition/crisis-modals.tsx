@@ -25,6 +25,7 @@ import {
 import { crisisApi, type WithdrawalReason, type PenaltyType } from "@/lib/api/crisis";
 import type { PairDto } from "@/lib/api/pairs";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
 
 // ── Withdrawal form ────────────────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ interface WithdrawalModalProps {
 
 export function WithdrawalModal({ open, onClose, competitionId, pairs }: WithdrawalModalProps) {
   const qc = useQueryClient();
+  const { t } = useLocale();
 
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm<WithdrawalForm>({
     resolver: zodResolver(withdrawalSchema),
@@ -58,11 +60,11 @@ export function WithdrawalModal({ open, onClose, competitionId, pairs }: Withdra
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pairs", competitionId] });
-      toast({ title: "Pair withdrawn — results will be recalculated", variant: "warning" } as Parameters<typeof toast>[0]);
+      toast({ title: t("crisis.withdrawn"), variant: "warning" } as Parameters<typeof toast>[0]);
       reset();
       onClose();
     },
-    onError: () => toast({ title: "Failed to process withdrawal", variant: "destructive" } as Parameters<typeof toast>[0]),
+    onError: () => toast({ title: t("crisis.withdrawalFailed"), variant: "destructive" } as Parameters<typeof toast>[0]),
   });
 
   return (
@@ -71,25 +73,25 @@ export function WithdrawalModal({ open, onClose, competitionId, pairs }: Withdra
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[var(--destructive)]">
             <XCircle className="h-5 w-5" />
-            Withdrawal
+            {t("crisis.withdrawal")}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit((d) => withdraw.mutate(d))} className="flex flex-col gap-4">
           <div className="rounded-[var(--radius-md)] border border-[var(--warning)]/30 bg-[var(--warning)]/5 p-3 text-sm text-[var(--text-secondary)]">
             <AlertTriangle className="mb-1 h-4 w-4 text-[var(--warning)]" />
-            Results will be automatically recalculated after withdrawal.
+            {t("crisis.withdrawalWarning")}
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Pair</label>
+            <label className="mb-1.5 block text-sm font-medium">{t("crisis.pair")}</label>
             <Controller
               control={control}
               name="pairId"
               render={({ field }) => (
                 <Select onValueChange={field.onChange} value={field.value ?? ""}>
                   <SelectTrigger error={!!errors.pairId}>
-                    <SelectValue placeholder="Select pair..." />
+                    <SelectValue placeholder={t("crisis.selectPair")} />
                   </SelectTrigger>
                   <SelectContent>
                     {pairs.map((p) => (
@@ -104,7 +106,7 @@ export function WithdrawalModal({ open, onClose, competitionId, pairs }: Withdra
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Reason</label>
+            <label className="mb-1.5 block text-sm font-medium">{t("crisis.reason")}</label>
             <Controller
               control={control}
               name="reason"
@@ -114,9 +116,9 @@ export function WithdrawalModal({ open, onClose, competitionId, pairs }: Withdra
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="voluntary">Voluntary withdrawal</SelectItem>
-                    <SelectItem value="injury">Injury</SelectItem>
-                    <SelectItem value="disqualification">Disqualification</SelectItem>
+                    <SelectItem value="voluntary">{t("crisis.voluntaryWithdrawal")}</SelectItem>
+                    <SelectItem value="injury">{t("crisis.injury")}</SelectItem>
+                    <SelectItem value="disqualification">{t("crisis.disqualification")}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -124,15 +126,15 @@ export function WithdrawalModal({ open, onClose, competitionId, pairs }: Withdra
           </div>
 
           <Input
-            label="Notes (optional)"
-            placeholder="Additional details..."
+            label={t("crisis.notesOptional")}
+            placeholder={t("crisis.additionalDetails")}
             {...register("notes")}
           />
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
             <Button type="submit" variant="destructive" loading={withdraw.isPending}>
-              Confirm withdrawal
+              {t("crisis.confirmWithdrawal")}
             </Button>
           </DialogFooter>
         </form>
@@ -161,6 +163,7 @@ interface PenaltyModalProps {
 
 export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyModalProps) {
   const qc = useQueryClient();
+  const { t } = useLocale();
 
   const { register, control, handleSubmit, reset, watch, formState: { errors } } = useForm<PenaltyForm>({
     resolver: zodResolver(penaltySchema),
@@ -179,19 +182,19 @@ export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyMod
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pairs", competitionId] });
-      toast({ title: "Penalty applied", variant: "warning" } as Parameters<typeof toast>[0]);
+      toast({ title: t("crisis.penaltyApplied"), variant: "warning" } as Parameters<typeof toast>[0]);
       reset();
       onClose();
     },
-    onError: () => toast({ title: "Failed to apply penalty", variant: "destructive" } as Parameters<typeof toast>[0]),
+    onError: () => toast({ title: t("crisis.penaltyFailed"), variant: "destructive" } as Parameters<typeof toast>[0]),
   });
 
   const PRESET_REASONS = [
-    "Late arrival",
-    "Incorrect attire",
-    "Unsporting behavior",
-    "Rule violation",
-    "Other",
+    { value: t("crisis.presetReasonLateArrival") },
+    { value: t("crisis.presetReasonAttire") },
+    { value: t("crisis.presetReasonUnsporting") },
+    { value: t("crisis.presetReasonRuleViolation") },
+    { value: t("crisis.presetReasonOther") },
   ];
 
   return (
@@ -200,20 +203,20 @@ export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyMod
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[var(--warning)]">
             <ShieldAlert className="h-5 w-5" />
-            Apply penalty
+            {t("crisis.applyPenalty")}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit((d) => penalty.mutate(d))} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Pair</label>
+            <label className="mb-1.5 block text-sm font-medium">{t("crisis.pair")}</label>
             <Controller
               control={control}
               name="pairId"
               render={({ field }) => (
                 <Select onValueChange={field.onChange} value={field.value ?? ""}>
                   <SelectTrigger error={!!errors.pairId}>
-                    <SelectValue placeholder="Select pair..." />
+                    <SelectValue placeholder={t("crisis.selectPair")} />
                   </SelectTrigger>
                   <SelectContent>
                     {pairs.map((p) => (
@@ -228,7 +231,7 @@ export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyMod
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Penalty type</label>
+            <label className="mb-1.5 block text-sm font-medium">{t("crisis.penaltyType")}</label>
             <Controller
               control={control}
               name="type"
@@ -238,9 +241,9 @@ export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyMod
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="warning">⚠️ Warning</SelectItem>
-                    <SelectItem value="point_penalty">➕ Point penalty</SelectItem>
-                    <SelectItem value="disqualification">❌ Disqualification</SelectItem>
+                    <SelectItem value="warning">⚠️ {t("crisis.warning")}</SelectItem>
+                    <SelectItem value="point_penalty">➕ {t("crisis.pointPenalty")}</SelectItem>
+                    <SelectItem value="disqualification">❌ {t("crisis.disqualification")}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -249,12 +252,12 @@ export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyMod
 
           {penaltyType === "point_penalty" && (
             <Input
-              label="Penalty points"
+              label={t("crisis.penaltyPoints")}
               type="number"
               min={1}
               max={10}
-              placeholder="e.g. 2"
-              hint="Points added to the pair's total sum (worse ranking)"
+              placeholder={t("crisis.penaltyPointsPlaceholder")}
+              hint={t("crisis.penaltyPointsHint")}
               error={errors.points?.message}
               {...register("points")}
             />
@@ -262,7 +265,7 @@ export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyMod
 
           <div>
             <label className="mb-1.5 block text-sm font-medium">
-              Reason <span className="text-[var(--destructive)]">*</span>
+              {t("crisis.reasonRequired")} <span className="text-[var(--destructive)]">*</span>
             </label>
             <Controller
               control={control}
@@ -270,11 +273,11 @@ export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyMod
               render={({ field }) => (
                 <Select onValueChange={field.onChange} value={field.value ?? ""}>
                   <SelectTrigger error={!!errors.reason}>
-                    <SelectValue placeholder="Select reason..." />
+                    <SelectValue placeholder={t("crisis.selectReason")} />
                   </SelectTrigger>
                   <SelectContent>
                     {PRESET_REASONS.map((r) => (
-                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                      <SelectItem key={r.value} value={r.value}>{r.value}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -283,15 +286,15 @@ export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyMod
           </div>
 
           <Input
-            label="Additional notes (optional)"
-            placeholder="Free text details..."
+            label={t("crisis.additionalNotesOptional")}
+            placeholder={t("crisis.freeTextDetails")}
             {...register("notes")}
           />
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
             <Button type="submit" loading={penalty.isPending}>
-              Apply penalty
+              {t("crisis.applyPenalty")}
             </Button>
           </DialogFooter>
         </form>

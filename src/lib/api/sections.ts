@@ -1,38 +1,73 @@
 import apiClient from "@/lib/api-client";
 
-export type AgeCategory = "CHILDREN" | "JUNIOR_I" | "JUNIOR_II" | "YOUTH" | "ADULT" | "SENIOR_I" | "SENIOR_II";
-export type Level = "D" | "C" | "B" | "A" | "S" | "OPEN";
-export type DanceStyle = "STANDARD" | "LATIN" | "COMBINATION";
-export type RoundType = "PRELIMINARY" | "SEMIFINAL" | "FINAL";
+export type AgeCategory = "CHILDREN_I" | "CHILDREN_II" | "JUNIOR_I" | "JUNIOR_II" | "YOUTH" | "ADULT" | "SENIOR_I" | "SENIOR_II";
+export type Level = "HOBBY" | "D" | "C" | "B" | "A" | "S" | "OPEN" | "CHAMPIONSHIP";
+export type DanceStyle = "STANDARD" | "LATIN" | "TEN_DANCE" | "COMBINATION";
+export type CompetitorType = "AMATEURS" | "PROFESSIONALS";
+export type CompetitionType = "COUPLE" | "SOLO_STANDARD" | "SOLO_LATIN" | "FORMATION_STANDARD" | "FORMATION_LATIN" | "SHOW";
+export type Series = "CZECH_CHAMPIONSHIP" | "CZECH_CUP" | "EXTRALIGA" | "LIGA_I" | "LIGA_II" | "GRAND_PRIX" | "OPEN" | "OTHER";
+export type RoundType = "PRELIMINARY" | "SEMIFINAL" | "FINAL" | "HEAT" | "SINGLE_ROUND";
 
 export interface DanceDto {
-  id: string;
-  name: string;
-  style: DanceStyle;
-  orderIndex: number;
+  id?: string;
+  /** Backend field */
+  danceName?: string;
+  danceOrder?: number;
+  /** Frontend field */
+  name?: string;
+  style?: DanceStyle;
+  orderIndex?: number;
 }
 
 export interface SectionDto {
   id: string;
-  competitionId: string;
+  competitionId?: string;
   name: string;
-  ageCategory: AgeCategory;
-  level: Level;
-  danceStyle: DanceStyle;
+  externalId?: string;
+  danceStyle?: DanceStyle | string;
+  numberOfJudges?: number;
+  maxFinalPairs?: number;
+  orderIndex?: number;
+  currentRound?: {
+    id: string;
+    roundNumber: number;
+    roundType: RoundType;
+    status: string;
+    pairsToAdvance?: number;
+  };
+  ageCategory?: AgeCategory;
+  level?: Level;
+  competitorType?: CompetitorType;
+  competitionType?: CompetitionType;
+  series?: Series;
   dances: DanceDto[];
-  registeredPairsCount: number;
+  registeredPairsCount?: number;
   maxPairs?: number;
   entryFee?: number;
   entryFeeCurrency?: string;
   paymentInfo?: string;
-  status: "DRAFT" | "ACTIVE" | "COMPLETED";
+  status?: "DRAFT" | "ACTIVE" | "COMPLETED";
+  presenceClosed?: boolean;
+  finalSize?: number;
+  mergedIntoId?: string;
+  mergeId?: string;
+  mergedLabel?: string;
 }
 
 export interface CreateSectionRequest {
   name: string;
-  ageCategory: AgeCategory;
-  level: Level;
-  danceStyle: DanceStyle;
+  danceStyle?: DanceStyle | string;
+  // Backend required fields
+  numberOfJudges?: number;
+  maxFinalPairs?: number;
+  orderIndex?: number;
+  dances?: string[];
+  // Frontend-only / ČSTS fields
+  ageCategory?: AgeCategory;
+  level?: Level;
+  competitorType?: CompetitorType;
+  competitionType?: CompetitionType;
+  series?: Series;
   danceIds?: string[];
   entryFee?: number;
   entryFeeCurrency?: string;

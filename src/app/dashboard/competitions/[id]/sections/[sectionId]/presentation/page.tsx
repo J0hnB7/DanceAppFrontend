@@ -8,6 +8,7 @@ import { scoringApi } from "@/lib/api/scoring";
 import { sectionsApi } from "@/lib/api/sections";
 import { pairsApi } from "@/lib/api/pairs";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/contexts/locale-context";
 
 // Fullscreen dramatic result reveal — no AppShell, standalone dark mode page
 export default function PresentationPage({
@@ -17,6 +18,7 @@ export default function PresentationPage({
 }) {
   const { id: competitionId, sectionId } = use(params);
   const router = useRouter();
+  const { t } = useLocale();
 
   // currentIndex: which result we're showing (0 = last place, increments to 1st)
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -138,9 +140,9 @@ export default function PresentationPage({
         {!summary || total === 0 ? (
           <div className="flex flex-col items-center gap-4">
             <Trophy className="h-16 w-16 text-white/10" />
-            <p className="text-xl text-white/30">No results to present</p>
+            <p className="text-xl text-white/30">{t("results.noSummary")}</p>
             <p className="text-sm text-white/20">
-              Calculate the final summary first, then return to this screen.
+              {t("results.noSummaryDesc")}
             </p>
           </div>
         ) : current ? (
@@ -174,7 +176,7 @@ export default function PresentationPage({
 
             {/* Sum detail (subtle) */}
             <p className="mt-3 text-sm text-white/20">
-              Total sum: {current.totalSum}
+              {t("results.totalSumOf")} {current.totalSum}
             </p>
 
             {/* 1st place special message */}
@@ -182,7 +184,7 @@ export default function PresentationPage({
               <div className="mt-8 flex items-center justify-center gap-2">
                 <Trophy className="h-5 w-5 text-yellow-400" />
                 <p className="text-lg font-bold tracking-wide text-yellow-400">
-                  CHAMPION
+                  {t("results.champion")}
                 </p>
                 <Trophy className="h-5 w-5 text-yellow-400" />
               </div>
@@ -202,7 +204,7 @@ export default function PresentationPage({
           <ChevronLeft className="h-6 w-6" />
         </button>
         <p className="text-xs text-white/20">
-          {total > 0 ? "← → or Space to navigate · Esc to exit" : ""}
+          {total > 0 ? t("results.presentNavHint") : ""}
         </p>
         <button
           onClick={(e) => { e.stopPropagation(); advance(); }}

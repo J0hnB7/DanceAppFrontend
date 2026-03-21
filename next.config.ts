@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
   async rewrites() {
     return [
       {
@@ -30,4 +31,14 @@ export default withSentryConfig(nextConfig, {
   tunnelRoute: "/monitoring",
 
   silent: !process.env.CI,
+
+  // Disable source map processing in dev — prevents continuous recompilation loop
+  sourcemaps: {
+    disable: process.env.NODE_ENV === "development",
+  },
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
 });

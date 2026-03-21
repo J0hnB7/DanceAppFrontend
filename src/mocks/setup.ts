@@ -2,7 +2,7 @@ import MockAdapter from "axios-mock-adapter";
 import apiClient from "@/lib/api-client";
 import {
   mockUser,
-  mockAuthResponse,
+  mockTokenResponse,
   competitions,
   sections,
   pairs,
@@ -25,7 +25,7 @@ const NEWS_STORAGE_KEY = "mock_news";
 
 function persistCompetitions() {
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(competitions));
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(competitions)); } catch { /* ignore — Safari private mode */ }
   }
 }
 
@@ -50,7 +50,7 @@ function restoreCompetitions() {
 
 function persistSections() {
   if (typeof window !== "undefined") {
-    localStorage.setItem(SECTIONS_STORAGE_KEY, JSON.stringify(sections));
+    try { localStorage.setItem(SECTIONS_STORAGE_KEY, JSON.stringify(sections)); } catch { /* ignore — Safari private mode */ }
   }
 }
 
@@ -75,7 +75,7 @@ function restoreSections() {
 
 function persistPairs() {
   if (typeof window !== "undefined") {
-    localStorage.setItem(PAIRS_STORAGE_KEY, JSON.stringify(pairs));
+    try { localStorage.setItem(PAIRS_STORAGE_KEY, JSON.stringify(pairs)); } catch { /* ignore — Safari private mode */ }
   }
 }
 
@@ -97,7 +97,7 @@ function restorePairs() {
 
 function persistNews() {
   if (typeof window !== "undefined") {
-    localStorage.setItem(NEWS_STORAGE_KEY, JSON.stringify(news));
+    try { localStorage.setItem(NEWS_STORAGE_KEY, JSON.stringify(news)); } catch { /* ignore — Safari private mode */ }
   }
 }
 
@@ -128,9 +128,9 @@ export function setupMockApi() {
   const mock = new MockAdapter(apiClient, { delayResponse: 150, onNoMatch: "throwException" });
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  mock.onPost("/auth/register").reply(201, mockAuthResponse);
-  mock.onPost("/auth/login").reply(200, mockAuthResponse);
-  mock.onPost("/auth/refresh").reply(200, mockAuthResponse);
+  mock.onPost("/auth/register").reply(201, mockTokenResponse);
+  mock.onPost("/auth/login").reply(200, mockTokenResponse);
+  mock.onPost("/auth/refresh").reply(200, mockTokenResponse);
   mock.onPost("/auth/logout").reply(204);
   mock.onGet("/auth/me").reply(200, mockUser);
   mock.onPost("/auth/verify-email").reply(200, {});
@@ -142,30 +142,31 @@ export function setupMockApi() {
   mock.onPost("/auth/2fa/disable").reply(200, {});
 
   // ── Competitions ────────────────────────────────────────────────────────────
-  mock.onGet("/competitions").reply((config) => {
-    const status = config.params?.status;
-    const filtered = status ? competitions.filter((c) => c.status === status) : [...competitions];
-    const page = Number(config.params?.page ?? 0);
-    const size = Number(config.params?.size ?? 20);
-    return [200, {
-      content: filtered.slice(page * size, (page + 1) * size),
-      totalElements: filtered.length,
-      totalPages: Math.ceil(filtered.length / size),
-      number: page,
-      size,
-    }];
+  mock.onGet("/competitions").reply(() => {
+    const summaries = competitions.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug ?? c.id,
+      status: c.status,
+      eventDate: c.eventDate,
+      sectionCount: sections.filter((s) => s.competitionId === c.id).length,
+      pairCount: pairs.filter((p) => p.competitionId === c.id).length,
+      registrationOpen: c.registrationOpen,
+    }));
+    return [200, summaries];
   });
 
   mock.onGet(/\/competitions\/[^/]+$/).reply((config) => {
     const id = config.url!.split("/").pop();
     const comp = competitions.find((c) => c.id === id);
-    return comp ? [200, comp] : [404, {}];
+    if (!comp) return [404, {}];
+    return [200, { ...comp, registeredPairsCount: pairs.filter((p) => p.competitionId === id).length }];
   });
 
   mock.onPost("/competitions").reply((config) => {
     const data = JSON.parse(config.data);
-    const comp = { id: `comp-${Date.now()}`, ...data, status: "DRAFT", organizerId: mockUser.id, registeredPairsCount: 0, createdAt: new Date().toISOString(), pairsVisibility: "HIDDEN", numberOfRounds: data.numberOfRounds ?? 2 };
-    competitions.push(comp);
+    const comp = { id: `comp-${Date.now()}`, slug: `comp-${Date.now()}`, ...data, status: "DRAFT", registrationOpen: false, organizerId: mockUser.id };
+    competitions.push(comp as typeof competitions[0]);
     persistCompetitions();
     return [201, comp];
   });
@@ -188,40 +189,25 @@ export function setupMockApi() {
     return [200, comp];
   });
 
-  mock.onPost(/\/competitions\/[^/]+\/open-registration/).reply((config) => {
-    const id = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
-    const comp = competitions.find((c) => c.id === id);
-    if (!comp) return [404, {}];
-    comp.status = "REGISTRATION_OPEN";
-    persistCompetitions();
-    return [200, comp];
-  });
-
-  mock.onPost(/\/competitions\/[^/]+\/close-registration/).reply((config) => {
-    const id = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
-    const comp = competitions.find((c) => c.id === id);
-    if (!comp) return [404, {}];
-    comp.status = "PUBLISHED";
-    persistCompetitions();
-    return [200, comp];
-  });
 
   mock.onDelete(/\/competitions\/[^/]+$/).reply((config) => {
     const compId = config.url!.match(/\/competitions\/([^/]+)$/)?.[1];
     if (compId) {
       const idx = competitions.findIndex((c) => c.id === compId);
       if (idx !== -1) competitions.splice(idx, 1);
+      persistCompetitions();
     }
     return [204];
   });
 
-  mock.onPost(/\/competitions\/[^/]+\/public-registration$/).reply((config) => {
+  // Also handle the /pairs/public-registration path used by the backend
+  mock.onPost(/\/competitions\/[^/]+\/pairs\/public-registration$/).reply((config) => {
     const id = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
     const comp = competitions.find((c) => c.id === id);
     if (!comp) return [404, { message: "Competition not found" }];
     const data = JSON.parse(config.data);
     const section = sections.find((s) => s.id === data.sectionId);
-    const pair = {
+    const pair: typeof pairs[number] = {
       id: `pair-${Date.now()}`,
       competitionId: id,
       sectionId: data.sectionId,
@@ -233,29 +219,52 @@ export function setupMockApi() {
       dancer2LastName: data.dancer2LastName,
       dancer2Club: data.dancer2Club,
       registeredAt: new Date().toISOString(),
-      paymentStatus: "PENDING" as const,
+      paymentStatus: "PENDING",
+      registrationStatus: "UNCONFIRMED",
+      presenceStatus: "ABSENT",
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (pair as any).registrationStatus = "UNCONFIRMED";
-    pairs.push(pair as any);
-    comp.registeredPairsCount = (comp.registeredPairsCount ?? 0) + 1;
+    pairs.push(pair);
     persistPairs();
-    persistCompetitions();
-    const paymentMethod = comp.paymentMethod ?? "PAY_AT_VENUE";
-    const paymentConfig = (comp.paymentConfig ?? {}) as Record<string, unknown>;
     return [201, {
       pairId: pair.id,
       startNumber: pair.startNumber,
       sectionName: section?.name ?? "Unknown",
       amountDue: 40,
       currency: "EUR",
-      paymentMethod,
-      paymentConfig,
-      confirmationEmail: {
-        subject: `Registration confirmed – ${comp.name}`,
-        body: `Dear ${data.dancer1FirstName} ${data.dancer1LastName} and ${data.dancer2FirstName ?? ""} ${data.dancer2LastName ?? ""},\n\nWe have received your registration for ${comp.name} in ${comp.location}.\n\nYou have registered for: ${section?.name ?? "Unknown"}\n\nRegistration fee: 40 EUR\nPayment method: ${paymentMethod}\n\nKind regards,\n${comp.name} Organizers`,
-      },
+    }];
+  });
+
+  mock.onPost(/\/competitions\/[^/]+\/public-registration$/).reply((config) => {
+    const id = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
+    const comp = competitions.find((c) => c.id === id);
+    if (!comp) return [404, { message: "Competition not found" }];
+    const data = JSON.parse(config.data);
+    const section = sections.find((s) => s.id === data.sectionId);
+    const pair: typeof pairs[number] = {
+      id: `pair-${Date.now()}`,
+      competitionId: id,
+      sectionId: data.sectionId,
+      startNumber: pairs.filter((p) => p.competitionId === id).length + 1,
+      dancer1FirstName: data.dancer1FirstName,
+      dancer1LastName: data.dancer1LastName,
+      dancer1Club: data.dancer1Club,
+      dancer2FirstName: data.dancer2FirstName,
+      dancer2LastName: data.dancer2LastName,
+      dancer2Club: data.dancer2Club,
+      registeredAt: new Date().toISOString(),
+      paymentStatus: "PENDING",
+      registrationStatus: "UNCONFIRMED",
+      presenceStatus: "ABSENT",
+    };
+    pairs.push(pair);
+    persistPairs();
+    persistCompetitions();
+    return [201, {
+      pairId: pair.id,
+      startNumber: pair.startNumber,
+      sectionName: section?.name ?? "Unknown",
+      amountDue: 40,
+      currency: "EUR",
     }];
   });
 
@@ -274,9 +283,8 @@ export function setupMockApi() {
   mock.onPost(/\/competitions\/[^/]+\/sections$/).reply((config) => {
     const compId = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
     const data = JSON.parse(config.data);
-    const sec = { id: `sec-${Date.now()}`, competitionId: compId, dances: [], registeredPairsCount: 0, ...data, status: "ACTIVE" };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    sections.push(sec as any);
+    const sec = { id: `sec-${Date.now()}`, competitionId: compId, dances: [], registeredPairsCount: 0, ...data, status: "ACTIVE" } as typeof sections[number];
+    sections.push(sec);
     persistSections();
     return [201, sec];
   });
@@ -306,12 +314,26 @@ export function setupMockApi() {
     return [200, filtered];
   });
 
+  mock.onPost(/\/competitions\/[^/]+\/pairs\/batch-import$/).reply((config) => {
+    const compId = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
+    const items: Record<string, unknown>[] = JSON.parse(config.data);
+    const created: unknown[] = [];
+    let start = pairs.filter((p) => p.competitionId === compId).length + 1;
+    for (const data of items) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pair: any = { id: `pair-${Date.now()}-${start}`, competitionId: compId, startNumber: start++, registeredAt: new Date().toISOString(), paymentStatus: "PENDING", registrationStatus: "UNCONFIRMED", presenceStatus: "ABSENT", ...data };
+      pairs.push(pair);
+      created.push(pair);
+    }
+    persistPairs();
+    return [201, { imported: created.length, errors: [] }];
+  });
+
   mock.onPost(/\/competitions\/[^/]+\/pairs$/).reply((config) => {
     const compId = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
     const data = JSON.parse(config.data);
-    const pair = { id: `pair-${Date.now()}`, competitionId: compId, startNumber: pairs.filter((p) => p.competitionId === compId).length + 1, registeredAt: new Date().toISOString(), paymentStatus: data.markAsPaid ? "PAID" : "PENDING", registrationStatus: data.markAsPaid ? "CONFIRMED" : "UNCONFIRMED", ...data };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pairs.push(pair as any);
+    const pair = { id: `pair-${Date.now()}`, competitionId: compId, startNumber: pairs.filter((p) => p.competitionId === compId).length + 1, registeredAt: new Date().toISOString(), paymentStatus: data.markAsPaid ? "PAID" : "PENDING", registrationStatus: data.markAsPaid ? "CONFIRMED" : "UNCONFIRMED", presenceStatus: "ABSENT" as const, ...data } satisfies typeof pairs[number];
+    pairs.push(pair);
     persistPairs();
     return [201, pair];
   });
@@ -341,8 +363,7 @@ export function setupMockApi() {
     const { status } = JSON.parse(config.data);
     const pair = pairs.find((p) => p.id === pairId);
     if (!pair) return [404, {}];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (pair as any).registrationStatus = status;
+    pair.registrationStatus = status;
     if (status === "CONFIRMED") pair.paymentStatus = "PAID";
     if (status === "UNCONFIRMED") pair.paymentStatus = "PENDING";
     persistPairs();
@@ -355,8 +376,7 @@ export function setupMockApi() {
     const { note } = JSON.parse(config.data);
     const pair = pairs.find((p) => p.id === pairId);
     if (!pair) return [404, {}];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (pair as any).adminNote = note;
+    pair.adminNote = note;
     persistPairs();
     return [200, pair];
   });
@@ -387,8 +407,7 @@ export function setupMockApi() {
     const sectionId = config.url!.split("/")[2];
     const data = JSON.parse(config.data);
     const round = { id: `round-${Date.now()}`, sectionId, status: "OPEN", roundNumber: rounds.length + 1, startedAt: null, closedAt: null, ...data };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rounds.push(round as any);
+    rounds.push(round);
     return [201, round];
   });
 
@@ -421,10 +440,13 @@ export function setupMockApi() {
 
   mock.onPost(/\/competitions\/[^/]+\/judge-tokens$/).reply((config) => {
     const compId = config.url!.split("/")[2];
-    const num = judgeTokens.filter((j) => j.competitionId === compId).length + 1;
-    const token = { id: `jt-${Date.now()}`, competitionId: compId, judgeNumber: num, token: `JUDGE${num}TOKEN`, pin: Math.floor(1000 + Math.random() * 9000).toString(), role: "JUDGE", connected: false };
-    judgeTokens.push(token);
-    return [201, token];
+    const reqBody = JSON.parse(config.data ?? "{}");
+    const existing = judgeTokens.filter((j) => j.competitionId === compId);
+    const num = reqBody.judgeNumber ?? (existing.length + 1);
+    const rawToken = `judge-${compId}-${num}-${Date.now()}`;
+    const entry = { id: `jt-${Date.now()}-${num}`, competitionId: compId, judgeNumber: num, token: rawToken, rawToken, active: true, pin: String(Math.floor(100000 + Math.random() * 900000)), role: reqBody.role ?? "JUDGE" };
+    judgeTokens.push(entry);
+    return [201, entry];
   });
 
   mock.onDelete(/\/competitions\/[^/]+\/judge-tokens\/[^/]+$/).reply(204);
@@ -475,9 +497,8 @@ export function setupMockApi() {
   mock.onPost(/\/competitions\/[^/]+\/fees$/).reply((config) => {
     const compId = config.url!.split("/")[2];
     const data = JSON.parse(config.data);
-    const fee = { id: `fee-${Date.now()}`, competitionId: compId, currency: "EUR", ...data };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    fees.push(fee as any);
+    const fee = { id: `fee-${Date.now()}`, competitionId: compId, currency: "EUR", ...data } as typeof fees[number];
+    fees.push(fee);
     return [201, fee];
   });
 
@@ -491,9 +512,8 @@ export function setupMockApi() {
   mock.onPost(/\/competitions\/[^/]+\/discounts$/).reply((config) => {
     const compId = config.url!.split("/")[2];
     const data = JSON.parse(config.data);
-    const disc = { id: `disc-${Date.now()}`, competitionId: compId, usedCount: 0, active: true, ...data };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    discounts.push(disc as any);
+    const disc = { id: `disc-${Date.now()}`, competitionId: compId, usedCount: 0, active: true, ...data } as typeof discounts[number];
+    discounts.push(disc);
     return [201, disc];
   });
 
@@ -516,9 +536,8 @@ export function setupMockApi() {
   mock.onPost(/\/competitions\/[^/]+\/news$/).reply((config) => {
     const compId = config.url!.match(/\/competitions\/([^/]+)\/news/)?.[1];
     const data = JSON.parse(config.data);
-    const item = { id: `news-${Date.now()}`, competitionId: compId, publishedAt: new Date().toISOString(), ...data };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    news.push(item as any);
+    const item = { id: `news-${Date.now()}`, competitionId: compId, publishedAt: new Date().toISOString(), ...data } as typeof news[number];
+    news.push(item);
     persistNews();
     return [201, item];
   });
@@ -541,9 +560,8 @@ export function setupMockApi() {
     const compId = config.url!.split("/")[2];
     const data = JSON.parse(config.data);
     const sec = sections.find((s) => s.id === data.sectionId);
-    const slot = { id: `slot-${Date.now()}`, competitionId: compId, sectionName: sec?.name ?? "Unknown", orderIndex: scheduleSlots.length, ...data };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    scheduleSlots.push(slot as any);
+    const slot = { id: `slot-${Date.now()}`, competitionId: compId, sectionName: sec?.name ?? "Unknown", orderIndex: scheduleSlots.length, ...data } as typeof scheduleSlots[number];
+    scheduleSlots.push(slot);
     return [201, slot];
   });
 
@@ -578,7 +596,7 @@ export function setupMockApi() {
 
   // ── Me ───────────────────────────────────────────────────────────────────────
   mock.onGet("/me/registrations").reply(200, [
-    { id: "reg-001", competitionId: "comp-001", competitionName: "Slovak Dance Cup 2026", competitionLocation: "Bratislava", competitionStartDate: "2026-04-15T09:00:00", competitionStatus: "REGISTRATION_OPEN", sectionId: "sec-001", sectionName: "Adult Standard A", startNumber: 1, dancer1FirstName: "Martin", dancer1LastName: "Novák", dancer2FirstName: "Eva", dancer2LastName: "Nováková", paymentStatus: "PAID", amountDue: 40, currency: "EUR", registeredAt: "2026-02-01T10:00:00" },
+    { id: "reg-001", competitionId: "comp-001", competitionName: "Slovak Dance Cup 2026", competitionLocation: "Bratislava", competitionStartDate: "2026-04-15", competitionStatus: "PUBLISHED", sectionId: "sec-001", sectionName: "Adult Standard A", startNumber: 1, dancer1FirstName: "Martin", dancer1LastName: "Novák", dancer2FirstName: "Eva", dancer2LastName: "Nováková", paymentStatus: "PAID", amountDue: 40, currency: "EUR", registeredAt: "2026-02-01T10:00:00" },
   ]);
 
   mock.onGet("/me/payments").reply(200, [
@@ -590,15 +608,15 @@ export function setupMockApi() {
   // ── Judge session ────────────────────────────────────────────────────────────
   mock.onPost("/judge-tokens/validate").reply((config) => {
     const { token } = JSON.parse(config.data);
-    const jt = judgeTokens.find((j) => j.token === token);
-    if (!jt) return [401, { message: "Invalid or expired judge token" }];
+    const jt = judgeTokens.find((j) => j.token === token || j.rawToken === token);
+    if (!jt || !jt.active) return [401, { message: "Invalid or expired judge token" }];
     const comp = competitions.find((c) => c.id === jt.competitionId);
-    jt.connected = true;
     return [200, {
       judgeTokenId: jt.id,
       judgeNumber: jt.judgeNumber,
       competitionId: jt.competitionId,
       competitionName: comp?.name ?? "Unknown Competition",
+      role: jt.role,
     }];
   });
 
@@ -627,6 +645,25 @@ export function setupMockApi() {
       ...p,
       presenceStatus: p.presenceStatus ?? "ABSENT",
     }))];
+  });
+
+  // Per-section presence close/reopen
+  mock.onPost(/\/competitions\/[^/]+\/sections\/[^/]+\/presence\/close$/).reply((config) => {
+    const sectionId = config.url!.match(/\/sections\/([^/]+)\/presence/)?.[1];
+    const section = sections.find((s) => s.id === sectionId);
+    if (!section) return [404, {}];
+    (section as unknown as Record<string, unknown>).presenceClosed = true;
+    persistSections();
+    return [204];
+  });
+
+  mock.onPost(/\/competitions\/[^/]+\/sections\/[^/]+\/presence\/reopen$/).reply((config) => {
+    const sectionId = config.url!.match(/\/sections\/([^/]+)\/presence/)?.[1];
+    const section = sections.find((s) => s.id === sectionId);
+    if (!section) return [404, {}];
+    (section as unknown as Record<string, unknown>).presenceClosed = false;
+    persistSections();
+    return [204];
   });
 
   mock.onPut(/\/competitions\/[^/]+\/pairs\/[^/]+\/presence$/).reply((config) => {

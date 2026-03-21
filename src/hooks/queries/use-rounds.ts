@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { roundsApi, type CreateRoundRequest } from "@/lib/api/rounds";
+import { roundsApi, type CompleteRoundRequest } from "@/lib/api/rounds";
 
 export const roundKeys = {
   all: ["rounds"] as const,
@@ -8,11 +8,11 @@ export const roundKeys = {
   submissionStatus: (roundId: string) => [...roundKeys.detail(roundId), "submission-status"] as const,
 };
 
-export function useRounds(sectionId: string) {
+export function useRounds(competitionId: string, sectionId: string) {
   return useQuery({
     queryKey: roundKeys.lists(sectionId),
-    queryFn: () => roundsApi.list(sectionId),
-    enabled: !!sectionId,
+    queryFn: () => roundsApi.list(competitionId, sectionId),
+    enabled: !!sectionId && !!competitionId,
   });
 }
 
@@ -29,16 +29,27 @@ export function useSubmissionStatus(roundId: string) {
     queryKey: roundKeys.submissionStatus(roundId),
     queryFn: () => roundsApi.getSubmissionStatus(roundId),
     enabled: !!roundId,
-    refetchInterval: 10_000, // poll every 10s during active round
+    refetchInterval: 10_000,
   });
 }
 
-export function useCreateRound(sectionId: string) {
+export function useOpenRound(competitionId: string, sectionId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateRoundRequest) => roundsApi.create(sectionId, data),
+    mutationFn: () => roundsApi.open(competitionId, sectionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: roundKeys.lists(sectionId) });
+    },
+  });
+}
+
+export function useCompleteRound(competitionId: string, sectionId: string, roundId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data?: CompleteRoundRequest) => roundsApi.complete(competitionId, sectionId, roundId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: roundKeys.lists(sectionId) });
+      qc.invalidateQueries({ queryKey: roundKeys.detail(roundId) });
     },
   });
 }
@@ -47,9 +58,9 @@ export function useRoundAction(roundId: string) {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: roundKeys.detail(roundId) });
   return {
-    open: useMutation({ mutationFn: () => roundsApi.open(roundId), onSuccess: invalidate }),
     start: useMutation({ mutationFn: () => roundsApi.start(roundId), onSuccess: invalidate }),
     close: useMutation({ mutationFn: () => roundsApi.close(roundId), onSuccess: invalidate }),
     calculate: useMutation({ mutationFn: () => roundsApi.calculateResults(roundId), onSuccess: invalidate }),
+    resolveTie: useMutation({ mutationFn: (choice: "more" | "less") => roundsApi.resolveTie(roundId, choice), onSuccess: invalidate }),
   };
 }

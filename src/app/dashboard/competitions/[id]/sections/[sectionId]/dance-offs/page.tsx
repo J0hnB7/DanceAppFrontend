@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/dialog";
 import { danceOffsApi } from "@/lib/api/dance-offs";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
+import { getErrorMessage } from "@/lib/utils";
 
 export default function DanceOffsPage({
   params,
@@ -26,6 +28,7 @@ export default function DanceOffsPage({
 }) {
   const { id: competitionId, sectionId } = use(params);
   const qc = useQueryClient();
+  const { t } = useLocale();
   const [createOpen, setCreateOpen] = useState(false);
   const [position, setPosition] = useState("1");
 
@@ -39,7 +42,10 @@ export default function DanceOffsPage({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dance-offs", sectionId] });
       setCreateOpen(false);
-      toast({ title: "Dance-off created", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("danceOffs.created"), variant: "success" } as Parameters<typeof toast>[0]);
+    },
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
     },
   });
 
@@ -47,7 +53,10 @@ export default function DanceOffsPage({
     mutationFn: (danceOffId: string) => danceOffsApi.resolve(danceOffId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dance-offs", sectionId] });
-      toast({ title: "Dance-off resolved", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("danceOffs.resolved"), variant: "success" } as Parameters<typeof toast>[0]);
+    },
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
     },
   });
 
@@ -56,13 +65,14 @@ export default function DanceOffsPage({
       headerActions={
         <Button size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" />
-          Create dance-off
+          {t("danceOffs.createButton")}
         </Button>
       }
     >
       <PageHeader
-        title="Dance-offs"
-        description="Resolve tied placements using a dance-off round"
+        title={t("danceOffs.title")}
+        description={t("danceOffs.description")}
+        backHref={`/dashboard/competitions/${competitionId}/sections/${sectionId}`}
       />
 
       {!danceOffs?.length ? (
@@ -70,9 +80,9 @@ export default function DanceOffsPage({
           <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
             <Swords className="h-12 w-12 text-[var(--text-tertiary)]" />
             <div>
-              <p className="font-medium text-[var(--text-primary)]">No dance-offs yet</p>
+              <p className="font-medium text-[var(--text-primary)]">{t("danceOffs.noTitle")}</p>
               <p className="text-sm text-[var(--text-secondary)]">
-                Create a dance-off to resolve a tied placement.
+                {t("danceOffs.noDesc")}
               </p>
             </div>
           </CardContent>
@@ -85,7 +95,7 @@ export default function DanceOffsPage({
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Swords className="h-4 w-4 text-[var(--accent)]" />
-                    Position {danceOff.positionContested} dance-off
+                    {t("danceOffs.positionTitle", { position: danceOff.positionContested })}
                   </CardTitle>
                   <Badge
                     variant={
@@ -104,7 +114,7 @@ export default function DanceOffsPage({
                 {danceOff.scores.length > 0 ? (
                   <div className="mb-3">
                     <p className="mb-2 text-xs font-semibold text-[var(--text-tertiary)]">
-                      JUDGE SCORES
+                      {t("danceOffs.judgeScores")}
                     </p>
                     <div className="flex flex-col gap-1">
                       {danceOff.scores.map((score) => (
@@ -113,16 +123,16 @@ export default function DanceOffsPage({
                           className="flex items-center justify-between text-sm"
                         >
                           <span className="text-[var(--text-secondary)]">
-                            Judge {score.judgeNumber} → Pair {score.pairId.slice(0, 6)}…
+                            {t("danceOffs.judgeScore", { judge: score.judgeNumber, pair: score.pairId.slice(0, 6) })}…
                           </span>
-                          <span className="font-semibold">Place {score.placement}</span>
+                          <span className="font-semibold">{t("danceOffs.place", { place: score.placement })}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : (
                   <p className="mb-3 text-sm text-[var(--text-secondary)]">
-                    Waiting for judge scores...
+                    {t("danceOffs.waitingScores")}
                   </p>
                 )}
 
@@ -133,7 +143,7 @@ export default function DanceOffsPage({
                     loading={resolve.isPending}
                   >
                     <CheckCircle2 className="h-4 w-4" />
-                    Resolve dance-off
+                    {t("danceOffs.resolveButton")}
                   </Button>
                 )}
 
@@ -141,7 +151,7 @@ export default function DanceOffsPage({
                   <div className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--success)]/10 px-3 py-2">
                     <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
                     <p className="text-sm font-medium text-[var(--success)]">
-                      Winner: Pair {danceOff.resultPairId.slice(0, 8)}…
+                      {t("danceOffs.winner", { pair: danceOff.resultPairId.slice(0, 8) })}…
                     </p>
                   </div>
                 )}
@@ -154,20 +164,20 @@ export default function DanceOffsPage({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Create dance-off</DialogTitle>
+            <DialogTitle>{t("danceOffs.createTitle")}</DialogTitle>
           </DialogHeader>
           <Input
-            label="Position contested"
+            label={t("danceOffs.positionLabel")}
             type="number"
             min={1}
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            hint="Which placement is being contested? (e.g. 3 = tied for 3rd place)"
+            hint={t("danceOffs.positionHint")}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{t("common.cancel")}</Button>
             <Button onClick={() => create.mutate()} loading={create.isPending}>
-              Create
+              {t("danceOffs.createConfirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

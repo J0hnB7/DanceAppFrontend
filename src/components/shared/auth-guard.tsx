@@ -17,16 +17,18 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children, allowedRoles, redirectTo = "/dashboard" }: AuthGuardProps) {
-  const { isAuthenticated, isLoading, user, checkAuth } = useAuthStore();
+  const { isAuthenticated, isLoading, user, checkAuth, _hasHydrated } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!isAuthenticated && !isLoading) {
       checkAuth();
     }
-  }, [isAuthenticated, isLoading, checkAuth]);
+  }, [_hasHydrated, isAuthenticated, isLoading, checkAuth]);
 
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!isLoading && !isAuthenticated) {
       router.push("/login");
       return;
@@ -42,9 +44,10 @@ export function AuthGuard({ children, allowedRoles, redirectTo = "/dashboard" }:
         router.push(redirectTo);
       }
     }
-  }, [isAuthenticated, isLoading, user, allowedRoles, redirectTo, router]);
+  }, [_hasHydrated, isAuthenticated, isLoading, user, allowedRoles, redirectTo, router]);
 
-  if (isLoading) {
+  // Show spinner until Zustand has rehydrated from localStorage
+  if (!_hasHydrated || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Spinner size="lg" />

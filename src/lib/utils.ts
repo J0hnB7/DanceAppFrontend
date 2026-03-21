@@ -60,3 +60,52 @@ export function getAvatarColor(name: string): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export type BadgeVariant = "default" | "secondary" | "success" | "warning" | "destructive" | "outline";
+
+export function getRoundStatusBadgeVariant(status: string): BadgeVariant {
+  switch (status) {
+    case "CALCULATED": return "success";
+    case "IN_PROGRESS":
+    case "OPEN": return "warning";
+    default: return "secondary";
+  }
+}
+
+export function getCompetitionStatusBadgeVariant(status: string): BadgeVariant {
+  switch (status) {
+    case "PUBLISHED":
+    case "ONGOING": return "success";
+    case "DRAFT": return "secondary";
+    case "COMPLETED": return "outline";
+    default: return "secondary";
+  }
+}
+
+export function getSectionStatusBadgeVariant(status: string): BadgeVariant {
+  switch (status) {
+    case "COMPLETED": return "success";
+    case "IN_PROGRESS": return "warning";
+    default: return "secondary";
+  }
+}
+
+/** Safe window.location.origin — returns empty string during SSR. */
+export function getOrigin(): string {
+  return typeof window !== "undefined" ? window.location.origin : "";
+}
+
+/** Extract a human-readable error message from any thrown value. */
+export function getErrorMessage(err: unknown, fallback = "Unknown error"): string {
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object") {
+    // Axios error: extract backend response body message
+    const axiosErr = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+    const backendMsg = axiosErr.response?.data?.message || axiosErr.response?.data?.error;
+    if (backendMsg) return backendMsg;
+    if ("message" in err && typeof (err as { message: unknown }).message === "string") {
+      return (err as { message: string }).message || fallback;
+    }
+  }
+  return fallback;
+}

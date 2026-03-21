@@ -41,11 +41,11 @@ export function ExportButton({ summary, sectionName, competitionName }: ExportBu
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={handleExcel}>
-          <FileSpreadsheet className="h-4 w-4 text-green-600" />
+          <FileSpreadsheet className="h-4 w-4 text-[var(--success)]" />
           Excel (.xlsx)
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handlePDF}>
-          <FileText className="h-4 w-4 text-red-500" />
+          <FileText className="h-4 w-4 text-[var(--destructive)]" />
           PDF (print)
         </DropdownMenuItem>
       </DropdownMenuContent>

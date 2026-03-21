@@ -158,6 +158,7 @@
     "noRounds": "No rounds yet. Create a preliminary or final round to start the competition.",
     "addPreliminary": "Preliminary",
     "addFinal": "Final",
+    "completeRoundFirst": "Complete the active round first",
     "rounds": "Rounds",
     "results": "Results",
     "present": "Present",
@@ -958,14 +959,16 @@
   },
 
   "ageCategory": {
-    "CHILDREN_I": "Children I",
-    "CHILDREN_II": "Children II",
-    "JUNIOR_I": "Junior I",
-    "JUNIOR_II": "Junior II",
-    "YOUTH": "Youth",
-    "ADULT": "Adult",
-    "SENIOR_I": "Senior I",
-    "SENIOR_II": "Senior II"
+    "CHILDREN_I": "Children I (up to 10)",
+    "CHILDREN_II": "Children II (11–12)",
+    "JUVENILE_I": "Juvenile I (up to 10)",
+    "JUVENILE_II": "Juvenile II (11–12)",
+    "JUNIOR_I": "Junior I (13–14)",
+    "JUNIOR_II": "Junior II (15–16)",
+    "YOUTH": "Youth (17–18)",
+    "ADULT": "Adult (19+)",
+    "SENIOR_I": "Senior I (35+)",
+    "SENIOR_II": "Senior II (45+)"
   },
 
   "danceStyle": {
@@ -1180,6 +1183,7 @@
     "namePlaceholder": "e.g. Children I C Standard",
     "nameRequired": "Name is required",
     "ageCategoryLabel": "Age category",
+    "ageCategoryPlaceholder": "Age category",
     "levelLabel": "Performance level",
     "levelPlaceholder": "Level",
     "danceStyleLabel": "Dance style",

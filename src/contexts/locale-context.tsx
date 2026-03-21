@@ -9,6 +9,8 @@ import {
   detectLocale,
   createT,
 } from "@/lib/i18n";
+import { authApi } from "@/lib/api/auth";
+import { useAuthStore } from "@/store/auth-store";
 
 interface LocaleContextValue {
   locale: Locale;
@@ -19,18 +21,30 @@ interface LocaleContextValue {
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  const setStoreLocale = useAuthStore((s) => s.setLocale);
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
 
+  // On mount: prefer user.locale from backend, then localStorage, then browser
   useEffect(() => {
-    setLocaleState(detectLocale());
-  }, []);
+    if (user?.locale) {
+      setLocaleState(user.locale);
+      try { localStorage.setItem(LOCALE_STORAGE_KEY, user.locale); } catch (e) { console.error("[i18n] Failed to persist locale", e); }
+    } else {
+      setLocaleState(detectLocale());
+    }
+  }, [user?.locale]);
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(LOCALE_STORAGE_KEY, next);
+    try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch (e) { console.error("[i18n] Failed to persist locale", e); }
+    // Sync to auth-store so locale is available via useAuthStore
+    setStoreLocale(next);
+    // Persist to backend only if logged in
+    if (user) {
+      authApi.updateProfile({ locale: next }).catch((e) => { console.error("[i18n] Failed to sync locale to backend", e); });
     }
-  }, []);
+  }, [setStoreLocale, user]);
 
   const t = useMemo(() => {
     const dict = loadLocale(locale);
