@@ -169,7 +169,9 @@
     "penalty": "Penalty",
     "manage": "Manage",
     "roundCreatedPreliminary": "Preliminary round created",
-    "roundCreatedFinal": "Final round created"
+    "roundCreatedFinal": "Final round created",
+    "presenceNotClosed": "Presence for this section has not been closed yet",
+    "presentPairs": "{{present}} present out of {{total}} registered"
   },
 
   "pairs": {
@@ -243,7 +245,12 @@
     "noPairsYet": "No pairs registered yet",
     "cycleStatusTitle": "Click to change to: {{next}}",
     "contactEmail": "Contact by email",
-    "contactNoEmail": "Contact (no email)"
+    "contactNoEmail": "Contact (no email)",
+    "payment": "Payment",
+    "paymentPending": "Pending",
+    "paymentPaid": "Paid",
+    "paymentWaived": "Waived",
+    "cyclePaymentTitle": "Click to change payment to: {{next}}"
   },
 
   "judges": {
@@ -273,6 +280,12 @@
     "showQr": "Show QR code",
     "copyLinkTitle": "Copy link",
     "revokeToken": "Revoke token",
+    "tokenDeleted": "Token deleted",
+    "deleteConfirm": {
+      "title": "Delete judge token?",
+      "description": "The token will be permanently deleted. The judge won't be able to log in. This action cannot be undone.",
+      "confirm": "Delete"
+    },
     "table": {
       "judge": "Judge",
       "token": "Token",

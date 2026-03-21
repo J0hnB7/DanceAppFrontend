@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Copy, Plus, Trash2, Download, Printer, QrCode, X, ClipboardList, Eye, EyeOff, Pencil } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Copy, Plus, Trash2, Download, Printer, QrCode, X, ClipboardList, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -74,7 +74,7 @@ function QRModal({ token, judgeUrl, onClose }: { token: JudgeTokenDto; judgeUrl:
             <code className="break-all text-xs">{url}</code>
           </div>
           <div className="flex w-full gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => { navigator.clipboard.writeText(url); toast({ title: t("judges.linkCopied") } as Parameters<typeof toast>[0]); }}>
+            <Button variant="outline" className="flex-1" onClick={() => { navigator.clipboard.writeText(url); toast({ title: t("judges.linkCopied") }); }}>
               <Copy className="h-4 w-4" /> {t("common.copy")}
             </Button>
             <Button className="flex-1" onClick={handleDownload}>
@@ -98,7 +98,7 @@ function FallbackScoringModal({ tokens, onClose }: { tokens: JudgeTokenDto[]; on
     setSaving(true);
     await new Promise((r) => setTimeout(r, 600));
     setSaving(false);
-    toast({ title: t("common.success"), variant: "success" } as Parameters<typeof toast>[0]);
+    toast({ title: t("common.success"), variant: "success" });
     onClose();
   };
   return (
@@ -148,9 +148,8 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
   const [qrToken, setQrToken] = useState<JudgeTokenDto | null>(null);
   const [printMode, setPrintMode] = useState(false);
   const [fallbackOpen, setFallbackOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editCountry, setEditCountry] = useState("");
+  const [editValues, setEditValues] = useState<Record<string, { name: string; country: string }>>({});
+  const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null);
   const printTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const qc = useQueryClient();
   const { t } = useLocale();
@@ -170,6 +169,18 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
     queryFn: () => judgeTokensApi.list(competitionId),
   });
 
+  useEffect(() => {
+    if (tokens) {
+      setEditValues((prev) => {
+        const next = { ...prev };
+        for (const tok of tokens) {
+          if (!next[tok.id]) next[tok.id] = { name: tok.name ?? "", country: tok.country ?? "" };
+        }
+        return next;
+      });
+    }
+  }, [tokens]);
+
   const createTokens = useMutation({
     mutationFn: async () => {
       const n = parseInt(count) || 1;
@@ -181,13 +192,21 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["judge-tokens", competitionId] });
       setCreateOpen(false);
-      toast({ title: t("judges.createDialog.tokensCreated", { count }), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("judges.createDialog.tokensCreated", { count }), variant: "success" });
     },
   });
 
   const revokeToken = useMutation({
-    mutationFn: (tokenId: string) => judgeTokensApi.revoke(competitionId, tokenId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["judge-tokens", competitionId] }),
+    mutationFn: (tokenId: string) => judgeTokensApi.deletePermanent(competitionId, tokenId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["judge-tokens", competitionId] });
+      setRevokeConfirmId(null);
+      toast({ title: t("judges.tokenDeleted"), variant: "success" });
+    },
+    onError: () => {
+      toast({ title: t("common.error"), variant: "destructive" });
+      setRevokeConfirmId(null);
+    },
   });
 
   const updateToken = useMutation({
@@ -195,10 +214,19 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
       judgeTokensApi.update(competitionId, id, { name, country }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["judge-tokens", competitionId] });
-      setEditingId(null);
-      toast({ title: "Uloženo", variant: "success" } as Parameters<typeof toast>[0]);
     },
   });
+
+  const getEditVal = useCallback((tok: JudgeTokenDto) => {
+    return editValues[tok.id] ?? { name: tok.name ?? "", country: tok.country ?? "" };
+  }, [editValues]);
+
+  const handleBlurSave = useCallback((tok: JudgeTokenDto, name: string, country: string) => {
+    const orig = { name: tok.name ?? "", country: tok.country ?? "" };
+    if (name !== orig.name || country !== orig.country) {
+      updateToken.mutate({ id: tok.id, name, country });
+    }
+  }, [updateToken]);
 
   const handlePrintAll = () => {
     setPrintMode(true);
@@ -274,57 +302,30 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
                 <TableCell><code className="rounded bg-[var(--surface-secondary)] px-2 py-0.5 text-xs">{(tok.rawToken ?? tok.token ?? "").slice(0, 16)}…</code></TableCell>
                 <TableCell><PinCell pin={tok.rawPin ?? tok.pin} /></TableCell>
                 <TableCell><Badge variant={tok.active ? "success" : "secondary"}>{tok.active ? t("judges.active") : t("judges.revoked")}</Badge></TableCell>
-                {editingId === tok.id ? (
-                  <TableCell colSpan={2}>
-                    <div className="flex items-center gap-2">
-                      <input
-                        className="h-7 rounded border border-[var(--border)] bg-[var(--surface)] px-2 text-xs w-32"
-                        placeholder="Jméno"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                      />
-                      <input
-                        className="h-7 rounded border border-[var(--border)] bg-[var(--surface)] px-2 text-xs w-16 uppercase"
-                        placeholder="CZE"
-                        maxLength={3}
-                        value={editCountry}
-                        onChange={(e) => setEditCountry(e.target.value.toUpperCase())}
-                      />
-                      <button
-                        className="text-xs font-medium text-[var(--accent)] hover:underline"
-                        onClick={() => updateToken.mutate({ id: tok.id, name: editName, country: editCountry })}
-                      >
-                        Uložit
-                      </button>
-                      <button
-                        className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                        onClick={() => setEditingId(null)}
-                      >
-                        Zrušit
-                      </button>
-                    </div>
-                  </TableCell>
-                ) : (
-                  <>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{tok.name ?? <span className="text-[var(--text-tertiary)]">—</span>}</span>
-                        <button
-                          className="ml-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                          onClick={() => { setEditingId(tok.id); setEditName(tok.name ?? ""); setEditCountry(tok.country ?? ""); }}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">{tok.country ?? <span className="text-[var(--text-tertiary)]">—</span>}</TableCell>
-                  </>
-                )}
+                <TableCell>
+                  <input
+                    className="h-7 w-32 rounded border border-[var(--border)] bg-[var(--surface)] px-2 text-xs focus:border-[var(--accent)] focus:outline-none"
+                    placeholder="Jméno"
+                    value={getEditVal(tok).name}
+                    onChange={(e) => setEditValues((prev) => ({ ...prev, [tok.id]: { ...getEditVal(tok), name: e.target.value } }))}
+                    onBlur={(e) => handleBlurSave(tok, e.target.value, getEditVal(tok).country)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <input
+                    className="h-7 w-14 rounded border border-[var(--border)] bg-[var(--surface)] px-2 text-xs uppercase focus:border-[var(--accent)] focus:outline-none"
+                    placeholder="CZE"
+                    maxLength={3}
+                    value={getEditVal(tok).country}
+                    onChange={(e) => setEditValues((prev) => ({ ...prev, [tok.id]: { ...getEditVal(tok), country: e.target.value.toUpperCase() } }))}
+                    onBlur={(e) => handleBlurSave(tok, getEditVal(tok).name, e.target.value)}
+                  />
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => setQrToken(tok)}><QrCode className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon-sm" onClick={() => { navigator.clipboard.writeText(`${judgeBaseUrl}/${tok.rawToken ?? tok.token}`); toast({ title: t("judges.linkCopied") } as Parameters<typeof toast>[0]); }}><Copy className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon-sm" className="text-[var(--text-tertiary)] hover:text-[var(--destructive)]" onClick={() => revokeToken.mutate(tok.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => { navigator.clipboard.writeText(`${judgeBaseUrl}/${tok.rawToken ?? tok.token}`); toast({ title: t("judges.linkCopied") }); }}><Copy className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon-sm" className="text-[var(--text-tertiary)] hover:text-[var(--destructive)]" onClick={() => setRevokeConfirmId(tok.id)} disabled={revokeToken.isPending}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -355,6 +356,19 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
       {/* Modals */}
       {qrToken && <QRModal token={qrToken} judgeUrl={judgeBaseUrl} onClose={() => setQrToken(null)} />}
       {fallbackOpen && <FallbackScoringModal tokens={tokens ?? []} onClose={() => setFallbackOpen(false)} />}
+
+      <Dialog open={revokeConfirmId !== null} onOpenChange={(v) => { if (!v) setRevokeConfirmId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{t("judges.deleteConfirm.title")}</DialogTitle></DialogHeader>
+          <p className="text-sm text-[var(--text-secondary)]">{t("judges.deleteConfirm.description")}</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeConfirmId(null)}>{t("common.cancel")}</Button>
+            <Button variant="destructive" loading={revokeToken.isPending} onClick={() => revokeConfirmId && revokeToken.mutate(revokeConfirmId)}>
+              {t("judges.deleteConfirm.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-sm">

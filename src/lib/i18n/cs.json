@@ -169,7 +169,9 @@
     "penalty": "Penalizace",
     "manage": "Spravovat",
     "roundCreatedPreliminary": "Předkolo vytvořeno",
-    "roundCreatedFinal": "Finále vytvořeno"
+    "roundCreatedFinal": "Finále vytvořeno",
+    "presenceNotClosed": "Prezence pro tuto kategorii ještě nebyla uzavřena",
+    "presentPairs": "{{present}} přítomných z {{total}} registrovaných"
   },
 
   "pairs": {
@@ -243,7 +245,12 @@
     "noPairsYet": "Zatím žádné přihlášené páry",
     "cycleStatusTitle": "Kliknutím změníš na: {{next}}",
     "contactEmail": "Kontaktovat emailem",
-    "contactNoEmail": "Kontaktovat (bez emailu)"
+    "contactNoEmail": "Kontaktovat (bez emailu)",
+    "payment": "Platba",
+    "paymentPending": "Čeká",
+    "paymentPaid": "Zaplaceno",
+    "paymentWaived": "Prominuto",
+    "cyclePaymentTitle": "Kliknutím změníš platbu na: {{next}}"
   },
 
   "judges": {
@@ -273,6 +280,12 @@
     "showQr": "Zobrazit QR kód",
     "copyLinkTitle": "Kopírovat odkaz",
     "revokeToken": "Zrušit token",
+    "tokenDeleted": "Token smazán",
+    "deleteConfirm": {
+      "title": "Smazat token porotce?",
+      "description": "Token bude trvale smazán. Porotce se nebude moci přihlásit. Tuto akci nelze vzít zpět.",
+      "confirm": "Smazat"
+    },
     "table": {
       "judge": "Porotce",
       "token": "Token",
