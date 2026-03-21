@@ -89,4 +89,7 @@ export const sectionsApi = {
 
   delete: (competitionId: string, sectionId: string) =>
     apiClient.delete(`/competitions/${competitionId}/sections/${sectionId}`).then((r) => r.data),
+
+  updateDances: (competitionId: string, sectionId: string, dances: string[]) =>
+    apiClient.patch<SectionDto>(`/competitions/${competitionId}/sections/${sectionId}/dances`, { dances }).then((r) => r.data),
 };

@@ -119,7 +119,7 @@ export function ScheduleSettings({
           type="time"
           value={startTime}
           onChange={(e) => setStartTime(e.target.value)}
-          className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
         />
       </div>
 
@@ -130,7 +130,7 @@ export function ScheduleSettings({
           <select
             value={config.danceDurationSeconds}
             onChange={(e) => setConfig((c) => ({ ...c, danceDurationSeconds: Number(e.target.value) }))}
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             {DANCE_DURATION_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -144,7 +144,7 @@ export function ScheduleSettings({
           <select
             value={config.transitionDurationSeconds}
             onChange={(e) => setConfig((c) => ({ ...c, transitionDurationSeconds: Number(e.target.value) }))}
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             {TRANSITION_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -158,7 +158,7 @@ export function ScheduleSettings({
           <select
             value={config.maxPairsOnFloor}
             onChange={(e) => setConfig((c) => ({ ...c, maxPairsOnFloor: Number(e.target.value) }))}
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             {MAX_PAIRS_OPTIONS.map((n) => (
               <option key={n} value={n}>{n}</option>
@@ -172,7 +172,7 @@ export function ScheduleSettings({
           <select
             value={config.breakDurationMinutes}
             onChange={(e) => setConfig((c) => ({ ...c, breakDurationMinutes: Number(e.target.value) }))}
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             {BREAK_DURATION_OPTIONS.map((n) => (
               <option key={n} value={n}>{n} min</option>
@@ -212,7 +212,7 @@ export function ScheduleSettings({
             <select
               value={config.judgeBreakAfterMinutes}
               onChange={(e) => setConfig((c) => ({ ...c, judgeBreakAfterMinutes: Number(e.target.value) }))}
-              className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             >
               {JUDGE_BREAK_AFTER_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -224,7 +224,7 @@ export function ScheduleSettings({
             <select
               value={config.judgeBreakDurationMinutes}
               onChange={(e) => setConfig((c) => ({ ...c, judgeBreakDurationMinutes: Number(e.target.value) }))}
-              className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             >
               {JUDGE_BREAK_DURATION_OPTIONS.map((n) => (
                 <option key={n} value={n}>{n} min</option>
@@ -244,7 +244,7 @@ export function ScheduleSettings({
           <select
             value={config.slotBufferMinutes}
             onChange={(e) => setConfig((c) => ({ ...c, slotBufferMinutes: Number(e.target.value) }))}
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             {BUFFER_OPTIONS.map((n) => (
               <option key={n} value={n}>{n} min</option>

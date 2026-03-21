@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -17,14 +17,16 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Clock, CheckCircle2, PlayCircle, Pause, Globe, AlertTriangle } from "lucide-react";
+import { GripVertical, Plus, Clock, CheckCircle2, PlayCircle, Pause, Globe, AlertTriangle, Music, ArrowRight } from "lucide-react";
 import { useScheduleStore } from "@/store/schedule-store";
 import { scheduleApi, type ScheduleSlot, type BlockLiveStatus } from "@/lib/api/schedule";
 import { Button } from "@/components/ui/button";
 import { SimpleDialog } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import apiClient from "@/lib/api-client";
+import type { SectionDto } from "@/lib/api/sections";
 
 interface ScheduleBuilderProps {
   competitionId: string;
@@ -106,13 +108,21 @@ function AddBreakDialog({ competitionId, afterSlotId, onClose }: AddBreakDialogP
   );
 }
 
+function parsePairCount(label: string): number | null {
+  const match = label.match(/\((\d+) párů\)/);
+  return match ? parseInt(match[1]) : null;
+}
+
 interface SlotItemProps {
   slot: ScheduleSlot;
   competitionId: string;
   onAddBreakAfter: (slotId: string) => void;
+  dances: string[];
+  danceCount: number;
+  advancingCount: number | null;
 }
 
-function SlotItem({ slot, competitionId, onAddBreakAfter }: SlotItemProps) {
+function SlotItem({ slot, competitionId, onAddBreakAfter, dances, danceCount, advancingCount }: SlotItemProps) {
   const { toast } = useToast();
   const {
     attributes,
@@ -139,6 +149,8 @@ function SlotItem({ slot, competitionId, onAddBreakAfter }: SlotItemProps) {
 
   const isCompleted = slot.liveStatus === "COMPLETED";
   const isRunning = slot.liveStatus === "RUNNING";
+  const isBreak = slot.type === "BREAK" || slot.type === "JUDGE_BREAK";
+  const breakTooShort = isBreak && slot.durationMinutes < 20;
 
   return (
     <div
@@ -178,8 +190,30 @@ function SlotItem({ slot, competitionId, onAddBreakAfter }: SlotItemProps) {
       {/* Label */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{slot.label}</p>
+        {slot.type === "ROUND" && (dances.length > 0 || advancingCount !== null) && (
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {dances.length > 0 && (
+              <span className="flex items-center gap-1 text-[10px] opacity-70">
+                <Music className="h-2.5 w-2.5" />
+                {dances.join(", ")}
+              </span>
+            )}
+            {advancingCount !== null && (
+              <span className="flex items-center gap-1 text-[10px] opacity-70">
+                <ArrowRight className="h-2.5 w-2.5" />
+                postupuje {advancingCount}
+              </span>
+            )}
+          </div>
+        )}
         {slot.suggested && (
           <span className="text-[10px] opacity-60">navrhováno</span>
+        )}
+        {breakTooShort && (
+          <span className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="h-2.5 w-2.5" />
+            WDSF min. 20 min
+          </span>
         )}
       </div>
 
@@ -227,6 +261,75 @@ export function ScheduleBuilder({ competitionId }: ScheduleBuilderProps) {
   const { toast } = useToast();
   const { slots, isDirty, isGenerating, scheduleStatus, moveSlot, generateSchedule, publishSchedule } = useScheduleStore();
   const [breakAfterSlotId, setBreakAfterSlotId] = useState<string | null>(null);
+
+  const { data: sections = [] } = useQuery<SectionDto[]>({
+    queryKey: ["sections", competitionId, "list"],
+    queryFn: () => apiClient.get(`/competitions/${competitionId}/sections`).then((r) => r.data),
+  });
+
+  // Map sectionId → effective dance count (5 for standard/latin if configured < 5)
+  const sectionDanceCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of sections) {
+      const configured = (s.dances ?? []).length;
+      const style = (s.danceStyle ?? "").toUpperCase();
+      if (configured >= 5) {
+        map.set(s.id, configured);
+      } else if (style.includes("STANDARD") || style.includes("LATIN")) {
+        map.set(s.id, 5);
+      } else {
+        map.set(s.id, configured);
+      }
+    }
+    return map;
+  }, [sections]);
+
+  const ABBR: Record<string, string> = {
+    Waltz: "W", Tango: "T", "Viennese Waltz": "VW", "Slow Foxtrot": "SF", Quickstep: "QS",
+    Samba: "S", "Cha-Cha-Cha": "CHA", "Cha Cha Cha": "CHA", Rumba: "R", "Paso Doble": "PD", Jive: "J",
+  };
+  const STANDARD_5 = ["W", "T", "VW", "SF", "QS"];
+  const LATIN_5 = ["S", "CHA", "R", "PD", "J"];
+
+  // Map sectionId → dance abbreviations (always 5 based on danceStyle if section has fewer)
+  const sectionDances = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const s of sections) {
+      const configured = (s.dances ?? [])
+        .sort((a, b) => (a.danceOrder ?? a.orderIndex ?? 0) - (b.danceOrder ?? b.orderIndex ?? 0))
+        .map((d) => {
+          const name = d.danceName ?? d.name ?? "";
+          return ABBR[name] ?? name.slice(0, 3).toUpperCase();
+        })
+        .filter(Boolean);
+
+      const style = (s.danceStyle ?? "").toUpperCase();
+      if (configured.length >= 5) {
+        map.set(s.id, configured);
+      } else if (style.includes("STANDARD") || style === "STANDARD") {
+        map.set(s.id, STANDARD_5);
+      } else if (style.includes("LATIN") || style === "LATIN") {
+        map.set(s.id, LATIN_5);
+      } else if (configured.length > 0) {
+        map.set(s.id, configured);
+      }
+    }
+    return map;
+  }, [sections]);
+
+  // Map slotId → advancing pair count (= next round's starting count for same section)
+  const advancingCounts = useMemo(() => {
+    const map = new Map<string, number | null>();
+    const roundSlots = slots.filter((s) => s.type === "ROUND" && s.sectionId);
+    for (let i = 0; i < roundSlots.length; i++) {
+      const current = roundSlots[i];
+      const next = roundSlots.find(
+        (s, j) => j > i && s.sectionId === current.sectionId
+      );
+      map.set(current.id, next ? parsePairCount(next.label) : null);
+    }
+    return map;
+  }, [slots]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -327,6 +430,9 @@ export function ScheduleBuilder({ competitionId }: ScheduleBuilderProps) {
                 slot={slot}
                 competitionId={competitionId}
                 onAddBreakAfter={setBreakAfterSlotId}
+                dances={slot.sectionId ? (sectionDances.get(slot.sectionId) ?? []) : []}
+                danceCount={slot.sectionId ? (sectionDanceCounts.get(slot.sectionId) ?? 0) : 0}
+                advancingCount={advancingCounts.get(slot.id) ?? null}
               />
             ))}
           </div>

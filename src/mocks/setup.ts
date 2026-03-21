@@ -306,6 +306,19 @@ export function setupMockApi() {
     return [204];
   });
 
+  mock.onPatch(/\/competitions\/[^/]+\/sections\/[^/]+\/dances$/).reply((config) => {
+    const sectionId = config.url!.match(/\/sections\/([^/]+)\/dances/)?.[1];
+    const idx = sections.findIndex((s) => s.id === sectionId);
+    if (idx === -1) return [404, {}];
+    const { dances } = JSON.parse(config.data) as { dances: string[] };
+    sections[idx] = {
+      ...sections[idx],
+      dances: dances.map((name, i) => ({ id: `dance-${Date.now()}-${i}`, danceName: name, danceOrder: i })),
+    };
+    persistSections();
+    return [200, sections[idx]];
+  });
+
   // ── Pairs ───────────────────────────────────────────────────────────────────
   mock.onGet(/\/competitions\/[^/]+\/pairs$/).reply((config) => {
     const compId = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
@@ -368,6 +381,28 @@ export function setupMockApi() {
     if (status === "UNCONFIRMED") pair.paymentStatus = "PENDING";
     persistPairs();
     return [200, pair];
+  });
+
+  mock.onPut(/\/competitions\/[^/]+\/pairs\/[^/]+\/payment$/).reply((config) => {
+    const match = config.url!.match(/\/competitions\/[^/]+\/pairs\/([^/]+)\/payment/);
+    const pairId = match?.[1];
+    const { paid } = JSON.parse(config.data);
+    const pair = pairs.find((p) => p.id === pairId);
+    if (!pair) return [404, {}];
+    pair.paymentStatus = paid ? "PAID" : "PENDING";
+    persistPairs();
+    return [204, null];
+  });
+
+  mock.onPut(/\/competitions\/[^/]+\/pairs\/[^/]+\/payment-status$/).reply((config) => {
+    const match = config.url!.match(/\/competitions\/[^/]+\/pairs\/([^/]+)\/payment-status/);
+    const pairId = match?.[1];
+    const { status } = JSON.parse(config.data);
+    const pair = pairs.find((p) => p.id === pairId);
+    if (!pair) return [404, {}];
+    pair.paymentStatus = status;
+    persistPairs();
+    return [204, null];
   });
 
   mock.onPut(/\/competitions\/[^/]+\/pairs\/[^/]+\/note$/).reply((config) => {
@@ -449,7 +484,32 @@ export function setupMockApi() {
     return [201, entry];
   });
 
-  mock.onDelete(/\/competitions\/[^/]+\/judge-tokens\/[^/]+$/).reply(204);
+  // Permanent delete — removes token from array entirely
+  mock.onDelete(/\/competitions\/[^/]+\/judge-tokens\/[^/]+\/permanent$/).reply((config) => {
+    const parts = config.url!.split("/");
+    const tokenId = parts[parts.length - 2];
+    const idx = judgeTokens.findIndex((j) => j.id === tokenId);
+    if (idx !== -1) judgeTokens.splice(idx, 1);
+    return [204];
+  });
+
+  // Revoke token (soft delete — sets active=false)
+  mock.onDelete(/\/competitions\/[^/]+\/judge-tokens\/[^/]+$/).reply((config) => {
+    const tokenId = config.url!.split("/").pop();
+    const tok = judgeTokens.find((j) => j.id === tokenId);
+    if (tok) (tok as Record<string, unknown>).active = false;
+    return [204];
+  });
+
+  mock.onPut(/\/competitions\/[^/]+\/judge-tokens\/[^/]+$/).reply((config) => {
+    const tokenId = config.url!.split("/").pop();
+    const { name, country } = JSON.parse(config.data ?? "{}");
+    const tok = judgeTokens.find((j) => j.id === tokenId);
+    if (!tok) return [404];
+    if (name !== undefined) (tok as Record<string, unknown>).name = name;
+    if (country !== undefined) (tok as Record<string, unknown>).country = country;
+    return [200, tok];
+  });
 
   // ── Scoring ─────────────────────────────────────────────────────────────────
   mock.onPost(/\/rounds\/[^/]+\/callbacks/).reply(204);
@@ -551,18 +611,26 @@ export function setupMockApi() {
   });
 
   // ── Schedule ─────────────────────────────────────────────────────────────────
-  mock.onGet(/\/competitions\/[^/]+\/schedule$/).reply((config) => {
+  mock.onGet(/\/competitions\/[^/]+\/schedule\/status$/).reply((config) => {
+    const compId = config.url!.split("/")[2];
+    const hasSlots = scheduleSlots.some((s) => s.competitionId === compId);
+    if (!hasSlots) return [404];
+    return [200, { id: `sched-${compId}`, status: "DRAFT", publishedAt: null, version: 1 }];
+  });
+
+  mock.onPost(/\/competitions\/[^/]+\/schedule\/generate$/).reply((config) => {
     const compId = config.url!.split("/")[2];
     return [200, scheduleSlots.filter((s) => s.competitionId === compId)];
   });
 
-  mock.onPost(/\/competitions\/[^/]+\/schedule$/).reply((config) => {
+  mock.onPost(/\/competitions\/[^/]+\/schedule\/publish$/).reply((config) => {
     const compId = config.url!.split("/")[2];
-    const data = JSON.parse(config.data);
-    const sec = sections.find((s) => s.id === data.sectionId);
-    const slot = { id: `slot-${Date.now()}`, competitionId: compId, sectionName: sec?.name ?? "Unknown", orderIndex: scheduleSlots.length, ...data } as typeof scheduleSlots[number];
-    scheduleSlots.push(slot);
-    return [201, slot];
+    return [200, { id: `sched-${compId}`, status: "PUBLISHED", publishedAt: new Date().toISOString(), version: 1 }];
+  });
+
+  mock.onGet(/\/competitions\/[^/]+\/schedule$/).reply((config) => {
+    const compId = config.url!.split("/")[2];
+    return [200, scheduleSlots.filter((s) => s.competitionId === compId)];
   });
 
   mock.onDelete(/\/competitions\/[^/]+\/schedule\/[^/]+$/).reply(204);

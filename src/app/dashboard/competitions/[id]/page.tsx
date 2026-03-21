@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import React, { use, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,9 +30,10 @@ import {
   ListOrdered,
   Sheet,
   Download,
+  ArrowLeft,
+  Settings,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,7 @@ import { VyhodnoceniTab } from "@/components/competition/vyhodnoceni-tab";
 import { usePairs } from "@/hooks/queries/use-pairs";
 import apiClient from "@/lib/api-client";
 import { judgeTokensApi } from "@/lib/api/judge-tokens";
+import { scheduleApi } from "@/lib/api/schedule";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
@@ -198,7 +200,7 @@ function RegistrationLinkCard({ id }: { id: string }) {
   const handleCopy = () => {
     navigator.clipboard.writeText(registrationUrl);
     setCopied(true);
-    toast({ title: t("judges.linkCopied") } as Parameters<typeof toast>[0]);
+    toast({ title: t("judges.linkCopied") });
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -317,13 +319,20 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     enabled: !!id,
   });
 
+  const { data: scheduleStatus } = useQuery({
+    queryKey: ["schedule-status", id],
+    queryFn: () => scheduleApi.getStatus(id),
+    enabled: !!id,
+    retry: false,
+  });
+
   const addNews = useMutation({
     mutationFn: () => competitionsApi.createNews(id, { title: newNewsTitle, content: newNewsContent }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["competition-news", id] });
       setNewNewsTitle("");
       setNewNewsContent("");
-      toast({ title: t("news.published") } as Parameters<typeof toast>[0]);
+      toast({ title: t("news.published") });
     },
   });
 
@@ -380,7 +389,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     try {
       await competitionsApi.delete(id);
     } catch {
-      toast({ title: t("competitionDetail.deleteFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("competitionDetail.deleteFailed"), variant: "destructive" });
       setDeleting(false);
       return;
     }
@@ -389,7 +398,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
 
   const handlePublish = async () => {
     await competitionsApi.publish(id);
-    toast({ title: t("competition.published"), variant: "success" } as Parameters<typeof toast>[0]);
+    toast({ title: t("competition.published"), variant: "success" });
   };
 
   const handleXlsxImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -570,13 +579,16 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
         lastName2,                                         // r[7]  lastName2
         pair.country ?? "",                                // r[8]  country
         pair.dancer1Club ?? pair.club ?? "",               // r[9]  club
-        "", "", "", "", "",                                // r[10-13] unused
-        "",                                                // r[14] feePerPerson
-        "",                                                // r[15] feeTotal
-        "1",                                               // r[16] starts
-        "",                                                // r[17] unused
-        "",                                                // r[18] startType
-        "",                                                // r[19] startsFromRound
+        pair.athlete1Id ?? "",                             // r[10] ID competitora 1
+        pair.athlete2Id ?? "",                             // r[11] ID competitora 2
+        pair.registeredAt ? new Date(pair.registeredAt).toLocaleDateString("cs-CZ") : "", // r[12] Datum přihlášení
+        pair.withdrawalDate ? new Date(pair.withdrawalDate).toLocaleDateString("cs-CZ") : "", // r[13] Datum odhlášení
+        pair.feePerPerson ?? "",                           // r[14] feePerPerson
+        pair.feeTotal ?? "",                               // r[15] feeTotal
+        pair.starts === false ? "0" : "1",                 // r[16] starts
+        pair.presenceDeadline ? new Date(pair.presenceDeadline).toLocaleDateString("cs-CZ") : "", // r[17] Konec prezence
+        pair.startType ?? "",                              // r[18] startType
+        pair.startsFromRound ?? "",                        // r[19] startsFromRound
         pair.classValue ?? "",                             // r[20] classValue
         pair.email ?? "",                                  // r[21] email
         pair.paymentStatus ?? "",                          // r[22] paymentStatus
@@ -585,8 +597,8 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     const header = [
       "ID kategorie", "ID páru", "Startovní číslo", "Kategorie",
       "Jméno 1", "Příjmení 1", "Jméno 2", "Příjmení 2",
-      "Země", "Klub", "", "", "", "", "Startovné/os", "Startovné celkem",
-      "Startuje", "", "Typ startu", "Od kola", "Třída",
+      "Země", "Klub", "ID competitora 1", "ID competitora 2", "Datum přihlášení", "Datum odhlášení", "Startovné/os", "Startovné celkem",
+      "Startuje", "Konec prezence", "Typ startu", "Od kola", "Třída",
       "Email", "Platba",
     ];
     const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
@@ -622,128 +634,355 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
         onCancel={() => setShowDeleteDialog(false)}
       />
 
-      <PageHeader
-        title={competition.name}
-        description={`${competition.venue} · ${formatDate(competition.eventDate)}`}
-      />
-
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="overview">{t("competitionDetail.overview")}</TabsTrigger>
-          <TabsTrigger value="sections">Kategorie</TabsTrigger>
-          <TabsTrigger value="pairs">{t("competitionDetail.pairs")}</TabsTrigger>
-          <TabsTrigger value="judges">{t("competitionDetail.judges")}</TabsTrigger>
-          <TabsTrigger value="analytics">Vyhodnocení</TabsTrigger>
-          <TabsTrigger value="content">{t("competitionDetail.content")}</TabsTrigger>
-          <TabsTrigger value="settings">{t("competitionDetail.settings")}</TabsTrigger>
-          <TabsTrigger value="schedule" onClick={() => router.push(`/dashboard/competitions/${id}/schedule`)}>
-            Harmonogram
-          </TabsTrigger>
-        </TabsList>
+        {/* Dark hero header */}
+        <div className="relative -mx-6 -mt-8 overflow-hidden px-6 pb-0 lg:-mx-8 lg:-mt-10 lg:px-8" style={{ background: "#0A1628" }}>
+          {/* Decorative orbs */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-72 w-72 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #4F46E5 0%, transparent 70%)" }} />
+          <div className="pointer-events-none absolute -bottom-10 left-1/3 h-48 w-48 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #06B6D4 0%, transparent 70%)" }} />
+
+          <div className="relative py-5">
+            {/* Breadcrumb + registration pill */}
+            <div className="mb-3 flex items-center justify-between">
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+              >
+                <ArrowLeft className="h-3 w-3" /> Zpět na dashboard
+              </button>
+              {competition.registrationOpen && (
+                <span className="flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Registrace otevřena
+                </span>
+              )}
+            </div>
+
+            {/* Title */}
+            <h1 className="mb-1 text-2xl font-bold text-white" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)" }}>
+              {competition.name}
+            </h1>
+
+            {/* Meta row */}
+            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/55">
+              {competition.venue && (
+                <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {competition.venue}</span>
+              )}
+              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {formatDate(competition.eventDate)}</span>
+              {pairs && (
+                <span className="flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5" /> {pairs.length} párů · {sections?.length ?? 0} {(sections?.length ?? 0) === 1 ? "kategorie" : "kategorie"} · {judgeTokens.length} rozhodčích
+                </span>
+              )}
+            </div>
+
+            {/* Phase timeline */}
+            {(() => {
+              const phases = ["Vytvoření", "Registrace", "Check-in", "Harmonogram", "Soutěž", "Výsledky"];
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const eventDay = competition.eventDate ? new Date(competition.eventDate) : null;
+              if (eventDay) eventDay.setHours(0, 0, 0, 0);
+              const isEventDay = eventDay ? eventDay <= today : false;
+
+              const anyPresenceClosed = (sections ?? []).some((s) => s.presenceClosed);
+              const phasesDone = [
+                true, // Vytvoření — always done once created
+                competition.registrationOpen === true || (competition.registeredPairsCount ?? 0) > 0 || competition.status === "PUBLISHED" || competition.status === "IN_PROGRESS" || competition.status === "COMPLETED",
+                anyPresenceClosed || isEventDay || competition.status === "IN_PROGRESS" || competition.status === "COMPLETED",
+                scheduleStatus?.status === "PUBLISHED" || competition.status === "IN_PROGRESS" || competition.status === "COMPLETED",
+                competition.status === "IN_PROGRESS" || competition.status === "COMPLETED",
+                competition.status === "COMPLETED",
+              ];
+              // currentIdx = highest completed phase
+              let currentIdx = 0;
+              for (let i = 0; i < phasesDone.length; i++) {
+                if (phasesDone[i]) currentIdx = i;
+              }
+              return (
+                <div className="flex w-full items-start">
+                  {phases.map((label, i) => (
+                    <React.Fragment key={i}>
+                      {i > 0 && (
+                        <div className={`flex-1 mt-3.5 h-px transition-colors duration-500 ${i <= currentIdx ? "bg-[#4F46E5]" : "bg-white/15"}`} />
+                      )}
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold transition-all duration-500 ${
+                          i === currentIdx
+                            ? "border-[#4F46E5] bg-[#4F46E5] text-white shadow-[0_0_12px_rgba(79,70,229,0.6)]"
+                            : i < currentIdx
+                            ? "border-[#4F46E5] bg-[#4F46E5]/70 text-white"
+                            : "border-white/20 bg-transparent text-white/30"
+                        }`}>
+                          {i < currentIdx ? "✓" : i + 1}
+                        </div>
+                        <span className={`whitespace-nowrap text-xs transition-colors duration-500 ${
+                          i === currentIdx ? "font-semibold text-white" : i < currentIdx ? "text-white/60" : "text-white/25"
+                        }`}>{label}</span>
+                      </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Tab bar at bottom of hero */}
+          <div className="flex overflow-x-auto border-t border-white/10" style={{ scrollbarWidth: "none" }}>
+            {([
+              { value: "overview", label: t("competitionDetail.overview"), icon: <Trophy className="h-3.5 w-3.5" /> },
+              { value: "sections", label: "Kategorie", icon: <Plus className="h-3.5 w-3.5" /> },
+              { value: "pairs", label: t("competitionDetail.pairs"), icon: <Users className="h-3.5 w-3.5" /> },
+              { value: "judges", label: t("competitionDetail.judges"), icon: <UserCircle2 className="h-3.5 w-3.5" /> },
+              { value: "analytics", label: "Vyhodnocení", icon: <ListOrdered className="h-3.5 w-3.5" /> },
+              { value: "schedule", label: "Harmonogram", icon: <Clock className="h-3.5 w-3.5" />, onClick: () => router.push(`/dashboard/competitions/${id}/schedule`) },
+              { value: "content", label: t("competitionDetail.content"), icon: <Newspaper className="h-3.5 w-3.5" /> },
+              { value: "settings", label: t("competitionDetail.settings"), icon: <Settings className="h-3.5 w-3.5" /> },
+            ] as { value: string; label: string; icon: React.ReactNode; onClick?: () => void }[]).map((tb) => (
+              <button
+                key={tb.value}
+                onClick={tb.onClick ?? (() => setTab(tb.value))}
+                className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-3 text-sm font-medium transition-colors lg:px-4 ${
+                  tab === tb.value
+                    ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#6366F1]"
+                    : "text-white/45 hover:text-white/80"
+                }`}
+              >
+                {tb.icon}
+                {tb.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content area — uses page background (light or dark) */}
+        <div className="mt-6">
+
 
         <TabsContent value="overview">
-          {/* Main card: status + URL + action buttons */}
-          <Card className="mb-6">
-            <CardContent className="pt-5">
-              <div className="mb-4">
-                {competition.registrationOpen ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-sm font-medium text-white">
-                    <CheckCircle2 className="h-4 w-4" /> {t("competitionDetail.registrationOpen")}
-                  </span>
-                ) : (
-                  <Badge variant={statusColors[competition.status]}>{t(`status.${competition.status}`)}</Badge>
-                )}
-              </div>
-              <p className="mb-3 truncate text-sm text-[var(--text-secondary)]">
-                {typeof window !== "undefined" ? window.location.host : "dancecomp.com"}/competitions/{id}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const url = `${window.location.origin}/competitions/${id}`;
-                    navigator.clipboard.writeText(url);
-                    toast({ title: t("judges.linkCopied") } as Parameters<typeof toast>[0]);
-                  }}
-                >
-                  <Copy className="h-3.5 w-3.5" /> {t("competitionDetail.copyLink")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => window.open(`/competitions/${id}`, "_blank")}
-                >
-                  <ExternalLink className="h-3.5 w-3.5" /> {t("competitionDetail.openLink")}
-                </Button>
-                <div className="h-4 w-px bg-[var(--border)] mx-1" />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => updateCompetition.mutate({ registrationOpen: !competition.registrationOpen })}
-                  loading={updateCompetition.isPending}
-                >
-                  <PlayCircle className="h-4 w-4" />
-                  {competition.registrationOpen ? t("competitionDetail.closeRegistration") : t("competitionDetail.openRegistration")}
-                </Button>
-                <button
-                  onClick={() => router.push(`/dashboard/competitions/${id}/presence`)}
-                  className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-3 py-1.5 text-sm transition-colors"
-                >
-                  <ClipboardCheck className="h-4 w-4" />
-                  {t("competitionDetail.openCheckIn")}
-                </button>
-                <button
-                  onClick={() => router.push(`/dashboard/competitions/${id}/live`)}
-                  className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--accent)] hover:opacity-90 text-white font-semibold px-3 py-1.5 text-sm transition-opacity"
-                >
-                  <PlayCircle className="h-4 w-4" />
-                  Spustit soutěž
-                </button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Registration action card */}
+          <div className="mb-5 rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+            {/* Header */}
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              {competition.registrationOpen ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1 text-sm font-medium text-white">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> {t("competitionDetail.registrationOpen")}
+                </span>
+              ) : (
+                <Badge variant={statusColors[competition.status]}>{t(`status.${competition.status}`)}</Badge>
+              )}
+              {competition.registrationOpen && (
+                <span className="text-sm text-[var(--text-secondary)]">Veřejný odkaz pro přihlašování párů</span>
+              )}
+            </div>
+
+            {/* URL row */}
+            <div className="mb-4 flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-2.5">
+              <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--text-tertiary)]" />
+              <span className="flex-1 truncate text-sm text-[var(--text-secondary)]">
+                {typeof window !== "undefined" ? window.location.host : "localhost:3000"}/competitions/{id}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0 text-xs"
+                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/competitions/${id}`); toast({ title: t("judges.linkCopied") }); }}
+              >
+                <Copy className="h-3.5 w-3.5" /> Kopírovat
+              </Button>
+              <Button size="sm" variant="ghost" className="shrink-0 text-xs" asChild>
+                <a href={`/competitions/${id}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" /> Otevřít
+                </a>
+              </Button>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className={competition.registrationOpen ? "border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950" : ""}
+                onClick={() => updateCompetition.mutate({ registrationOpen: !competition.registrationOpen })}
+                loading={updateCompetition.isPending}
+              >
+                {competition.registrationOpen ? t("competitionDetail.closeRegistration") : t("competitionDetail.openRegistration")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => router.push(`/dashboard/competitions/${id}/presence`)}
+              >
+                <ClipboardCheck className="h-3.5 w-3.5" /> Otevřít check-in
+              </Button>
+              <div className="flex-1" />
+              <Button onClick={() => router.push(`/dashboard/competitions/${id}/live`)}>
+                <PlayCircle className="h-4 w-4" /> Spustit soutěž
+              </Button>
+            </div>
+          </div>
 
           {/* 3 stat cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="mb-1 flex items-center gap-1.5 text-[var(--text-secondary)]">
-                  <Users className="h-4 w-4" />
-                  <span className="text-sm">{t("competitionDetail.pairs")}</span>
-                </div>
-                <p className="mb-3 text-3xl font-bold">{competition.registeredPairsCount ?? 0}</p>
-                <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => setTab("pairs")}>
-                  {t("competitionDetail.showPairs")}
-                </Button>
-              </CardContent>
-            </Card>
+          <div className="mb-5 grid gap-4 sm:grid-cols-3">
+            {/* Páry */}
+            <div className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+              <div className="mb-2 flex items-center gap-1.5 text-[var(--text-secondary)]">
+                <Users className="h-3.5 w-3.5" />
+                <span className="text-xs font-semibold uppercase tracking-wider">PÁRY</span>
+              </div>
+              <p className="mb-1 text-4xl font-bold" style={{ color: "#3B82F6", fontFamily: "var(--font-sora, Sora, sans-serif)" }}>
+                {competition.registeredPairsCount ?? 0}
+              </p>
+              <p className="mb-4 text-sm text-[var(--text-secondary)]">Přihlášených párů</p>
+              <button
+                onClick={() => setTab("pairs")}
+                className="flex w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border)] py-2 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
+              >
+                <Users className="h-3.5 w-3.5" /> Zobrazit páry
+              </button>
+            </div>
 
-            <Card>
-              <CardContent className="pt-4">
-                <div className="mb-1 flex items-center gap-1.5 text-[var(--text-secondary)]">
-                  <Layers className="h-4 w-4" />
-                  <span className="text-sm">Kategorie</span>
-                </div>
-                <p className="mb-3 text-3xl font-bold">{sections?.length ?? 0}</p>
-                <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => router.push(`/dashboard/competitions/${id}/sections/new`)}>
-                  <Plus className="h-3.5 w-3.5" /> Přidat kategorii
-                </Button>
-              </CardContent>
-            </Card>
+            {/* Kategorie */}
+            <div className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+              <div className="mb-2 flex items-center gap-1.5 text-[var(--text-secondary)]">
+                <Layers className="h-3.5 w-3.5" />
+                <span className="text-xs font-semibold uppercase tracking-wider">KATEGORIE</span>
+              </div>
+              <p className="mb-1 text-4xl font-bold" style={{ color: "#06B6D4", fontFamily: "var(--font-sora, Sora, sans-serif)" }}>
+                {sections?.length ?? 0}
+              </p>
+              <p className="mb-4 text-sm text-[var(--text-secondary)]">Aktivních kategorií</p>
+              <button
+                onClick={() => router.push(`/dashboard/competitions/${id}/sections/new`)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border)] py-2 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
+              >
+                <Plus className="h-3.5 w-3.5" /> Přidat kategorii
+              </button>
+            </div>
 
-            <Card>
-              <CardContent className="pt-4">
-                <div className="mb-1 flex items-center gap-1.5 text-[var(--text-secondary)]">
-                  <UserCircle2 className="h-4 w-4" />
-                  <span className="text-sm">{t("competitionDetail.judges")}</span>
-                </div>
-                <p className="mb-3 text-3xl font-bold">{judgeTokens.length}</p>
-                <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => setTab("judges")}>
-                  <Pencil className="h-3.5 w-3.5" /> {t("competitionDetail.manageJudges")}
-                </Button>
-              </CardContent>
-            </Card>
+            {/* Porota */}
+            <div className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+              <div className="mb-2 flex items-center gap-1.5 text-[var(--text-secondary)]">
+                <UserCircle2 className="h-3.5 w-3.5" />
+                <span className="text-xs font-semibold uppercase tracking-wider">POROTA</span>
+              </div>
+              <p className="mb-1 text-4xl font-bold" style={{ color: "#F59E0B", fontFamily: "var(--font-sora, Sora, sans-serif)" }}>
+                {judgeTokens.length}
+              </p>
+              <p className="mb-4 text-sm text-[var(--text-secondary)]">Rozhodčích přiřazeno</p>
+              <button
+                onClick={() => setTab("judges")}
+                className="flex w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border)] py-2 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
+              >
+                <Pencil className="h-3.5 w-3.5" /> Správa poroty
+              </button>
+            </div>
+          </div>
+
+          {/* Checklist + Details */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Checklist přípravy */}
+            <div className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
+                <h3 className="font-semibold text-[var(--text-primary)]">Checklist přípravy</h3>
+              </div>
+              {(() => {
+                const judgesReady = judgeTokens.length > 0;
+                const categoriesReady = (sections?.length ?? 0) > 0;
+                const registrationWasOpen = competition.registrationOpen === true || (competition.registeredPairsCount ?? 0) > 0;
+                const today2 = new Date(); today2.setHours(0, 0, 0, 0);
+                const eDay = competition.eventDate ? new Date(competition.eventDate) : null;
+                if (eDay) eDay.setHours(0, 0, 0, 0);
+                const checkinReady = (sections ?? []).some((s) => s.presenceClosed) || (eDay ? eDay <= today2 : false) || competition.status === "IN_PROGRESS" || competition.status === "COMPLETED";
+                const isRunning = competition.status === "IN_PROGRESS" || competition.status === "COMPLETED";
+                const resultsReady = competition.status === "COMPLETED";
+                const schedulePublished = scheduleStatus?.status === "PUBLISHED";
+                const items: { done: boolean; label: string; action?: () => void; actionLabel?: string }[] = [
+                  { done: true, label: "Soutěž vytvořena" },
+                  {
+                    done: registrationWasOpen,
+                    label: "Registrace otevřena",
+                    action: !registrationWasOpen ? () => updateCompetition.mutate({ registrationOpen: true }) : undefined,
+                    actionLabel: "Otevřít",
+                  },
+                  {
+                    done: judgesReady,
+                    label: `Porota přiřazena${judgesReady ? ` (${judgeTokens.length})` : ""}`,
+                    action: !judgesReady ? () => setTab("judges") : undefined,
+                    actionLabel: "Přidat",
+                  },
+                  {
+                    done: categoriesReady,
+                    label: `Kategorie přidány${categoriesReady ? ` (${sections?.length})` : ""}`,
+                    action: !categoriesReady ? () => router.push(`/dashboard/competitions/${id}/sections/new`) : undefined,
+                    actionLabel: "Přidat",
+                  },
+                  {
+                    done: checkinReady,
+                    label: "Check-in otevřen",
+                    action: !checkinReady ? () => router.push(`/dashboard/competitions/${id}/presence`) : undefined,
+                    actionLabel: "Otevřít",
+                  },
+                  {
+                    done: schedulePublished,
+                    label: "Harmonogram sestaven",
+                    action: !schedulePublished ? () => router.push(`/dashboard/competitions/${id}/schedule`) : undefined,
+                    actionLabel: "Sestavit",
+                  },
+                  {
+                    done: isRunning,
+                    label: "Soutěž spuštěna",
+                    action: !isRunning ? () => router.push(`/dashboard/competitions/${id}/live`) : undefined,
+                    actionLabel: "Spustit",
+                  },
+                  { done: resultsReady, label: "Výsledky zveřejněny" },
+                ];
+                return (
+                  <ul className="space-y-2.5">
+                    {items.map((item, i) => (
+                      <li key={i} className="flex items-center gap-2.5 text-sm">
+                        <CheckCircle2 className={`h-4 w-4 shrink-0 transition-colors duration-300 ${item.done ? "text-emerald-500" : "text-[var(--border-secondary)]"}`} />
+                        <span className={`flex-1 transition-colors duration-300 ${item.done ? "text-[var(--text-primary)]" : "text-[var(--text-tertiary)]"}`}>{item.label}</span>
+                        {!item.done && item.action && (
+                          <button
+                            onClick={item.action}
+                            className="rounded-md border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
+                          >
+                            {item.actionLabel}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
+            </div>
+
+            {/* Detaily soutěže */}
+            <div className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-[var(--accent)]" />
+                <h3 className="font-semibold text-[var(--text-primary)]">Detaily soutěže</h3>
+              </div>
+              <dl className="space-y-2.5 text-sm">
+                {([
+                  { label: "Status", value: <Badge variant={statusColors[competition.status]}>{t(`status.${competition.status}`)}</Badge> },
+                  { label: "Registrace", value: competition.registrationOpen
+                    ? <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">Otevřena</span>
+                    : <span className="rounded-full bg-[var(--surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]">Zavřena</span>
+                  },
+                  { label: "Datum", value: <span className="font-semibold">{formatDate(competition.eventDate)}</span> },
+                  { label: "Místo", value: <span className="font-semibold">{competition.venue || "–"}</span> },
+                  { label: "Celkem párů", value: <span className="font-semibold">{competition.registeredPairsCount ?? 0}</span> },
+                  { label: "Kategorií", value: <span className="font-semibold">{sections?.length ?? 0}</span> },
+                ] as { label: string; value: React.ReactNode }[]).map(({ label, value }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <dt className="text-[var(--text-secondary)]">{label}</dt>
+                    <dd className="text-[var(--text-primary)]">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           </div>
         </TabsContent>
 
@@ -1314,7 +1553,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                       size="icon-sm"
                       onClick={() => {
                         navigator.clipboard.writeText(competition.id);
-                        toast({ title: t("judges.linkCopied") } as Parameters<typeof toast>[0]);
+                        toast({ title: t("judges.linkCopied") });
                       }}
                     >
                       <Copy className="h-3.5 w-3.5" />
@@ -1339,6 +1578,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
             </Card>
           </div>
         </TabsContent>
+        </div>
       </Tabs>
     </AppShell>
   );

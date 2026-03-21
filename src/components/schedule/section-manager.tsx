@@ -17,6 +17,7 @@ interface SectionManagerProps {
 
 const FINAL_SIZE_OPTIONS = [4, 5, 6];
 
+
 function getFinalSize(section: SectionDto): number {
   return section.finalSize ?? recommendFinalSize(section.registeredPairsCount ?? 0);
 }
@@ -209,7 +210,7 @@ function MergeDialog({ competitionId, primarySection, allSections, onClose }: Me
           <select
             value={targetId}
             onChange={(e) => setTargetId(e.target.value)}
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             <option value="">Vyberte kategorii...</option>
             {candidates.map((s) => (
@@ -234,7 +235,7 @@ function MergeDialog({ competitionId, primarySection, allSections, onClose }: Me
             value={customLabel}
             onChange={(e) => setCustomLabel(e.target.value)}
             placeholder="Nechte prázdné pro automatický název"
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           />
         </div>
 
