@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { scheduleConfigApi, type ScheduleConfig } from "@/lib/api/schedule";
 import { useScheduleStore } from "@/store/schedule-store";
@@ -54,18 +54,23 @@ const BUFFER_OPTIONS = [0, 5, 10, 15, 20, 30];
 function timeToLocal(isoOrNull?: string) {
   if (!isoOrNull) return "09:00";
   try {
-    const d = new Date(isoOrNull);
-    return d.toTimeString().slice(0, 5);
+    // Extract HH:mm from the T-part directly — schedule times are wall-clock, not TZ-aware
+    const match = isoOrNull.match(/T(\d{2}:\d{2})/);
+    return match ? match[1] : "09:00";
   } catch {
     return "09:00";
   }
 }
 
 function buildStartTimeISO(timeStr: string): string {
-  const today = new Date();
+  // Send as UTC with the literal HH:mm the user typed — avoid toISOString() which would
+  // shift the time by the browser's UTC offset (e.g. 07:00 in UTC+1 → 06:00Z → schedule starts at 06:00)
   const [h, m] = timeStr.split(":").map(Number);
-  today.setHours(h, m, 0, 0);
-  return today.toISOString();
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00Z`;
 }
 
 export function ScheduleSettings({
@@ -87,6 +92,25 @@ export function ScheduleSettings({
     slotBufferMinutes: initialConfig?.slotBufferMinutes ?? 5,
   });
   const [startTime, setStartTime] = useState(timeToLocal(initialConfig?.scheduleStartTime));
+
+  // Sync state when competition data loads asynchronously
+  useEffect(() => {
+    if (initialConfig) {
+      setStartTime(timeToLocal(initialConfig.scheduleStartTime));
+      setConfig({
+        danceDurationSeconds: initialConfig.danceDurationSeconds ?? 120,
+        transitionDurationSeconds: initialConfig.transitionDurationSeconds ?? 30,
+        maxPairsOnFloor: initialConfig.maxPairsOnFloor ?? 8,
+        breakDurationMinutes: initialConfig.breakDurationMinutes ?? 15,
+        breakRule: initialConfig.breakRule ?? "BETWEEN_CATEGORIES",
+        judgeBreakAfterMinutes: initialConfig.judgeBreakAfterMinutes ?? 90,
+        judgeBreakDurationMinutes: initialConfig.judgeBreakDurationMinutes ?? 10,
+        slotBufferMinutes: initialConfig.slotBufferMinutes ?? 5,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialConfig?.scheduleStartTime, initialConfig?.danceDurationSeconds]);
+
 
   const { mutate, isPending } = useMutation({
     mutationFn: () =>
