@@ -163,4 +163,10 @@ export const competitionsApi = {
 
   deleteNews: (id: string, newsId: string) =>
     apiClient.delete(`/competitions/${id}/news/${newsId}`).then((r) => r.data),
+
+  /** POST /competitions/{id}/start → 204 */
+  start: (id: string) => apiClient.post(`/competitions/${id}/start`),
+
+  /** POST /competitions/{id}/cancel-start → 204 */
+  cancelStart: (id: string) => apiClient.post(`/competitions/${id}/cancel-start`),
 };

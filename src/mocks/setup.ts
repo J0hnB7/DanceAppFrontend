@@ -189,6 +189,39 @@ export function setupMockApi() {
     return [200, comp];
   });
 
+  // POST /competitions/:id/start — launches competition (PUBLISHED → IN_PROGRESS)
+  mock.onPost(/\/competitions\/[^/]+\/start$/).reply((config) => {
+    const id = config.url!.match(/\/competitions\/([^/]+)\/start/)?.[1];
+    const comp = competitions.find((c) => c.id === id);
+    if (!comp) return [404, { message: "Competition not found" }];
+    if (comp.status !== "PUBLISHED") return [409, { message: "Competition must be PUBLISHED to start" }];
+    comp.status = "IN_PROGRESS";
+    persistCompetitions();
+    return [204];
+  });
+
+  // POST /competitions/:id/cancel-start — reverts competition to PUBLISHED
+  mock.onPost(/\/competitions\/[^/]+\/cancel-start$/).reply((config) => {
+    const id = config.url!.match(/\/competitions\/([^/]+)\/cancel-start/)?.[1];
+    const comp = competitions.find((c) => c.id === id);
+    if (!comp) return [404, { message: "Competition not found" }];
+    if (comp.status !== "IN_PROGRESS") return [409, { message: "Competition must be IN_PROGRESS to cancel start" }];
+    comp.status = "PUBLISHED";
+    persistCompetitions();
+    return [204];
+  });
+
+  // PATCH /competitions/:id/schedule-config — updates dance config fields on the competition
+  mock.onPatch(/\/competitions\/[^/]+\/schedule-config$/).reply((config) => {
+    const id = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
+    const idx = competitions.findIndex((c) => c.id === id);
+    if (idx < 0) return [404];
+    const update = JSON.parse(config.data ?? "{}");
+    competitions[idx] = { ...competitions[idx], ...update };
+    persistCompetitions();
+    return [200, competitions[idx]];
+  });
+
 
   mock.onDelete(/\/competitions\/[^/]+$/).reply((config) => {
     const compId = config.url!.match(/\/competitions\/([^/]+)$/)?.[1];
@@ -633,7 +666,89 @@ export function setupMockApi() {
     return [200, scheduleSlots.filter((s) => s.competitionId === compId)];
   });
 
+  // DELETE slot: /competitions/:id/schedule/slots/:slotId
+  mock.onDelete(/\/competitions\/[^/]+\/schedule\/slots\/[^/]+$/).reply((config) => {
+    const parts = config.url!.split("/");
+    const slotId = parts[parts.length - 1];
+    const idx = scheduleSlots.findIndex((s) => s.id === slotId);
+    if (idx >= 0) scheduleSlots.splice(idx, 1);
+    return [204];
+  });
+
   mock.onDelete(/\/competitions\/[^/]+\/schedule\/[^/]+$/).reply(204);
+
+  // ── Heat Assignments ──────────────────────────────────────────────────────────
+  // GET  /competitions/:id/schedule/slots/:slotId/heat-assignments
+  // POST /competitions/:id/schedule/slots/:slotId/draw-heats  (re-draw)
+  function buildHeatAssignments(slotId: string) {
+    const slot = scheduleSlots.find((s) => s.id === slotId);
+    if (!slot || slot.type !== "ROUND") return null;
+
+    const sectionPairs = pairs.filter(
+      (p) => p.sectionId === slot.sectionId && p.presenceStatus !== "ABSENT"
+    );
+
+    // Parse pair count from label "(X párů)" — fall back to actual pairs
+    const labelMatch = slot.label.match(/\((\d+)\s*párů?\)/i);
+    const targetCount = labelMatch ? parseInt(labelMatch[1]) : sectionPairs.length;
+
+    // Build entry list: real pairs first, then placeholders for the rest
+    const entries = sectionPairs.slice(0, targetCount).map((p) => ({
+      pairId: p.id,
+      startNumber: p.startNumber,
+      dancer1: `${p.dancer1LastName} ${p.dancer1FirstName}`,
+      dancer2: `${p.dancer2LastName} ${p.dancer2FirstName}`,
+      club: p.dancer1Club ?? "",
+    }));
+    // Fill up to targetCount with placeholders (start numbers continue)
+    const lastNum = entries.length > 0 ? entries[entries.length - 1].startNumber : 0;
+    for (let i = entries.length; i < targetCount; i++) {
+      entries.push({
+        pairId: `placeholder-${slotId}-${i}`,
+        startNumber: lastNum + (i - entries.length + 1),
+        dancer1: `Příjmení ${lastNum + i}`,
+        dancer2: `Příjmení ${lastNum + i + 100}`,
+        club: "—",
+      });
+    }
+
+    // Shuffle (seeded by slotId so result is stable across reloads)
+    const seed = slotId.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    const shuffled = [...entries].sort((a, b) => {
+      const ha = (a.startNumber * 2654435761 + seed) % 1000;
+      const hb = (b.startNumber * 2654435761 + seed) % 1000;
+      return ha - hb;
+    });
+
+    // maxPairsOnFloor from competition (default 8)
+    const comp = competitions.find((c) =>
+      scheduleSlots.find((s) => s.id === slotId && s.competitionId === c.id)
+    );
+    const max = (comp as { maxPairsOnFloor?: number })?.maxPairsOnFloor ?? 8;
+    const heatCount = Math.max(1, Math.ceil(shuffled.length / max));
+
+    const heats: { heatNumber: number; pairs: typeof entries }[] = Array.from(
+      { length: heatCount },
+      (_, i) => ({ heatNumber: i + 1, pairs: [] })
+    );
+    shuffled.forEach((p, i) => heats[i % heatCount].pairs.push(p));
+
+    return heats;
+  }
+
+  mock.onGet(/\/competitions\/[^/]+\/schedule\/slots\/[^/]+\/heat-assignments$/).reply((config) => {
+    const parts = config.url!.split("/");
+    const slotId = parts[parts.length - 2]; // …/slots/:slotId/heat-assignments
+    const result = buildHeatAssignments(slotId);
+    return result ? [200, result] : [404];
+  });
+
+  mock.onPost(/\/competitions\/[^/]+\/schedule\/slots\/[^/]+\/draw-heats$/).reply((config) => {
+    const parts = config.url!.split("/");
+    const slotId = parts[parts.length - 2];
+    const result = buildHeatAssignments(slotId);
+    return result ? [200, result] : [404];
+  });
 
   // ── Payments ─────────────────────────────────────────────────────────────────
   mock.onGet(/\/competitions\/[^/]+\/payments\/summary/).reply(200, {

@@ -82,6 +82,7 @@ import { scheduleApi } from "@/lib/api/schedule";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
+import { LaunchCompetitionDialog } from "@/components/competition/launch-competition-dialog";
 
 // Cached xlsx module — loaded once to avoid repeated webpack chunk recompilation
 let xlsxCache: typeof import("xlsx") | null = null;
@@ -283,8 +284,18 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
   const { data: pairs } = usePairs(id);
   const updateCompetition = useUpdateCompetition(id);
   const deleteCompetition = useDeleteCompetition();
+  const qc = useQueryClient();
+  const cancelStartMutation = useMutation({
+    mutationFn: () => competitionsApi.cancelStart(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["competition", id] });
+      toast({ title: "Start soutěže zrušen", variant: "success" });
+    },
+    onError: () => toast({ title: "Nelze zrušit start", variant: "destructive" }),
+  });
 
   const [tab, setTab] = useState("overview");
+  const [launchDialogOpen, setLaunchDialogOpen] = useState(false);
   const xlsxFileRef = useRef<HTMLInputElement>(null);
   const [xlsxImporting, setXlsxImporting] = useState(false);
   const [xlsxResult, setXlsxResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
@@ -305,7 +316,6 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
   const [bankAddress, setBankAddress] = useState("");
   const [stripeKey, setStripeKey] = useState("");
   const [orgWebsiteUrl, setOrgWebsiteUrl] = useState("");
-  const qc = useQueryClient();
 
   const { data: newsItems = [] } = useQuery({
     queryKey: ["competition-news", id],
@@ -634,6 +644,12 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
         onCancel={() => setShowDeleteDialog(false)}
       />
 
+      <LaunchCompetitionDialog
+        competitionId={id}
+        open={launchDialogOpen}
+        onClose={() => setLaunchDialogOpen(false)}
+      />
+
       <Tabs value={tab} onValueChange={setTab}>
         {/* Dark hero header */}
         <div className="relative -mx-6 -mt-8 overflow-hidden px-6 pb-0 lg:-mx-8 lg:-mt-10 lg:px-8" style={{ background: "#0A1628" }}>
@@ -815,9 +831,23 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                 <ClipboardCheck className="h-3.5 w-3.5" /> Otevřít check-in
               </Button>
               <div className="flex-1" />
-              <Button onClick={() => router.push(`/dashboard/competitions/${id}/live`)}>
-                <PlayCircle className="h-4 w-4" /> Spustit soutěž
-              </Button>
+              {competition.status === "IN_PROGRESS" ? (
+                <Button
+                  variant="outline"
+                  onClick={() => cancelStartMutation.mutate()}
+                  loading={cancelStartMutation.isPending}
+                  disabled={cancelStartMutation.isPending}
+                >
+                  Zrušit start
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setLaunchDialogOpen(true)}
+                  disabled={competition.status !== "PUBLISHED"}
+                >
+                  <PlayCircle className="h-4 w-4" /> Spustit soutěž
+                </Button>
+              )}
             </div>
           </div>
 
