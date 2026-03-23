@@ -3,12 +3,13 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Settings, Users, CalendarDays, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Settings, Users, CalendarDays, ArrowLeft, Radio, Pencil } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { competitionsApi } from "@/lib/api/competitions";
 import { ScheduleSettings } from "@/components/schedule/schedule-settings";
 import { SectionManager } from "@/components/schedule/section-manager";
 import { ScheduleBuilder } from "@/components/schedule/schedule-builder";
+import { ScheduleTimeline } from "@/components/schedule/schedule-timeline";
 import { useScheduleStore } from "@/store/schedule-store";
 import { cn } from "@/lib/utils";
 
@@ -127,10 +128,13 @@ function PublishStep({ competitionId }: { competitionId: string }) {
   );
 }
 
+type LiveView = "live" | "edit";
+
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: competitionId } = use(params);
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
+  const [liveView, setLiveView] = useState<LiveView>("live");
   const { loadSchedule, scheduleStatus } = useScheduleStore();
 
   const { data: competition } = useQuery({
@@ -190,9 +194,63 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </div>
         )}
 
-        {/* Step 2: Schedule Builder */}
-        {step === 2 && (
-          <ScheduleBuilder competitionId={competitionId} />
+        {/* Step 2: Live management or edit depending on competition status */}
+        {step === 2 && competition?.status === "IN_PROGRESS" && (
+          <div className="space-y-4">
+            {/* Live banner */}
+            <div className="flex items-center gap-2 rounded-xl border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 px-4 py-2.5 text-sm text-green-800 dark:text-green-300">
+              <Radio className="h-4 w-4 animate-pulse" />
+              <span className="font-medium">Soutěž probíhá</span>
+              <span className="text-green-700 dark:text-green-400 text-xs">— změny harmonogramu jsou omezeny na nespuštěné bloky</span>
+            </div>
+
+            {/* Toggle: Live řízení / Upravit harmonogram */}
+            <div className="flex gap-1 p-1 rounded-lg bg-[var(--surface-secondary)] w-fit">
+              <button
+                onClick={() => setLiveView("live")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                  liveView === "live"
+                    ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-sm"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                )}
+              >
+                <Radio className="h-3.5 w-3.5" />
+                Live řízení
+              </button>
+              <button
+                onClick={() => setLiveView("edit")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                  liveView === "edit"
+                    ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-sm"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                )}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Upravit harmonogram
+              </button>
+            </div>
+
+            {liveView === "live" ? (
+              <ScheduleTimeline
+                competitionId={competitionId}
+                role="organizer"
+                canManageRounds
+              />
+            ) : (
+              <ScheduleBuilder
+                competitionId={competitionId}
+                competition={competition}
+                restrictedEdit
+              />
+            )}
+          </div>
+        )}
+
+        {/* Step 2: Standard schedule builder for non-IN_PROGRESS competitions */}
+        {step === 2 && competition?.status !== "IN_PROGRESS" && (
+          <ScheduleBuilder competitionId={competitionId} competition={competition} />
         )}
 
         {/* Step 3: Publish */}
