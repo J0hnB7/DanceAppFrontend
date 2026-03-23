@@ -10,6 +10,7 @@ import apiClient from "@/lib/api-client";
 import { judgeOfflineStore } from "@/lib/judge-offline-store";
 import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
+import { useJudgeSSERehydration } from "@/hooks/use-sse";
 
 interface RoundInfo {
   id: string;
@@ -41,6 +42,14 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
   const competitionId = typeof window !== "undefined"
     ? localStorage.getItem("judge_competition_id")
     : null;
+
+  // SSE reconnect rehydration: on reconnect, check for active round and navigate if found
+  const { pollingFallback } = useJudgeSSERehydration(
+    competitionId ?? undefined,
+    token,
+    // Skip rehydration navigation if we're already watching a round (currentRound?.status === "IN_PROGRESS")
+    currentRound?.status === "IN_PROGRESS"
+  );
 
   const checkRound = useCallback(async () => {
     if (!competitionId) return;
@@ -115,6 +124,14 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)]">
+      {/* Polling fallback banner */}
+      {pollingFallback && isOnline && (
+        <div className="flex items-center justify-center gap-2 border-b border-amber-200/30 bg-amber-50/20 px-4 py-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+          <Clock className="h-3.5 w-3.5" />
+          Záložní režim — kontrola každých 10 s
+        </div>
+      )}
+
       {/* Offline banner */}
       {!isOnline && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
