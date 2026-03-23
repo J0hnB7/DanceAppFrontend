@@ -72,6 +72,19 @@ export interface ScheduleConfig {
   slotBufferMinutes?: number;
 }
 
+export interface HeatPairEntry {
+  pairId: string;
+  startNumber: number;
+  dancer1: string; // "Příjmení Jméno"
+  dancer2: string;
+  club: string;
+}
+
+export interface HeatAssignmentGroup {
+  heatNumber: number;
+  pairs: HeatPairEntry[];
+}
+
 export const scheduleApi = {
   list: (competitionId: string) =>
     apiClient.get<ScheduleSlot[]>(`/competitions/${competitionId}/schedule`).then((r) => r.data),
@@ -132,6 +145,48 @@ export const scheduleApi = {
 
   export: (competitionId: string, format: "pdf" | "xlsx" = "pdf") =>
     apiClient.get(`/competitions/${competitionId}/schedule/export?format=${format}`, { responseType: "blob" }),
+
+  getHeatAssignments: (competitionId: string, slotId: string) =>
+    apiClient
+      .get<HeatAssignmentGroup[]>(`/competitions/${competitionId}/schedule/slots/${slotId}/heat-assignments`)
+      .then((r) => r.data),
+
+  drawHeats: (competitionId: string, slotId: string) =>
+    apiClient
+      .post<HeatAssignmentGroup[]>(`/competitions/${competitionId}/schedule/slots/${slotId}/draw-heats`)
+      .then((r) => r.data),
+
+  /** POST /slots/{slotId}/activate → 200 ScheduleSlot (idempotent) */
+  activateSlot: (competitionId: string, slotId: string) =>
+    apiClient
+      .post<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots/${slotId}/activate`)
+      .then((r) => r.data),
+
+  /** POST /slots/{slotId}/complete → 200 ScheduleSlot (idempotent) */
+  completeSlot: (competitionId: string, slotId: string) =>
+    apiClient
+      .post<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots/${slotId}/complete`)
+      .then((r) => r.data),
+
+  /** POST /slots/{slotId}/revert → 200 ScheduleSlot (idempotent) */
+  revertSlot: (competitionId: string, slotId: string) =>
+    apiClient
+      .post<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots/${slotId}/revert`)
+      .then((r) => r.data),
+
+  /** POST /slots/{slotId}/assign-advancing-pairs?force=false → 204 */
+  assignAdvancingPairs: (competitionId: string, slotId: string, force = false) =>
+    apiClient
+      .post(`/competitions/${competitionId}/schedule/slots/${slotId}/assign-advancing-pairs?force=${force}`)
+      .then((r) => r.data),
+
+  /** GET /rounds/{roundId}/submission-status → {totalJudges, submitted, judges} */
+  getSubmissionStatus: (roundId: string) =>
+    apiClient
+      .get<{ totalJudges: number; submitted: number; judges: { judgeTokenId: string; submitted: boolean; submittedAt: string | null }[] }>(
+        `/rounds/${roundId}/submission-status`
+      )
+      .then((r) => r.data),
 };
 
 export const sectionsApi2 = {

@@ -750,6 +750,42 @@ export function setupMockApi() {
     return result ? [200, result] : [404];
   });
 
+  // ── Slot lifecycle actions (activate / complete / revert / assign-advancing-pairs) ───
+  mock.onPost(/\/competitions\/[^/]+\/schedule\/slots\/[^/]+\/activate$/).reply((config) => {
+    const parts = config.url!.split("/");
+    const slotId = parts[parts.length - 2];
+    const slot = scheduleSlots.find((s) => s.id === slotId);
+    if (!slot) return [404, { message: "Slot not found" }];
+    slot.liveStatus = "RUNNING";
+    return [200, slot];
+  });
+
+  mock.onPost(/\/competitions\/[^/]+\/schedule\/slots\/[^/]+\/complete$/).reply((config) => {
+    const parts = config.url!.split("/");
+    const slotId = parts[parts.length - 2];
+    const slot = scheduleSlots.find((s) => s.id === slotId);
+    if (!slot) return [404, { message: "Slot not found" }];
+    slot.liveStatus = "COMPLETED";
+    return [200, slot];
+  });
+
+  mock.onPost(/\/competitions\/[^/]+\/schedule\/slots\/[^/]+\/revert$/).reply((config) => {
+    const parts = config.url!.split("/");
+    const slotId = parts[parts.length - 2];
+    const slot = scheduleSlots.find((s) => s.id === slotId);
+    if (!slot) return [404, { message: "Slot not found" }];
+    slot.liveStatus = "NOT_STARTED";
+    return [200, slot];
+  });
+
+  mock.onPost(/\/competitions\/[^/]+\/schedule\/slots\/[^/]+\/assign-advancing-pairs$/).reply((config) => {
+    const parts = config.url!.split("/");
+    const slotId = parts[parts.length - 2];
+    const slot = scheduleSlots.find((s) => s.id === slotId);
+    if (!slot) return [404, { message: "Slot not found" }];
+    return [204];
+  });
+
   // ── Payments ─────────────────────────────────────────────────────────────────
   mock.onGet(/\/competitions\/[^/]+\/payments\/summary/).reply(200, {
     totalExpected: pairs.length * 40,

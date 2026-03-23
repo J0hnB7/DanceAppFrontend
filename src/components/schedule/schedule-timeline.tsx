@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Clock, PlayCircle, CheckCircle2, Trophy, Pause, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Clock, PlayCircle, CheckCircle2, Trophy, Pause, Users, ChevronRight, Loader2,
+} from "lucide-react";
 import { scheduleApi, type ScheduleSlot, type BlockLiveStatus } from "@/lib/api/schedule";
 import { useSSE } from "@/hooks/use-sse";
 import { useScheduleStore } from "@/store/schedule-store";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { isAxiosError } from "axios";
 
 interface ScheduleTimelineProps {
   competitionId: string;
   role?: "organizer" | "dancer" | "judge" | "public";
+  /** If true, shows activate/complete/revert buttons for ROUND slots */
+  canManageRounds?: boolean;
 }
 
 function formatTime(iso: string): string {
@@ -73,14 +80,52 @@ function LiveStatusBadge({ status }: { status: BlockLiveStatus }) {
   return null;
 }
 
+interface SubmissionStatusBadgeProps {
+  roundId: string;
+  competitionId: string;
+}
+
+function SubmissionStatusBadge({ roundId }: SubmissionStatusBadgeProps) {
+  const { data } = useQuery({
+    queryKey: ["submission-status", roundId],
+    queryFn: () => scheduleApi.getSubmissionStatus(roundId),
+    refetchInterval: 15000,
+    enabled: !!roundId,
+  });
+
+  if (!data) return null;
+
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-secondary)] bg-[var(--surface-secondary)] border border-[var(--border)] rounded px-1.5 py-0.5">
+      <Users className="h-3 w-3" />
+      {data.submitted}/{data.totalJudges} rozhodčích
+    </span>
+  );
+}
+
 interface TimelineBlockProps {
   slot: ScheduleSlot;
   role: string;
   mySectionIds: string[];
   now: Date;
+  canManageRounds: boolean;
+  allSlots: ScheduleSlot[];
+  competitionId: string;
+  onOptimisticUpdate: (slotId: string, status: BlockLiveStatus) => void;
+  onOptimisticRevert: (slotId: string, prevStatus: BlockLiveStatus) => void;
 }
 
-function TimelineBlock({ slot, role, mySectionIds, now }: TimelineBlockProps) {
+function TimelineBlock({
+  slot,
+  role,
+  mySectionIds,
+  now,
+  canManageRounds,
+  allSlots,
+  competitionId,
+  onOptimisticUpdate,
+  onOptimisticRevert,
+}: TimelineBlockProps) {
   const blockStart = new Date(slot.startTime);
   const blockEnd = new Date(blockStart.getTime() + slot.durationMinutes * 60000);
   const isCompleted = slot.liveStatus === "COMPLETED";
@@ -89,8 +134,53 @@ function TimelineBlock({ slot, role, mySectionIds, now }: TimelineBlockProps) {
   const isUpcoming = msUntil > 0 && msUntil < 15 * 60000;
   const isMine = slot.sectionId ? mySectionIds.includes(slot.sectionId) : false;
 
+  // Detect if there is a next round slot in the same section (for "assign advancing pairs")
+  const hasNextRoundInSection =
+    slot.type === "ROUND" &&
+    slot.sectionId != null &&
+    slot.roundNumber != null &&
+    allSlots.some(
+      (s) =>
+        s.type === "ROUND" &&
+        s.sectionId === slot.sectionId &&
+        s.roundNumber != null &&
+        s.roundNumber > slot.roundNumber!
+    );
+
+  const qc = useQueryClient();
+  const [pending, setPending] = useState<"activate" | "complete" | "revert" | "assign" | null>(null);
+
+  function handleMutation<T>(
+    action: "activate" | "complete" | "revert" | "assign",
+    optimisticStatus: BlockLiveStatus | null,
+    fn: () => Promise<T>,
+    successMsg: string
+  ) {
+    const prevStatus = slot.liveStatus;
+    if (optimisticStatus) onOptimisticUpdate(slot.id, optimisticStatus);
+    setPending(action);
+    fn()
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["schedule", competitionId] });
+        if (action === "activate" || action === "complete") {
+          qc.invalidateQueries({ queryKey: ["submission-status", slot.roundId ?? ""] });
+        }
+        toast({ title: successMsg, variant: "success" });
+      })
+      .catch((err) => {
+        if (optimisticStatus) onOptimisticRevert(slot.id, prevStatus);
+        const message = isAxiosError(err)
+          ? err.response?.data?.message ?? "Operace selhala"
+          : "Operace selhala";
+        toast({ title: message, variant: "destructive" });
+      })
+      .finally(() => setPending(null));
+  }
+
   // Judge role: show only ROUND blocks
   if (role === "judge" && slot.type !== "ROUND") return null;
+
+  const showControls = canManageRounds && slot.type === "ROUND";
 
   return (
     <div
@@ -131,7 +221,88 @@ function TimelineBlock({ slot, role, mySectionIds, now }: TimelineBlockProps) {
             {role !== "judge" && role !== "public" && slot.type === "ROUND" && slot.roundNumber != null && (
               <span className="text-xs text-[var(--text-tertiary)]">Kolo {slot.roundNumber}</span>
             )}
+
+            {isRunning && slot.roundId && (
+              <SubmissionStatusBadge roundId={slot.roundId} competitionId={competitionId} />
+            )}
           </div>
+
+          {/* Organizer controls */}
+          {showControls && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {slot.liveStatus === "NOT_STARTED" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 hover:bg-green-50 dark:hover:bg-green-950/40"
+                  disabled={!!pending}
+                  onClick={() =>
+                    handleMutation(
+                      "activate",
+                      "RUNNING",
+                      () => scheduleApi.activateSlot(competitionId, slot.id),
+                      "Kolo spuštěno"
+                    )
+                  }
+                >
+                  {pending === "activate" ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <PlayCircle className="h-3 w-3" />
+                  )}
+                  Spustit kolo
+                </Button>
+              )}
+
+              {slot.liveStatus === "RUNNING" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  disabled={!!pending}
+                  onClick={() =>
+                    handleMutation(
+                      "complete",
+                      "COMPLETED",
+                      () => scheduleApi.completeSlot(competitionId, slot.id),
+                      "Kolo ukončeno"
+                    )
+                  }
+                >
+                  {pending === "complete" ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-3 w-3" />
+                  )}
+                  Ukončit kolo
+                </Button>
+              )}
+
+              {slot.liveStatus === "COMPLETED" && hasNextRoundInSection && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                  disabled={!!pending}
+                  onClick={() =>
+                    handleMutation(
+                      "assign",
+                      null,
+                      () => scheduleApi.assignAdvancingPairs(competitionId, slot.id),
+                      "Postupující přiřazeni"
+                    )
+                  }
+                >
+                  {pending === "assign" ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                  Přiřadit postupující
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-1 shrink-0">
@@ -152,7 +323,11 @@ function TimelineBlock({ slot, role, mySectionIds, now }: TimelineBlockProps) {
   );
 }
 
-export function ScheduleTimeline({ competitionId, role = "public" }: ScheduleTimelineProps) {
+export function ScheduleTimeline({
+  competitionId,
+  role = "public",
+  canManageRounds = false,
+}: ScheduleTimelineProps) {
   const { slots, setSlots, setScheduleStatus, setSlotsHash, slotsHash } = useScheduleStore();
   const nowRef = useRef(new Date());
 
@@ -187,7 +362,6 @@ export function ScheduleTimeline({ competitionId, role = "public" }: ScheduleTim
   useSSE(competitionId, "schedule-updated", (data: { status: string; slotsHash?: string }) => {
     if (data.status === "PUBLISHED") {
       setScheduleStatus("PUBLISHED");
-      // Only refetch if hash changed
       if (!data.slotsHash || data.slotsHash !== slotsHash) {
         scheduleApi.list(competitionId).then(setSlots);
       }
@@ -201,6 +375,25 @@ export function ScheduleTimeline({ competitionId, role = "public" }: ScheduleTim
     );
     setSlots(updated);
   });
+
+  // SSE: round-status (updates liveStatus of associated slot + tracks eventId)
+  useSSE(competitionId, "round-status", (data: { roundId?: string; sectionId?: string; status?: string }) => {
+    if (!data.roundId || !data.status) return;
+    const updated = slots.map((s) =>
+      s.roundId === data.roundId
+        ? { ...s, liveStatus: data.status as BlockLiveStatus }
+        : s
+    );
+    setSlots(updated);
+  });
+
+  // Optimistic UI helpers
+  const handleOptimisticUpdate = (slotId: string, status: BlockLiveStatus) => {
+    setSlots(slots.map((s) => (s.id === slotId ? { ...s, liveStatus: status } : s)));
+  };
+  const handleOptimisticRevert = (slotId: string, prevStatus: BlockLiveStatus) => {
+    setSlots(slots.map((s) => (s.id === slotId ? { ...s, liveStatus: prevStatus } : s)));
+  };
 
   if (isLoading) {
     return (
@@ -223,7 +416,6 @@ export function ScheduleTimeline({ competitionId, role = "public" }: ScheduleTim
 
   const now = nowRef.current;
 
-  // Find current red-line position
   const runningSlot = slots.find((s) => s.liveStatus === "RUNNING");
   const nextSlot = slots.find((s) => {
     const start = new Date(s.startTime).getTime();
@@ -232,8 +424,7 @@ export function ScheduleTimeline({ competitionId, role = "public" }: ScheduleTim
 
   return (
     <div className="space-y-1.5">
-      {slots.map((slot, idx) => {
-        const isBeforeNow = new Date(slot.startTime).getTime() < now.getTime();
+      {slots.map((slot) => {
         const showRedLine =
           runningSlot?.id === slot.id ||
           (!runningSlot && nextSlot?.id === slot.id);
@@ -248,6 +439,11 @@ export function ScheduleTimeline({ competitionId, role = "public" }: ScheduleTim
               role={role}
               mySectionIds={mySectionIds}
               now={now}
+              canManageRounds={canManageRounds}
+              allSlots={slots}
+              competitionId={competitionId}
+              onOptimisticUpdate={handleOptimisticUpdate}
+              onOptimisticRevert={handleOptimisticRevert}
             />
           </div>
         );

@@ -12,6 +12,13 @@ class SSEClient {
   private handlers: Map<string, Map<string, Set<SSEEventHandler>>> = new Map();
   private retryDelays: Map<string, number> = new Map();
   private retryTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  /** Tracks the last eventId seen per competition (from `eventId` in SSE payloads) */
+  private lastEventIds: Map<string, string> = new Map();
+
+  /** Call this when an SSE payload contains an eventId to track for Last-Event-ID replay. */
+  trackEventId(competitionId: string, eventId: string) {
+    this.lastEventIds.set(competitionId, eventId);
+  }
 
   subscribe(competitionId: string, event: string, handler: SSEEventHandler): SSESubscription {
     if (!this.sources.has(competitionId)) {
@@ -44,7 +51,10 @@ class SSEClient {
   }
 
   private connect(competitionId: string) {
-    const url = `/api/v1/sse/competitions/${competitionId}`;
+    const lastEventId = this.lastEventIds.get(competitionId);
+    const url = lastEventId
+      ? `/api/v1/sse/competitions/${competitionId}?lastEventId=${lastEventId}`
+      : `/api/v1/sse/competitions/${competitionId}`;
     const source = new EventSource(url, { withCredentials: true });
 
     if (!this.handlers.has(competitionId)) {
@@ -89,6 +99,10 @@ class SSEClient {
     source.addEventListener(event, (e) => {
       try {
         const data = JSON.parse((e as MessageEvent).data);
+        // Track eventId for Last-Event-ID replay on reconnect
+        if (data && typeof data === "object" && "eventId" in data && typeof data.eventId === "string") {
+          this.lastEventIds.set(competitionId, data.eventId);
+        }
         this.handlers.get(competitionId)?.get(event)?.forEach((h) => h(data));
       } catch {
         console.warn("[SSE] Malformed payload for event", event, (e as MessageEvent).data);
@@ -101,6 +115,7 @@ class SSEClient {
     this.sources.delete(competitionId);
     this.handlers.delete(competitionId);
     this.retryDelays.delete(competitionId);
+    this.lastEventIds.delete(competitionId);
     const timer = this.retryTimers.get(competitionId);
     if (timer !== undefined) {
       clearTimeout(timer);
