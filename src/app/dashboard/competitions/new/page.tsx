@@ -210,7 +210,7 @@ export default function NewCompetitionPage() {
       });
       createdId = competition.id;
     } catch {
-      toast({ title: t("common.error"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("common.error"), variant: "destructive" });
       setSubmitting(false);
       return;
     }

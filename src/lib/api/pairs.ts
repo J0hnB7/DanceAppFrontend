@@ -35,21 +35,23 @@ export interface PairDto {
   registrationStatus?: RegistrationStatus;
   adminNote?: string;
   sectionId?: string;
+  athlete1Id?: number | null;
+  athlete2Id?: number | null;
   // Extended fields from external competition system
   externalId?: string;
   externalSectionId?: string;
-  country?: string;
-  presenceDeadline?: string;
+  country?: string | null;
+  presenceDeadline?: string | null;
   feePerPerson?: number;
   feeTotal?: number;
   starts?: boolean;
-  withdrawalDate?: string;
+  withdrawalDate?: string | null;
   startType?: string;
   startsFromRound?: number;
   classValue?: string;
-  finaleCount?: number;
-  points?: number;
-  ranklistPosition?: number;
+  finaleCount?: number | null;
+  points?: number | null;
+  ranklistPosition?: number | null;
 }
 
 export interface CreatePairRequest {
@@ -100,6 +102,11 @@ export const pairsApi = {
   setRegistrationStatus: (competitionId: string, pairId: string, status: RegistrationStatus) =>
     apiClient
       .put<PairDto>(`/competitions/${competitionId}/pairs/${pairId}/registration-status`, { status })
+      .then((r) => r.data),
+
+  setPaymentStatus: (competitionId: string, pairId: string, status: "PENDING" | "PAID" | "WAIVED") =>
+    apiClient
+      .put(`/competitions/${competitionId}/pairs/${pairId}/payment-status`, { status })
       .then((r) => r.data),
 
   setNote: (competitionId: string, pairId: string, note: string) =>

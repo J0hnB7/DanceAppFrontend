@@ -20,7 +20,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   GripVertical, Plus, Clock, CheckCircle2, PlayCircle, Pause,
   Globe, AlertTriangle, ArrowRight, X, Trophy, ChevronDown, ChevronRight,
-  Users,
+  Users, Shuffle,
 } from "lucide-react";
 import { useScheduleStore } from "@/store/schedule-store";
 import { scheduleApi, type ScheduleSlot, type BlockLiveStatus, type HeatAssignmentGroup } from "@/lib/api/schedule";
@@ -171,7 +171,7 @@ function HeatPairsRow({ heat, totalHeats }: { heat: HeatAssignmentGroup; totalHe
         <div className="flex items-center gap-2">
           {open ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-tertiary)]" /> : <ChevronRight className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />}
           <span className="text-xs font-semibold text-[var(--text-primary)]">
-            Jízda {heat.heatNumber}
+            Skupina {heat.heatNumber}
           </span>
           <span className="text-xs text-[var(--text-tertiary)]">
             {heat.pairs.length} {heat.pairs.length === 1 ? "pár" : heat.pairs.length < 5 ? "páry" : "párů"}
@@ -360,7 +360,7 @@ function RoundCard({
               {pairCount} párů
             </span>
             <span className="text-xs text-[var(--text-tertiary)]">
-              {heatCount} {heatCount === 1 ? "jízda" : heatCount < 5 ? "jízdy" : "jízd"}
+              {heatCount} {heatCount === 1 ? "skupina" : heatCount < 5 ? "skupiny" : "skupin"}
             </span>
             <span className="text-xs text-[var(--text-tertiary)]">
               {effectiveDances.length} tanců
@@ -391,7 +391,7 @@ function RoundCard({
                   : "text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]"
                 : "text-[var(--text-tertiary)] opacity-30 cursor-not-allowed"
             )}
-            title={drawAllowed ? "Zobrazit páry v jízdách" : "Dostupné až po dokončení předchozího kola"}
+            title={drawAllowed ? "Zobrazit páry ve skupinách" : "Dostupné až po dokončení předchozího kola"}
           >
             <Users className="h-4 w-4" />
           </button>
@@ -436,7 +436,7 @@ function RoundCard({
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
                 <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">
-                  Přiřazení párů do jízd
+                  Přiřazení párů do skupin
                 </span>
                 <button
                   onClick={() => redraw()}
@@ -474,7 +474,7 @@ function RoundCard({
               {heatCount > 1 && (
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">
-                    Jízda {heat.num}
+                    Skupina {heat.num}
                   </span>
                   <div className="flex-1 h-px bg-[var(--border)]" />
                 </div>
@@ -615,6 +615,7 @@ export function ScheduleBuilder({ competitionId, competition, restrictedEdit = f
   const { toast } = useToast();
   const { slots, isDirty, isGenerating, scheduleStatus, moveSlot, generateSchedule, publishSchedule, removeSlot } = useScheduleStore();
   const [breakAfterSlotId, setBreakAfterSlotId] = useState<string | null>(null);
+  const [isDrawingAll, setIsDrawingAll] = useState(false);
 
   const { data: sections = [] } = useQuery<SectionDto[]>({
     queryKey: ["sections", competitionId, "list"],
@@ -721,6 +722,32 @@ export function ScheduleBuilder({ competitionId, competition, restrictedEdit = f
     removeSlot(competitionId, slotId);
   }, [competitionId, removeSlot, restrictedEdit, slots]);
 
+  const firstRoundSlots = useMemo(() =>
+    slots.filter((s) => s.type === "ROUND" && s.sectionId && (s.roundNumber == null || s.roundNumber <= 1)),
+    [slots]
+  );
+
+  const handleDrawAll = async () => {
+    if (firstRoundSlots.length === 0) return;
+    setIsDrawingAll(true);
+    let ok = 0;
+    let failed = 0;
+    for (const slot of firstRoundSlots) {
+      try {
+        await scheduleApi.drawHeats(competitionId, slot.id);
+        ok++;
+      } catch {
+        failed++;
+      }
+    }
+    setIsDrawingAll(false);
+    if (failed === 0) {
+      toast({ title: `Losování dokončeno (${ok} kol)`, variant: "success" });
+    } else {
+      toast({ title: `Losování: ${ok} ok, ${failed} selhalo`, variant: "destructive" });
+    }
+  };
+
   const handlePublish = async () => {
     await publishSchedule(competitionId);
     toast({ title: "Harmonogram publikován", variant: "success" });
@@ -763,6 +790,12 @@ export function ScheduleBuilder({ competitionId, competition, restrictedEdit = f
           <Button variant="outline" size="sm" onClick={() => generateSchedule(competitionId)} loading={isGenerating}>
             ↺ Přegenerovat
           </Button>
+          {firstRoundSlots.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleDrawAll} loading={isDrawingAll} className="gap-1.5">
+              <Shuffle className="h-3.5 w-3.5" />
+              Losovat vše
+            </Button>
+          )}
           <Button size="sm" onClick={handlePublish} disabled={isPublished && !isDirty} className="gap-2">
             <Globe className="h-4 w-4" />
             {isPublished ? "Aktualizovat" : "Publikovat"}

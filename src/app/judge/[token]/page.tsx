@@ -109,8 +109,8 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
         setSession(r.data);
         setSessionId(r.data.judgeTokenId);
 
-        // If no device token stored, require PIN login
-        if (!existingDevice || !existingCompetition) {
+        // Require PIN if no device token, or device token is for a different competition
+        if (!existingDevice || !existingCompetition || existingCompetition !== r.data.competitionId) {
           setNeedsPin(true);
           setLoading(false);
           return;
@@ -190,7 +190,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
   const handleSubmit = async () => {
     if (!activeRound || !session) return;
     if (!isOnline) {
-      toast({ title: t("judge.offline_warning", locale), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("judge.offline_warning", locale), variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -209,9 +209,9 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
       clearDraft(token);
       setHasDraft(false);
       setSubmitted(true);
-      toast({ title: t("judge.submitted", locale), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("judge.submitted", locale), variant: "success" });
     } catch {
-      toast({ title: t("judge.submit_failed", locale), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("judge.submit_failed", locale), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

@@ -42,10 +42,10 @@ export default function DanceOffsPage({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dance-offs", sectionId] });
       setCreateOpen(false);
-      toast({ title: t("danceOffs.created"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("danceOffs.created"), variant: "success" });
     },
     onError: (err: unknown) => {
-      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     },
   });
 
@@ -53,10 +53,10 @@ export default function DanceOffsPage({
     mutationFn: (danceOffId: string) => danceOffsApi.resolve(danceOffId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dance-offs", sectionId] });
-      toast({ title: t("danceOffs.resolved"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("danceOffs.resolved"), variant: "success" });
     },
     onError: (err: unknown) => {
-      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     },
   });
 

@@ -2,7 +2,8 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlayCircle, Plus, Trophy, BarChart3, Presentation, XCircle, ShieldAlert, Swords } from "lucide-react";
+import { PlayCircle, Plus, Trophy, BarChart3, Presentation, XCircle, ShieldAlert, Swords, AlertTriangle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { WithdrawalModal, PenaltyModal } from "@/components/competition/crisis-m
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 import { getRoundStatusBadgeVariant, getErrorMessage } from "@/lib/utils";
+import apiClient from "@/lib/api-client";
 
 export default function SectionDetailPage({
   params,
@@ -31,6 +33,19 @@ export default function SectionDetailPage({
   const { data: pairs } = usePairs(competitionId, sectionId);
   const createRound = useOpenRound(competitionId, sectionId);
 
+  // Presence data — only needed when creating first round
+  const isFirstRound = !rounds?.length;
+  const { data: presencePairs } = useQuery<{ id: string; sectionId: string; presenceStatus: string }[]>({
+    queryKey: ["presence", competitionId],
+    queryFn: () => apiClient.get(`/competitions/${competitionId}/presence`).then((r) => r.data),
+    enabled: isFirstRound,
+  });
+  const sectionPresencePairs = presencePairs?.filter((p) => p.sectionId === sectionId) ?? [];
+  const presentCount = sectionPresencePairs.filter(
+    (p) => p.presenceStatus === "CHECKED_IN" || p.presenceStatus === "ON_FLOOR"
+  ).length;
+  const registeredCount = pairs?.length ?? 0;
+
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
   const [penaltyOpen, setPenaltyOpen] = useState(false);
 
@@ -38,10 +53,10 @@ export default function SectionDetailPage({
     try {
       await createRound.mutateAsync();
       const key = type === "PRELIMINARY" ? "section.roundCreatedPreliminary" : "section.roundCreatedFinal";
-      toast({ title: t(key), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t(key), variant: "success" });
     } catch (err: unknown) {
       const msg = getErrorMessage(err, t("common.error"));
-      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: msg, variant: "destructive" });
     }
   };
 
@@ -132,7 +147,22 @@ export default function SectionDetailPage({
 
       {/* Rounds */}
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-semibold text-[var(--text-primary)]">{t("section.rounds")}</h3>
+        <div>
+          <h3 className="font-semibold text-[var(--text-primary)]">{t("section.rounds")}</h3>
+          {isFirstRound && presencePairs !== undefined && (
+            <div className="mt-1 flex flex-col gap-1">
+              <p className="text-sm text-[var(--text-secondary)]">
+                {t("section.presentPairs", { present: presentCount, total: registeredCount })}
+              </p>
+              {!section?.presenceClosed && (
+                <p className="flex items-center gap-1 text-xs text-[var(--warning)]">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {t("section.presenceNotClosed")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
         <div className="flex gap-2">
           <Button
             size="sm"

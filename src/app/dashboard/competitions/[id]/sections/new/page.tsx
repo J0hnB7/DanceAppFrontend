@@ -180,7 +180,7 @@ export default function NewSectionPage({ params }: { params: Promise<{ id: strin
       });
     } catch (err: unknown) {
       const msg = getErrorMessage(err, t("common.error"));
-      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: msg, variant: "destructive" });
       return;
     }
     router.push(`/dashboard/competitions/${id}`);

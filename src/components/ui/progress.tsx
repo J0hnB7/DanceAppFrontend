@@ -29,7 +29,7 @@ export function Progress({ value, className, color = "default", size = "md", lab
       )}
       <div className={cn("w-full overflow-hidden rounded-full bg-[var(--surface-secondary)]", heightClass)}>
         <div
-          className="h-full rounded-full transition-all duration-500 ease-out shadow-[0_1px_4px_rgba(91,141,238,0.25)]"
+          className="h-full rounded-full transition-all duration-500 ease-out shadow-[0_1px_4px_rgba(79,70,229,0.25)]"
           style={{ width: `${clamped}%`, background: gradientMap[color] }}
         />
       </div>

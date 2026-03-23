@@ -2,7 +2,7 @@
 
 import { use, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Search, Users, CheckCircle2, CreditCard, UserCheck, XCircle, Lock } from "lucide-react";
+import { ArrowLeft, Search, Users, CheckCircle2, CreditCard, UserCheck, XCircle, Lock, Eye, EyeOff, RotateCcw, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,9 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [sectionFilter, setSectionFilter] = useState<string>("all");
+  const [showOnlyAbsent, setShowOnlyAbsent] = useState(true);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [recentActions, setRecentActions] = useState<{ pairId: string; name: string; startNumber: number; action: "checkin" | "absent" }[]>([]);
 
   const { data: competition } = useCompetition(id);
 
@@ -104,6 +106,14 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
     onMutate: async ({ pairId, status }) => {
       await qc.cancelQueries({ queryKey: ["presence", id] });
       const prev = qc.getQueryData<PairPresence[]>(["presence", id]);
+      const pair = prev?.find((p) => p.id === pairId);
+      if (pair) {
+        const name = `${pair.dancer1FirstName} ${pair.dancer1LastName}${pair.dancer2FirstName ? ` & ${pair.dancer2FirstName} ${pair.dancer2LastName}` : ""}`;
+        setRecentActions((prev) => [
+          { pairId, name, startNumber: pair.startNumber, action: status === "ABSENT" ? "absent" : "checkin" },
+          ...prev.slice(0, 4),
+        ]);
+      }
       qc.setQueryData<PairPresence[]>(["presence", id], (old) =>
         old?.map((p) => p.id === pairId ? { ...p, presenceStatus: status } : p) ?? []
       );
@@ -114,18 +124,46 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
   });
 
   const setPayment = useMutation({
-    mutationFn: ({ pairId, paid }: { pairId: string; paid: boolean }) =>
-      apiClient.put(`/competitions/${id}/pairs/${pairId}/payment`, { paid }).then((r) => r.data),
-    onMutate: async ({ pairId, paid }) => {
+    mutationFn: async ({ pairId, paid, autoCheckin }: { pairId: string; paid: boolean; autoCheckin?: boolean }) => {
+      await apiClient.put(`/competitions/${id}/pairs/${pairId}/payment`, { paid });
+      if (autoCheckin) {
+        await apiClient.put(`/competitions/${id}/pairs/${pairId}/presence`, { status: "CHECKED_IN" });
+      }
+    },
+    onMutate: async ({ pairId, paid, autoCheckin }) => {
       await qc.cancelQueries({ queryKey: ["presence", id] });
       const prev = qc.getQueryData<PairPresence[]>(["presence", id]);
+      const pair = prev?.find((p) => p.id === pairId);
+      if (pair && paid && autoCheckin) {
+        const name = `${pair.dancer1FirstName} ${pair.dancer1LastName}${pair.dancer2FirstName ? ` & ${pair.dancer2FirstName} ${pair.dancer2LastName}` : ""}`;
+        setRecentActions((prev) => [
+          { pairId, name, startNumber: pair.startNumber, action: "checkin" },
+          ...prev.slice(0, 4),
+        ]);
+      }
       qc.setQueryData<PairPresence[]>(["presence", id], (old) =>
-        old?.map((p) => p.id === pairId ? { ...p, paymentStatus: paid ? "PAID" : "PENDING" } : p) ?? []
+        old?.map((p) => p.id === pairId ? {
+          ...p,
+          paymentStatus: paid ? "PAID" : "PENDING",
+          presenceStatus: autoCheckin ? "CHECKED_IN" : p.presenceStatus,
+        } : p) ?? []
       );
       return { prev };
     },
     onError: (_err, _vars, ctx) => qc.setQueryData(["presence", id], ctx?.prev),
     onSettled: () => qc.invalidateQueries({ queryKey: ["presence", id] }),
+  });
+
+  const deleteSection = useMutation({
+    mutationFn: (sectionId: string) =>
+      apiClient.delete(`/competitions/${id}/sections/${sectionId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sections", id, "list"] });
+      qc.invalidateQueries({ queryKey: ["presence", id] });
+    },
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
+    },
   });
 
   const closeSectionPresence = useMutation({
@@ -137,7 +175,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
       toast({ title: t("presence.closedToast"), description: t("presence.closedToastDesc") });
     },
     onError: (err: unknown) => {
-      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     },
   });
 
@@ -149,7 +187,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
       toast({ title: t("presence.reopenPresenceToast"), description: t("presence.reopenPresenceToastDesc") });
     },
     onError: (err: unknown) => {
-      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     },
   });
 
@@ -157,13 +195,19 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
     return presencePairs
       .filter((p) => sectionFilter === "all" || p.sectionId === sectionFilter)
       .filter((p) => {
+        if (!showOnlyAbsent) return true;
+        const present = p.presenceStatus === "CHECKED_IN" || p.presenceStatus === "ON_FLOOR" || p.presenceStatus === "DONE";
+        const paid = p.paymentStatus === "PAID" || p.paymentStatus === "WAIVED";
+        return !(present && paid); // hide only when both present AND paid
+      })
+      .filter((p) => {
         if (!search) return true;
         const q = search.toLowerCase();
         const name = `${p.dancer1FirstName} ${p.dancer1LastName} ${p.dancer2FirstName ?? ""} ${p.dancer2LastName ?? ""}`.toLowerCase();
         return name.includes(q) || String(p.startNumber).includes(q);
       })
       .sort((a, b) => a.startNumber - b.startNumber);
-  }, [presencePairs, sectionFilter, search]);
+  }, [presencePairs, sectionFilter, showOnlyAbsent, search]);
 
   const stats = useMemo(() => ({
     total: presencePairs.length,
@@ -173,29 +217,34 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
   }), [presencePairs]);
 
   // Groups for close dialog
+  const dialogPairs = useMemo(() =>
+    sectionFilter === "all" ? presencePairs : presencePairs.filter((p) => p.sectionId === sectionFilter),
+    [presencePairs, sectionFilter]
+  );
+
   const activeGroup = useMemo(() =>
-    presencePairs.filter(
+    dialogPairs.filter(
       (p) =>
         (p.presenceStatus === "CHECKED_IN" || p.presenceStatus === "ON_FLOOR" || p.presenceStatus === "DONE") &&
         (p.paymentStatus === "PAID" || p.paymentStatus === "WAIVED")
     ).sort((a, b) => a.startNumber - b.startNumber),
-    [presencePairs]
+    [dialogPairs]
   );
 
   const absentGroup = useMemo(() =>
-    presencePairs.filter(
+    dialogPairs.filter(
       (p) => !p.presenceStatus || p.presenceStatus === "ABSENT"
     ).sort((a, b) => a.startNumber - b.startNumber),
-    [presencePairs]
+    [dialogPairs]
   );
 
   const presentUnpaidGroup = useMemo(() =>
-    presencePairs.filter(
+    dialogPairs.filter(
       (p) =>
         (p.presenceStatus === "CHECKED_IN" || p.presenceStatus === "ON_FLOOR" || p.presenceStatus === "DONE") &&
         p.paymentStatus === "PENDING"
     ).sort((a, b) => a.startNumber - b.startNumber),
-    [presencePairs]
+    [dialogPairs]
   );
 
   return (
@@ -214,35 +263,12 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
           <h1 className="text-xl font-bold text-[var(--text-primary)]">{t("presence.title")}</h1>
           <p className="text-sm text-[var(--text-secondary)]">{t("presence.description")}</p>
         </div>
-        {sectionFilter !== "all" && activeSection ? (
-          isClosed ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 rounded-full bg-[var(--surface-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-tertiary)]">
-                <Lock className="h-3.5 w-3.5" />
-                {t("presence.closedBanner")}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => reopenSectionPresence.mutate(activeSection.id)}
-                loading={reopenSectionPresence.isPending}
-                className="shrink-0"
-              >
-                {t("presence.editPresence")}
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCloseDialog(true)}
-              className="shrink-0 border-[var(--destructive)]/30 text-[var(--destructive)] hover:bg-[var(--destructive)]/5"
-            >
-              <Lock className="h-3.5 w-3.5" />
-              {t("presence.closePresence")}
-            </Button>
-          )
-        ) : null}
+        {isClosed && sectionFilter !== "all" && (
+          <div className="flex items-center gap-1.5 rounded-full bg-[var(--surface-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-tertiary)]">
+            <Lock className="h-3.5 w-3.5" />
+            {t("presence.closedBanner")}
+          </div>
+        )}
       </div>
 
       {/* Stats */}
@@ -285,9 +311,102 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
         </div>
       )}
 
+      {/* Section presence management panel */}
+      {sections.length > 0 && (
+        <div className="mb-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
+          <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-2.5">
+            <Lock className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+            <p className="text-xs font-semibold text-[var(--text-secondary)]">Uzavretie prezencie po sekciách</p>
+          </div>
+          <div className="divide-y divide-[var(--border)]">
+            {sections.map((s) => {
+              const sTotal = presencePairs.filter((p) => p.sectionId === s.id).length;
+              const sPresent = presencePairs.filter(
+                (p) => p.sectionId === s.id && (p.presenceStatus === "CHECKED_IN" || p.presenceStatus === "ON_FLOOR" || p.presenceStatus === "DONE")
+              ).length;
+              return (
+                <div key={s.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium text-[var(--text-primary)]">{s.name}</p>
+                    <p className="text-xs text-[var(--text-tertiary)]">{sPresent} prítomných / {sTotal} registrovaných</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {s.presenceClosed ? (
+                      <>
+                        <span className="flex items-center gap-1 rounded-full bg-[var(--surface-secondary)] px-2 py-0.5 text-xs text-[var(--text-tertiary)]">
+                          <Lock className="h-3 w-3" /> Uzavretá
+                        </span>
+                        <button
+                          onClick={() => reopenSectionPresence.mutate(s.id)}
+                          disabled={reopenSectionPresence.isPending}
+                          className="rounded-md border border-[var(--border)] bg-[var(--surface-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--border)] disabled:opacity-50"
+                        >
+                          Otvoriť
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => { setSectionFilter(s.id); setShowCloseDialog(true); }}
+                        className="rounded-md border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 px-2.5 py-1 text-xs font-medium text-[var(--destructive)] hover:bg-[var(--destructive)]/10"
+                      >
+                        Uzavrieť
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Zmazať sekciu "${s.name}"? Táto akcia je nevratná.`)) {
+                          deleteSection.mutate(s.id);
+                        }
+                      }}
+                      disabled={deleteSection.isPending}
+                      className="rounded-md p-1 text-[var(--text-tertiary)] hover:bg-[var(--destructive)]/10 hover:text-[var(--destructive)] disabled:opacity-40"
+                      title="Zmazať sekciu"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent actions log — always visible */}
+      <div className="mb-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-3">
+        <div className="mb-2 flex items-center gap-1.5">
+          <RotateCcw className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+          <p className="text-xs font-semibold text-[var(--text-secondary)]">Posledné akcie — klikni Zpět ak si urobil chybu</p>
+        </div>
+        {recentActions.length === 0 ? (
+          <p className="text-xs text-[var(--text-tertiary)]">Zatiaľ žiadne akcie. Po prvom check-ine sa tu zobrazí história.</p>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {recentActions.map((a, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs">
+                <span className={cn(
+                  "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                  a.action === "checkin" ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--text-tertiary)]/15 text-[var(--text-tertiary)]"
+                )}>
+                  {a.action === "checkin" ? "✓" : "✕"}
+                </span>
+                <code className="font-mono font-bold text-[var(--text-tertiary)]">{String(a.startNumber).padStart(3, "0")}</code>
+                <span className="flex-1 truncate text-[var(--text-primary)]">{a.name}</span>
+                <button
+                  onClick={() => setStatus.mutate({ pairId: a.pairId, status: a.action === "checkin" ? "ABSENT" : "CHECKED_IN" })}
+                  className="shrink-0 rounded-md bg-[var(--surface-secondary)] px-2 py-0.5 text-[var(--accent)] hover:bg-[var(--border)]"
+                >
+                  Zpět
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Filters */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
+      <div className="mb-4 flex flex-col gap-3">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-tertiary)]" />
           <input
             type="text"
@@ -297,6 +416,21 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
             className="w-full rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] py-2 pl-9 pr-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)] focus:outline-none"
           />
         </div>
+        {/* Absent-only toggle — prominent */}
+        <button
+          onClick={() => setShowOnlyAbsent((v) => !v)}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-[var(--radius-lg)] border px-4 py-3 text-sm font-medium transition-colors",
+            showOnlyAbsent
+              ? "border-[var(--warning)]/40 bg-[var(--warning)]/8 text-[var(--warning)]"
+              : "border-[var(--border)] bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)]"
+          )}
+        >
+          {showOnlyAbsent
+            ? <><EyeOff className="h-4 w-4 shrink-0" /><span>Zobrazujem <strong>nevybavených</strong> — klikni pre zobrazenie všetkých ({stats.total})</span></>
+            : <><Eye className="h-4 w-4 shrink-0" /><span>Zobrazujem <strong>všetkých ({stats.total})</strong> — klikni pre zobrazenie len nevybavených</span></>
+          }
+        </button>
         <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setSectionFilter("all")}
@@ -380,7 +514,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                 {/* Payment toggle badge */}
                 <button
                   disabled={isWaived || pairSectionClosed}
-                  onClick={() => !isWaived && !pairSectionClosed && setPayment.mutate({ pairId: pair.id, paid: !isPaid })}
+                  onClick={() => !isWaived && !pairSectionClosed && setPayment.mutate({ pairId: pair.id, paid: !isPaid, autoCheckin: !isPaid && !isPresent })}
                   className={cn(
                     "shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all hidden sm:flex",
                     pairSectionClosed || isWaived

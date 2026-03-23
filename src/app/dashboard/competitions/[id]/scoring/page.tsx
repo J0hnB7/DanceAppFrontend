@@ -344,10 +344,10 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
       qc.invalidateQueries({ queryKey: ["rounds", roundId, "mark-conflicts"] });
       qc.invalidateQueries({ queryKey: ["rounds", roundId, "marks-progress"] });
       setActiveConflict(null);
-      toast({ title: "Konflikt vyřešen", variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: "Konflikt vyřešen", variant: "success" });
     },
     onError: () => {
-      toast({ title: "Chyba při řešení konfliktu", variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: "Chyba při řešení konfliktu", variant: "destructive" });
     },
   });
 
@@ -355,7 +355,7 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
   const calculateMutation = useMutation({
     mutationFn: () => apiClient.post(`/rounds/${roundId}/calculate`),
     onSuccess: () => {
-      toast({ title: t("round.resultsCalculated"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("round.resultsCalculated"), variant: "success" });
       if (activeRound?.sectionId) {
         router.push(
           `/dashboard/competitions/${competitionId}/sections/${activeRound.sectionId}/rounds/${roundId}/results`
@@ -363,7 +363,7 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
       }
     },
     onError: () => {
-      toast({ title: t("common.error"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("common.error"), variant: "destructive" });
     },
   });
 
@@ -398,7 +398,7 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
     toast({
       title: t("round.reminderSent", { number: judgeNumber }),
       variant: "success",
-    } as Parameters<typeof toast>[0]);
+    });
   };
 
   const handleResolveConflict = (resolution: "ONLINE" | "OFFLINE") => {

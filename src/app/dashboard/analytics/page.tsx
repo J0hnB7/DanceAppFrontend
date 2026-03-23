@@ -1,9 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Users, TrendingUp, BarChart3, Calendar, CreditCard } from "lucide-react";
+import { Trophy, Users, TrendingUp, BarChart3, Calendar, CreditCard, AlertCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { PageHeader } from "@/components/layout/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -12,38 +14,10 @@ import { competitionsApi } from "@/lib/api/competitions";
 import { formatDate } from "@/lib/utils";
 import { useLocale } from "@/contexts/locale-context";
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent?: string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-xs font-medium text-[var(--text-secondary)]">{label}</CardTitle>
-          <Icon className={`h-4 w-4 ${accent ?? "text-[var(--text-tertiary)]"}`} />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className={`text-3xl font-bold ${accent ?? "text-[var(--text-primary)]"}`}>{value}</p>
-        {sub && <p className="mt-1 text-xs text-[var(--text-tertiary)]">{sub}</p>}
-      </CardContent>
-    </Card>
-  );
-}
 
 export default function AnalyticsPage() {
   const { t } = useLocale();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["competitions", "all"],
     queryFn: () => competitionsApi.list(),
   });
@@ -73,10 +47,21 @@ export default function AnalyticsPage() {
     .sort((a, b) => b.pairCount - a.pairCount)
     .slice(0, 5);
 
+  if (isError) {
+    return (
+      <AppShell>
+        <EmptyState icon={<AlertCircle className="h-10 w-10" />} title="Nepodařilo se načíst data" description="Zkontroluj připojení nebo to zkus znovu." action={<Button onClick={() => refetch()}>Zkusit znovu</Button>} />
+      </AppShell>
+    );
+  }
+
   if (isLoading) {
     return (
       <AppShell>
-        <PageHeader title={t("analytics.title")} description={t("analytics.insightsDescShort")} />
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)" }}>{t("analytics.title")}</h1>
+          <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{t("analytics.insightsDescShort")}</p>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-xl" />
@@ -88,39 +73,18 @@ export default function AnalyticsPage() {
 
   return (
     <AppShell>
-      <PageHeader
-        title={t("analytics.title")}
-        description={t("analytics.insightsDesc")}
-      />
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)" }}>{t("analytics.title")}</h1>
+        <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{t("analytics.insightsDesc")}</p>
+      </div>
 
       {/* KPI row */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          icon={Trophy}
-          label={t("analytics.totalCompetitions")}
-          value={competitions.length}
-          sub={t("analytics.completedCount", { count: completed.length })}
-        />
-        <StatCard
-          icon={Users}
-          label={t("analytics.totalPairs")}
-          value={totalPairs}
-          sub={t("analytics.acrossAll")}
-          accent="text-[var(--accent)]"
-        />
-        <StatCard
-          icon={TrendingUp}
-          label={t("analytics.upcoming")}
-          value={upcoming.length}
-          sub={t("analytics.awaitingOrOpen")}
-        />
-        <StatCard
-          icon={BarChart3}
-          label={t("analytics.liveNow")}
-          value={live.length}
-          sub={live.length > 0 ? live[0].name : t("analytics.noCompetitionsLive")}
-          accent={live.length > 0 ? "text-[var(--success)]" : undefined}
-        />
+        <StatCard value={competitions.length} label={t("analytics.totalCompetitions")} sub={t("analytics.completedCount", { count: completed.length })} color="bg-blue-500" icon={Trophy} />
+        <StatCard value={totalPairs} label={t("analytics.totalPairs")} sub={t("analytics.acrossAll")} color="bg-[var(--accent)]" icon={Users} />
+        <StatCard value={upcoming.length} label={t("analytics.upcoming")} sub={t("analytics.awaitingOrOpen")} color="bg-amber-500" icon={TrendingUp} />
+        <StatCard value={live.length} label={t("analytics.liveNow")} sub={live.length > 0 ? live[0].name : t("analytics.noCompetitionsLive")} color={live.length > 0 ? "bg-emerald-500" : "bg-[var(--text-tertiary)]"} icon={BarChart3} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

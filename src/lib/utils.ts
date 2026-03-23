@@ -100,8 +100,8 @@ export function getErrorMessage(err: unknown, fallback = "Unknown error"): strin
   if (typeof err === "string") return err;
   if (err && typeof err === "object") {
     // Axios error: extract backend response body message
-    const axiosErr = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
-    const backendMsg = axiosErr.response?.data?.message || axiosErr.response?.data?.error;
+    const axiosErr = err as { response?: { data?: { detail?: string; message?: string; error?: string } }; message?: string };
+    const backendMsg = axiosErr.response?.data?.detail || axiosErr.response?.data?.message || axiosErr.response?.data?.error;
     if (backendMsg) return backendMsg;
     if ("message" in err && typeof (err as { message: unknown }).message === "string") {
       return (err as { message: string }).message || fallback;

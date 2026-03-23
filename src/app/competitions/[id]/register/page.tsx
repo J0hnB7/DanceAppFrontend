@@ -88,7 +88,7 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
       setResult(res.data);
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
-      toast({ title: apiErr?.message ?? t("publicReg.registrationFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: apiErr?.message ?? t("publicReg.registrationFailed"), variant: "destructive" });
     } finally {
       setLoading(false);
     }

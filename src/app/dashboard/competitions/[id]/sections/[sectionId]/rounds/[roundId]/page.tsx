@@ -192,10 +192,10 @@ export default function RoundDetailPage({
   const handleOpen = async () => {
     try {
       await actions.start.mutateAsync();
-      toast({ title: t("round.roundOpened") } as Parameters<typeof toast>[0]);
+      toast({ title: t("round.roundOpened") });
     } catch (err: unknown) {
       const msg = getErrorMessage(err, t("common.error"));
-      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: msg, variant: "destructive" });
     }
   };
 
@@ -203,17 +203,17 @@ export default function RoundDetailPage({
     if (!confirm(t("round.closeRoundConfirm"))) return;
     try {
       await actions.close.mutateAsync();
-      toast({ title: t("round.roundClosed") } as Parameters<typeof toast>[0]);
+      toast({ title: t("round.roundClosed") });
     } catch (err: unknown) {
       const msg = getErrorMessage(err, t("common.error"));
-      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: msg, variant: "destructive" });
     }
   };
 
   const handleCalculate = async () => {
     try {
       await actions.calculate.mutateAsync();
-      toast({ title: t("round.resultsCalculated"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("round.resultsCalculated"), variant: "success" });
       router.push(
         `/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}/results`
       );
@@ -223,7 +223,7 @@ export default function RoundDetailPage({
         setCollisionOpen(true);
       } else {
         const msg = getErrorMessage(err, t("common.error"));
-        toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+        toast({ title: msg, variant: "destructive" });
       }
     }
   };
@@ -235,13 +235,13 @@ export default function RoundDetailPage({
       toast({
         title: choice === "more" ? t("round.resolvedMore") : t("round.resolvedFewer"),
         variant: "success",
-      } as Parameters<typeof toast>[0]);
+      });
       router.push(
         `/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}/results`
       );
     } catch (err: unknown) {
       const msg = getErrorMessage(err, t("common.error"));
-      toast({ title: msg, variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: msg, variant: "destructive" });
     }
   };
 
@@ -249,7 +249,7 @@ export default function RoundDetailPage({
     toast({
       title: t("round.reminderSent", { number: judgeNumber }),
       variant: "success",
-    } as Parameters<typeof toast>[0]);
+    });
   };
 
   if (isLoading || !round) {

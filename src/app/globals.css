@@ -42,13 +42,13 @@
   --text-secondary: #6B7280;
   --text-tertiary: #9CA3AF;
 
-  /* ── Indigo accent ───────────────────────────────────── */
-  --accent: #4F46E5;
-  --accent-hover: #4338CA;
-  --accent-subtle: #EEF2FF;
+  /* ── Blue accent ─────────────────────────────────────── */
+  --accent: #0a84ff;
+  --accent-hover: #0071e3;
+  --accent-subtle: #e8f4ff;
 
   /* ── Gradient accent ─────────────────────────────────── */
-  --gradient-blue: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  --gradient-blue: linear-gradient(135deg, #3395ff 0%, #0a84ff 100%);
   --gradient-mint: linear-gradient(135deg, #34d399 0%, #10b981 100%);
   --gradient-lavender: linear-gradient(135deg, #a78bfa 0%, #7C3AED 100%);
 
@@ -66,8 +66,8 @@
   --destructive: #ef4444;
   --destructive-subtle: #fee2e2;
   --destructive-text: #991b1b;
-  --info: #4F46E5;
-  --info-subtle: #EEF2FF;
+  --info: #0a84ff;
+  --info-subtle: #e8f4ff;
 }
 
 /* ── Dark mode ───────────────────────────────────────────── */
@@ -82,7 +82,7 @@
   --sidebar-bg: #060d18;
   --sidebar-icon: rgba(255,255,255,0.35);
   --sidebar-icon-hover: rgba(255,255,255,0.8);
-  --sidebar-active-bg: #4F46E5;
+  --sidebar-active-bg: #0a84ff;
 
   /* ── Borders ─────────────────────────────────────────── */
   --border: rgba(255,255,255,0.07);
@@ -94,10 +94,10 @@
   --text-secondary: #8492a6;
   --text-tertiary: #566272;
 
-  /* ── Indigo accent ───────────────────────────────────── */
-  --accent: #6366F1;
-  --accent-hover: #818CF8;
-  --accent-subtle: #1e1b4b;
+  /* ── Blue accent ─────────────────────────────────────── */
+  --accent: #0a84ff;
+  --accent-hover: #3395ff;
+  --accent-subtle: #001a3a;
 
   /* ── Primary CTA ─────────────────────────────────────── */
   --primary: #151F2E;
@@ -113,8 +113,8 @@
   --destructive: #f87171;
   --destructive-subtle: #450a0a;
   --destructive-text: #f87171;
-  --info: #6366F1;
-  --info-subtle: #1e1b4b;
+  --info: #0a84ff;
+  --info-subtle: #001a3a;
 }
 
 * {

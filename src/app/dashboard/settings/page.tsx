@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Eye, EyeOff, Shield, User, Smartphone, FileDown, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,9 +64,9 @@ export default function SettingsPage() {
     try {
       await apiClient.put("/auth/me", values);
       await checkAuth();
-      toast({ title: t("settings.profileUpdated"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("settings.profileUpdated"), variant: "success" });
     } catch {
-      toast({ title: t("settings.profileUpdateFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("settings.profileUpdateFailed"), variant: "destructive" });
     } finally {
       setProfileLoading(false);
     }
@@ -81,7 +80,7 @@ export default function SettingsPage() {
         newPassword: values.newPassword,
       });
       passwordForm.reset();
-      toast({ title: t("settings.passwordChanged"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("settings.passwordChanged"), variant: "success" });
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
       passwordForm.setError("currentPassword", { message: apiErr?.message ?? t("settings.incorrectPassword") });
@@ -108,9 +107,9 @@ export default function SettingsPage() {
       await checkAuth();
       setTotpSetup(null);
       setTotpCode("");
-      toast({ title: t("settings.twoFactorEnabledToast"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("settings.twoFactorEnabledToast"), variant: "success" });
     } catch {
-      toast({ title: t("settings.invalidCode"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("settings.invalidCode"), variant: "destructive" });
     } finally {
       setTotpLoading(false);
     }
@@ -122,17 +121,33 @@ export default function SettingsPage() {
     try {
       await authApi.disableTotp(code);
       await checkAuth();
-      toast({ title: t("settings.twoFactorDisabledToast") } as Parameters<typeof toast>[0]);
+      toast({ title: t("settings.twoFactorDisabledToast") });
     } catch {
-      toast({ title: t("settings.invalidCode"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("settings.invalidCode"), variant: "destructive" });
     }
   };
 
   return (
     <AppShell>
-      <PageHeader title={t("settings.profileAndSecurity")} description={t("settings.profileAndSecurityDesc")} />
-
       <div className="mx-auto max-w-2xl space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Avatar className="h-14 w-14 shrink-0">
+            <AvatarFallback className="bg-[var(--accent)] text-lg font-bold text-white">
+              {user ? getInitials(user.name) : "?"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)" }}>
+              {t("settings.profileAndSecurity")}
+            </h1>
+            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+              {user?.email ?? t("settings.profileAndSecurityDesc")}
+            </p>
+          </div>
+          <Badge variant="secondary" className="shrink-0 text-xs">{user?.role}</Badge>
+        </div>
+
         {/* Profile */}
         <Card>
           <CardHeader>
@@ -141,18 +156,6 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-5 flex items-center gap-4">
-              <Avatar className="h-14 w-14">
-                <AvatarFallback className="text-lg">
-                  {user ? getInitials(user.name) : "?"}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">{user?.name}</p>
-                <p className="text-sm text-[var(--text-secondary)]">{user?.email}</p>
-                <Badge variant="secondary" className="mt-1 text-xs">{user?.role}</Badge>
-              </div>
-            </div>
             <form onSubmit={profileForm.handleSubmit(onUpdateProfile)} className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3">
                 <Input label={t("settings.nameLabel")} error={profileForm.formState.errors.name?.message} {...profileForm.register("name")} />
@@ -296,9 +299,9 @@ export default function SettingsPage() {
                     a.download = "my-data-export.json";
                     a.click();
                     URL.revokeObjectURL(url);
-                    toast({ title: t("settings.dataExported"), variant: "success" } as Parameters<typeof toast>[0]);
+                    toast({ title: t("settings.dataExported"), variant: "success" });
                   } catch {
-                    toast({ title: t("settings.exportFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+                    toast({ title: t("settings.exportFailed"), variant: "destructive" });
                   }
                 }}
               >
@@ -328,9 +331,9 @@ export default function SettingsPage() {
                       toast({
                         title: t("settings.deletionRequested"),
                         description: t("settings.deletionRequestedDesc"),
-                      } as Parameters<typeof toast>[0]);
+                      });
                     } catch {
-                      toast({ title: t("settings.requestFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+                      toast({ title: t("settings.requestFailed"), variant: "destructive" });
                     }
                   }
                 }}

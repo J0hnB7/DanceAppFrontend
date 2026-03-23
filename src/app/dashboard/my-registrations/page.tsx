@@ -13,6 +13,7 @@ import {
   Clock,
   ChevronRight,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
@@ -25,6 +26,8 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { myRegistrationsApi, type MyRegistration, type MyPayment } from "@/lib/api/my-registrations";
 import { formatDate, formatCurrency, cn } from "@/lib/utils";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { CountdownTimer } from "@/components/ui/countdown-timer";
 import { useLocale } from "@/contexts/locale-context";
 
@@ -268,7 +271,7 @@ export default function MyRegistrationsPage() {
   const qc = useQueryClient();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  const { data: registrations = [], isLoading: loadingRegs } = useQuery({
+  const { data: registrations = [], isLoading: loadingRegs, isError: errorRegs, refetch: refetchRegs } = useQuery({
     queryKey: ["my-registrations"],
     queryFn: () => myRegistrationsApi.list(),
   });
@@ -304,14 +307,37 @@ export default function MyRegistrationsPage() {
   const pendingTotal = pendingPayments.reduce((s, p) => s + p.amount, 0);
   const currency = pendingPayments[0]?.currency ?? "EUR";
 
+  if (errorRegs) {
+    return (
+      <AppShell>
+        <EmptyState
+          icon={<AlertCircle className="h-10 w-10" />}
+          title="Nepodařilo se načíst přihlášky"
+          description="Zkontroluj připojení nebo to zkus znovu."
+          action={<Button variant="outline" size="sm" onClick={() => refetchRegs()}><RefreshCw className="h-3.5 w-3.5 mr-1.5" />Zkusit znovu</Button>}
+        />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("myRegistrations.title")}</h1>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)" }}>
+              {t("myRegistrations.title")}
+            </h1>
+            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+              {registrations.length > 0
+                ? `${registrations.length} přihlášek celkem`
+                : "Přehled vašich přihlášek na soutěže"}
+            </p>
+          </div>
           {pendingPayments.length > 0 && (
-            <div className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm dark:border-amber-800 dark:bg-amber-950">
-              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <div className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-800 dark:bg-amber-950">
+              <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <span className="font-semibold text-amber-800 dark:text-amber-300">
                 {t("myRegistrations.outstanding", { amount: formatCurrency(pendingTotal, currency) })}
               </span>
@@ -325,22 +351,9 @@ export default function MyRegistrationsPage() {
 
         {/* Summary stat cards */}
         <div className="grid grid-cols-3 gap-3">
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{registrations.length}</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">{t("myRegistrations.registrationCount")}</p>
-          </Card>
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">
-              {registrations.filter((r) => r.paymentStatus === "PAID").length}
-            </p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">{t("myRegistrations.paidCount")}</p>
-          </Card>
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold text-amber-600">
-              {registrations.filter((r) => r.paymentStatus === "PENDING").length}
-            </p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">{t("myRegistrations.pendingCount")}</p>
-          </Card>
+          <StatCard value={registrations.length} label={t("myRegistrations.registrationCount")} color="bg-blue-500" />
+          <StatCard value={registrations.filter((r) => r.paymentStatus === "PAID").length} label={t("myRegistrations.paidCount")} color="bg-emerald-500" />
+          <StatCard value={registrations.filter((r) => r.paymentStatus === "PENDING").length} label={t("myRegistrations.pendingCount")} color="bg-amber-500" />
         </div>
 
         <NavTabs

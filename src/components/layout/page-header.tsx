@@ -28,7 +28,7 @@ export function PageHeader({ title, description, actions, className, backHref }:
           </button>
         )}
         <div>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)]">{title}</h2>
+          <h2 className="text-xl font-semibold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)" }}>{title}</h2>
           {description && (
             <p className="mt-1 text-sm text-[var(--text-secondary)]">{description}</p>
           )}

@@ -78,9 +78,9 @@ export default function FeesPage({ params }: { params: Promise<{ id: string }> }
       qc.invalidateQueries({ queryKey: ["sections", id, "list"] });
       setEditSection(null);
       feeForm.reset();
-      toast({ title: t("fees.feeSaved"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("fees.feeSaved"), variant: "success" });
     },
-    onError: () => toast({ title: t("fees.feeSaveFailed"), variant: "destructive" } as Parameters<typeof toast>[0]),
+    onError: () => toast({ title: t("fees.feeSaveFailed"), variant: "destructive" }),
   });
 
   const createDiscount = useMutation({
@@ -96,7 +96,7 @@ export default function FeesPage({ params }: { params: Promise<{ id: string }> }
       qc.invalidateQueries({ queryKey: ["discounts", id] });
       setDiscountDialog(false);
       discountForm.reset();
-      toast({ title: t("fees.discountCreated"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("fees.discountCreated"), variant: "success" });
     },
   });
 

@@ -374,7 +374,7 @@ export function CompetitionWizard() {
           setCompetitionId(competition.id);
           setStep(2);
         } catch {
-          toast({ title: t("wizard.createFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+          toast({ title: t("wizard.createFailed"), variant: "destructive" });
         } finally {
           setCreatingComp(false);
         }
@@ -403,7 +403,7 @@ export function CompetitionWizard() {
       });
       setSections((prev) => [...prev, section]);
     } catch {
-      toast({ title: t("wizard.addSectionFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("wizard.addSectionFailed"), variant: "destructive" });
     } finally {
       setSectionLoading(false);
     }
@@ -415,7 +415,7 @@ export function CompetitionWizard() {
       await sectionsApi.delete(competitionId, sectionId);
       setSections((prev) => prev.filter((s) => s.id !== sectionId));
     } catch {
-      toast({ title: t("wizard.removeSectionFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("wizard.removeSectionFailed"), variant: "destructive" });
     }
   };
 
@@ -426,7 +426,7 @@ export function CompetitionWizard() {
       const item = await apiClient.post<CompetitionNewsItem>(`/competitions/${competitionId}/news`, v).then((r) => r.data);
       setNews((prev) => [...prev, item]);
     } catch {
-      toast({ title: t("wizard.addNewsFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("wizard.addNewsFailed"), variant: "destructive" });
     } finally {
       setNewsLoading(false);
     }
@@ -438,12 +438,12 @@ export function CompetitionWizard() {
       await apiClient.delete(`/competitions/${competitionId}/news/${newsId}`);
       setNews((prev) => prev.filter((n) => n.id !== newsId));
     } catch {
-      toast({ title: t("wizard.removeNewsFailed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: t("wizard.removeNewsFailed"), variant: "destructive" });
     }
   };
 
   const finish = () => {
-    toast({ title: t("wizard.created"), variant: "success" } as Parameters<typeof toast>[0]);
+    toast({ title: t("wizard.created"), variant: "success" });
     router.push(`/dashboard/competitions/${competitionId}?new=1`);
   };
 

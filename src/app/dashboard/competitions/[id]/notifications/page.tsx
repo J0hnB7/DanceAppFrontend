@@ -68,10 +68,10 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications", id] });
       reset();
-      toast({ title: t("notifications.sent"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("notifications.sent"), variant: "success" });
     },
     onError: (err: unknown) => {
-      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     },
   });
 

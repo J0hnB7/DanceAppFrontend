@@ -9,9 +9,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[var(--accent)] text-white font-semibold shadow-[0_1px_4px_rgba(59,95,232,0.3)] hover:bg-[var(--accent-hover)] hover:-translate-y-px active:scale-[0.98]",
+          "bg-[var(--accent)] text-white font-semibold shadow-[0_1px_4px_rgba(10,132,255,0.35)] hover:bg-[var(--accent-hover)] hover:-translate-y-px active:scale-[0.98]",
         accent:
-          "bg-gradient-to-r from-[#4f75f0] to-[#3b5fe8] text-white font-semibold shadow-[0_1px_4px_rgba(59,95,232,0.3)] hover:opacity-90 hover:-translate-y-px active:scale-[0.98]",
+          "bg-gradient-to-r from-[#3395ff] to-[#0a84ff] text-white font-semibold shadow-[0_1px_4px_rgba(10,132,255,0.35)] hover:opacity-90 hover:-translate-y-px active:scale-[0.98]",
         destructive:
           "bg-[var(--destructive)] text-white font-semibold hover:opacity-90 hover:-translate-y-px active:scale-[0.98]",
         outline:

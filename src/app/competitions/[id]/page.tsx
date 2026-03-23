@@ -120,7 +120,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
       if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
-      toast({ title: apiErr?.message ?? t("publicRegister.failed"), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: apiErr?.message ?? t("publicRegister.failed"), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

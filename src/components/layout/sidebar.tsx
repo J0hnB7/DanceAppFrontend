@@ -73,9 +73,14 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="glass flex h-screen w-[72px] flex-col items-center border-r py-5">
+    <aside className="glass flex h-screen w-[72px] flex-col items-center py-4">
+      {/* Logo mark */}
+      <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-gradient-to-br from-[#4F46E5] to-[#06B6D4] text-xs font-bold text-white shadow-[0_2px_12px_rgba(79,70,229,0.45)]">
+        DA
+      </div>
+
       {/* Nav */}
-      <nav className="flex flex-1 flex-col items-center gap-1">
+      <nav className="flex flex-1 flex-col items-center gap-0.5 pt-2">
         {visibleItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item);
@@ -85,15 +90,15 @@ export function Sidebar() {
               href={item.href}
               title={item.label}
               className={cn(
-                "group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] transition-all duration-200",
+                "group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] transition-all duration-200",
                 active
-                  ? "bg-[var(--accent)] text-white shadow-[0_2px_8px_rgba(59,95,232,0.3)]"
-                  : "text-[var(--text-tertiary)] hover:bg-[var(--surface-secondary)] hover:text-[var(--accent)]"
+                  ? "bg-[var(--sidebar-active-bg)] text-white shadow-[0_2px_12px_rgba(79,70,229,0.4)]"
+                  : "text-[var(--sidebar-icon)] hover:bg-white/10 hover:text-[var(--sidebar-icon-hover)]"
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
               {/* Tooltip */}
-              <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+              <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[#0A1628] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
                 {t(item.label)}
               </span>
             </Link>
@@ -102,16 +107,16 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom controls */}
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-0.5">
         {/* Dark mode toggle */}
         <button
           onClick={toggleTheme}
           aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] text-[var(--text-tertiary)] transition-all duration-200 hover:bg-[var(--surface-secondary)] hover:text-[var(--accent)]"
+          className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-[var(--sidebar-icon)] transition-all duration-200 hover:bg-white/10 hover:text-[var(--sidebar-icon-hover)]"
         >
           {theme === "dark" ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
-          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[#0A1628] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
             {theme === "dark" ? "Light" : "Dark"}
           </span>
         </button>
@@ -121,23 +126,23 @@ export function Sidebar() {
           onClick={() => setLocale(locale === "en" ? "cs" : "en")}
           aria-label={locale === "en" ? "Switch to Czech" : "Přepnout do angličtiny"}
           title={locale === "en" ? "Switch to Czech" : "Přepnout do angličtiny"}
-          className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] text-[var(--text-tertiary)] transition-all duration-200 hover:bg-[var(--surface-secondary)] hover:text-[var(--accent)]"
+          className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-[var(--sidebar-icon)] transition-all duration-200 hover:bg-white/10 hover:text-[var(--sidebar-icon-hover)]"
         >
           <span className="text-base leading-none">{locale === "en" ? "🇨🇿" : "🇬🇧"}</span>
-          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[#0A1628] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
             {locale === "en" ? "CZ" : "EN"}
           </span>
         </button>
 
         {/* Notifications */}
-        <div className="flex h-11 w-11 items-center justify-center">
+        <div className="flex h-11 w-11 items-center justify-center text-[var(--sidebar-icon)] [&_button]:text-[var(--sidebar-icon)] [&_button:hover]:bg-white/10">
           <NotificationCenter />
         </div>
 
         {/* User avatar */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button aria-label={t("nav.accountMenu")} className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] transition-all duration-200 hover:bg-[var(--surface-secondary)] hover:shadow-[0_2px_8px_rgba(91,141,238,0.15)] focus:outline-none">
+            <button aria-label={t("nav.accountMenu")} className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] transition-all duration-200 hover:bg-white/10 focus:outline-none">
               <Avatar className="h-8 w-8">
                 <AvatarFallback
                   className="text-xs font-semibold text-white"
@@ -148,7 +153,7 @@ export function Sidebar() {
               </Avatar>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="end" className="w-48 rounded-[var(--radius-xl)] border-[var(--border)] bg-[var(--surface)] backdrop-blur-lg shadow-[0_8px_32px_rgba(91,141,238,0.12)]">
+          <DropdownMenuContent side="right" align="end" className="w-48 rounded-[var(--radius-xl)] border-[var(--border)] bg-[var(--surface)] backdrop-blur-lg shadow-[0_8px_32px_rgba(0,0,0,0.15)]">
             <DropdownMenuLabel>
               <div>
                 <p className="font-medium text-[var(--text-primary)]">{user?.name}</p>
@@ -171,10 +176,10 @@ export function Sidebar() {
           onClick={() => logout()}
           title={t("nav.logout")}
           aria-label={t("nav.logout")}
-          className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] text-[var(--text-tertiary)] transition-all duration-200 hover:bg-[var(--destructive-subtle)] hover:text-[var(--destructive)]"
+          className="group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-[var(--sidebar-icon)] transition-all duration-200 hover:bg-red-500/20 hover:text-red-400"
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-[var(--radius-md)] bg-[#0A1628] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
             {t("nav.logout")}
           </span>
         </button>

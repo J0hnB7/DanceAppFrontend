@@ -49,6 +49,11 @@ export const judgeTokensApi = {
       .delete(`/competitions/${competitionId}/judge-tokens/${tokenId}`)
       .then((r) => r.data),
 
+  deletePermanent: (competitionId: string, tokenId: string) =>
+    apiClient
+      .delete(`/competitions/${competitionId}/judge-tokens/${tokenId}/permanent`)
+      .then((r) => r.data),
+
   update: (competitionId: string, tokenId: string, data: { name?: string; country?: string }) =>
     apiClient
       .put<JudgeTokenDto>(`/competitions/${competitionId}/judge-tokens/${tokenId}`, data)

@@ -33,7 +33,7 @@ export function useCreateCompetition() {
     mutationFn: (data: CreateCompetitionRequest) => competitionsApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: competitionKeys.lists() });
-      toast({ title: getT()("competitions.created"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: getT()("competitions.created"), variant: "success" });
     },
   });
 }
@@ -81,7 +81,7 @@ export function useToggleRegistration(id: string, registrationOpen: boolean) {
       toast({
         title: registrationOpen ? t("competition.registrationClosed") : t("competition.registrationOpened"),
         variant: registrationOpen ? "default" : "success",
-      } as Parameters<typeof toast>[0]);
+      });
     },
   });
 }

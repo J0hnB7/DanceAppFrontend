@@ -60,11 +60,11 @@ export function WithdrawalModal({ open, onClose, competitionId, pairs }: Withdra
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pairs", competitionId] });
-      toast({ title: t("crisis.withdrawn"), variant: "warning" } as Parameters<typeof toast>[0]);
+      toast({ title: t("crisis.withdrawn"), variant: "warning" });
       reset();
       onClose();
     },
-    onError: () => toast({ title: t("crisis.withdrawalFailed"), variant: "destructive" } as Parameters<typeof toast>[0]),
+    onError: () => toast({ title: t("crisis.withdrawalFailed"), variant: "destructive" }),
   });
 
   return (
@@ -182,11 +182,11 @@ export function PenaltyModal({ open, onClose, competitionId, pairs }: PenaltyMod
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pairs", competitionId] });
-      toast({ title: t("crisis.penaltyApplied"), variant: "warning" } as Parameters<typeof toast>[0]);
+      toast({ title: t("crisis.penaltyApplied"), variant: "warning" });
       reset();
       onClose();
     },
-    onError: () => toast({ title: t("crisis.penaltyFailed"), variant: "destructive" } as Parameters<typeof toast>[0]),
+    onError: () => toast({ title: t("crisis.penaltyFailed"), variant: "destructive" }),
   });
 
   const PRESET_REASONS = [

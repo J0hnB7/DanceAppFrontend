@@ -47,6 +47,8 @@ import { useSections } from "@/hooks/queries/use-sections";
 import { competitionsApi } from "@/lib/api/competitions";
 import { pairsApi } from "@/lib/api/pairs";
 import type { PairDto, RegistrationStatus } from "@/lib/api/pairs";
+
+type PaymentStatus = "PENDING" | "PAID" | "WAIVED";
 import apiClient from "@/lib/api-client";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
@@ -64,6 +66,16 @@ const addPairSchema = z.object({
   markAsPaid: z.boolean().optional(),
 });
 type AddPairForm = z.infer<typeof addPairSchema>;
+
+const PAYMENT_STATUS_CONFIG: Record<PaymentStatus, {
+  labelKey: string;
+  next: PaymentStatus;
+  variant: "secondary" | "success" | "warning";
+}> = {
+  PENDING: { labelKey: "pairs.paymentPending", next: "PAID", variant: "warning" },
+  PAID:    { labelKey: "pairs.paymentPaid",    next: "WAIVED", variant: "success" },
+  WAIVED:  { labelKey: "pairs.paymentWaived",  next: "PENDING", variant: "secondary" },
+};
 
 const REG_STATUS_CONFIG: Record<RegistrationStatus, {
   labelKey: string;
@@ -152,7 +164,7 @@ function NoteCell({ pair, competitionId }: { pair: PairDto; competitionId: strin
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pairs", competitionId] });
       setEditing(false);
-      toast({ title: t("pairs.notesSaved"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("pairs.notesSaved"), variant: "success" });
     },
   });
 
@@ -202,7 +214,7 @@ function ContactModal({ pair, onClose }: { pair: PairDto; onClose: () => void })
   const send = useMutation({
     mutationFn: () => pairsApi.contactEmail(pair.competitionId ?? "", pair.id, { subject, message }),
     onSuccess: () => {
-      toast({ title: t("pairs.emailSent"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("pairs.emailSent"), variant: "success" });
       onClose();
     },
   });
@@ -271,29 +283,47 @@ async function exportToExcel(pairs: PairDto[], sections: { id: string; name: str
   const getName2 = (p: PairDto) =>
     p.dancer2FirstName && p.dancer2LastName ? `${p.dancer2FirstName} ${p.dancer2LastName}` : (p.dancer2Name ?? "");
 
-  const data = pairs.map((p) => ({
-    "#": String(p.startNumber).padStart(3, "0"),
-    "Jméno (1)": p.dancer1FirstName ?? (p.dancer1Name?.split(" ")[0] ?? ""),
-    "Příjmení (1)": p.dancer1LastName ?? (p.dancer1Name?.split(" ").slice(1).join(" ") ?? ""),
-    "Jméno (2)": p.dancer2FirstName ?? (p.dancer2Name?.split(" ")[0] ?? ""),
-    "Příjmení (2)": p.dancer2LastName ?? (p.dancer2Name?.split(" ").slice(1).join(" ") ?? ""),
-    "Tanečník 1": getName1(p),
-    "Tanečník 2": getName2(p),
-    "Klub": p.dancer1Club ?? p.club ?? "",
-    "Klub 2": p.dancer2Club ?? "",
-    "Kategorie": getSectionName(p),
-    "Email": p.email ?? "",
-    "Status": p.registrationStatus ?? "",
-    "Platba": p.paymentStatus ?? "",
-    "Registrován": p.registeredAt ? new Date(p.registeredAt).toLocaleDateString("cs-CZ") : "",
-  }));
-
-  const ws = XLSX.utils.json_to_sheet(data);
-  // Column widths
+  const fmt = (d?: string | null) => d ? new Date(d).toLocaleDateString("cs-CZ") : "";
+  const HEADERS = [
+    "Startovní číslo", "Kategorie", "Jméno 1", "Příjmení 1", "Jméno 2", "Příjmení 2",
+    "Země", "Klub", "ID competitora", "Datum přihlášení",
+    "Startovné/os", "Startovné celkem", "Startuje", "Datum odhlášení",
+    "Konec prezence", "Typ startu", "Od kola", "Třída",
+    "Finale count", "Points", "Ranklist", "Email", "Platba",
+  ];
+  const rows = pairs.map((p) => [
+    String(p.startNumber).padStart(3, "0"),
+    getSectionName(p),
+    p.dancer1FirstName ?? (p.dancer1Name?.split(" ")[0] ?? ""),
+    p.dancer1LastName ?? (p.dancer1Name?.split(" ").slice(1).join(" ") ?? ""),
+    p.dancer2FirstName ?? (p.dancer2Name?.split(" ")[0] ?? ""),
+    p.dancer2LastName ?? (p.dancer2Name?.split(" ").slice(1).join(" ") ?? ""),
+    p.country ?? "",
+    p.dancer1Club ?? p.club ?? "",
+    p.athlete1Id ?? "",
+    fmt(p.registeredAt),
+    p.feePerPerson ?? "",
+    p.feeTotal ?? "",
+    p.starts === false ? 0 : 1,
+    fmt(p.withdrawalDate),
+    fmt(p.presenceDeadline),
+    p.startType ?? "",
+    p.startsFromRound ?? "",
+    p.classValue ?? "",
+    p.finaleCount ?? "",
+    p.points ?? "",
+    p.ranklistPosition ?? "",
+    p.email ?? "",
+    p.paymentStatus ?? "",
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...rows]);
   ws["!cols"] = [
-    { wch: 5 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
-    { wch: 22 }, { wch: 22 }, { wch: 20 }, { wch: 20 },
-    { wch: 24 }, { wch: 28 }, { wch: 14 }, { wch: 10 }, { wch: 14 },
+    { wch: 5 },  { wch: 24 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
+    { wch: 6 },  { wch: 22 }, { wch: 12 }, { wch: 14 },
+    { wch: 12 }, { wch: 14 }, { wch: 8 },  { wch: 14 }, { wch: 14 },
+    { wch: 12 }, { wch: 8 },  { wch: 8 },
+    { wch: 10 }, { wch: 8 },  { wch: 8 },
+    { wch: 28 }, { wch: 10 },
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Páry");
@@ -380,6 +410,12 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pairs", id] }),
   });
 
+  const cyclePayment = useMutation({
+    mutationFn: ({ pairId, status }: { pairId: string; status: PaymentStatus }) =>
+      pairsApi.setPaymentStatus(id, pairId, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pairs", id] }),
+  });
+
   const checkinUrl = checkinToken
     ? (typeof window !== "undefined" ? window.location.origin : "") + `/checkin/${checkinToken}`
     : "";
@@ -405,7 +441,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
       toast({
         title: competition?.registrationOpen === true ? t("competition.registrationClosed") : t("competition.registrationOpened"),
         variant: "success",
-      } as Parameters<typeof toast>[0]);
+      });
     },
   });
 
@@ -448,7 +484,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
       dancer2LastName: values.dancer2LastName,
       dancer2Club: values.dancer2Club,
     });
-    toast({ title: t("pairs.added"), variant: "success" } as Parameters<typeof toast>[0]);
+    toast({ title: t("pairs.added"), variant: "success" });
     reset();
     setDialogOpen(false);
   };
@@ -461,7 +497,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
       title: t("pairs.importedCount", { count: result.imported }),
       description: result.errors.length ? t("pairs.importErrors", { count: result.errors.length }) : undefined,
       variant: result.errors.length ? "warning" : "success",
-    } as Parameters<typeof toast>[0]);
+    });
     e.target.value = "";
   };
 
@@ -640,6 +676,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
               <TableHead>{t("pairs.clubColumn")}</TableHead>
               <TableHead>{t("pairs.section")}</TableHead>
               <TableHead>{t("pairs.status")}</TableHead>
+              <TableHead>{t("pairs.payment")}</TableHead>
               <TableHead>{t("pairs.note")}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
@@ -648,14 +685,14 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 9 }).map((_, j) => (
                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                   ))}
                 </TableRow>
               ))}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-12 text-center text-[var(--text-secondary)]">
+                <TableCell colSpan={9} className="py-12 text-center text-[var(--text-secondary)]">
                   {search || sectionFilter !== "all" ? t("pairs.noMatchFilter") : t("pairs.noPairsYet")}
                 </TableCell>
               </TableRow>
@@ -714,6 +751,24 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                         {t(statusCfg.labelKey)}
                       </Badge>
                     </button>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const payStatus = (pair.paymentStatus ?? "PENDING") as PaymentStatus;
+                      const cfg = PAYMENT_STATUS_CONFIG[payStatus] ?? PAYMENT_STATUS_CONFIG.PENDING;
+                      return (
+                        <button
+                          className="group"
+                          title={t("pairs.cyclePaymentTitle", { next: t(PAYMENT_STATUS_CONFIG[cfg.next].labelKey) })}
+                          onClick={() => cyclePayment.mutate({ pairId: pair.id, status: cfg.next })}
+                          disabled={cyclePayment.isPending}
+                        >
+                          <Badge variant={cfg.variant} className="cursor-pointer group-hover:opacity-80 transition-opacity">
+                            {t(cfg.labelKey)}
+                          </Badge>
+                        </button>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <NoteCell pair={pair} competitionId={id} />

@@ -64,7 +64,7 @@ function Accordion({ items }: { items: { icon: string; title: string; sub: strin
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0, background: item.icon.startsWith("bg:") ? item.icon.slice(3) : "linear-gradient(135deg,#818CF8,#6366F1)" }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0, background: item.icon.startsWith("bg:") ? item.icon.slice(3) : "linear-gradient(135deg,#3395ff,#0a84ff)" }}>
                 {item.icon.startsWith("bg:") ? item.icon.slice(item.icon.indexOf(")")+1) : item.icon}
               </div>
               <div>
@@ -107,7 +107,6 @@ export default function Home() {
         @keyframes orb{0%,100%{transform:translate(0,0)}33%{transform:translate(15px,-25px)}66%{transform:translate(-12px,18px)}}
         @keyframes pdot{0%{box-shadow:0 0 0 0 rgba(74,222,128,.6)}70%{box-shadow:0 0 0 8px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
         @keyframes heroUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-        @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
         .hero-anim-0{animation:heroUp .7s ease both}
         .hero-anim-1{animation:heroUp .7s ease .1s both}
         .hero-anim-2{animation:heroUp .7s ease .2s both}
@@ -115,18 +114,14 @@ export default function Home() {
         .hero-anim-4{animation:heroUp .8s ease .45s both}
         .badge-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:pdot 2s infinite;display:inline-block}
         .ldot{width:6px;height:6px;border-radius:50%;background:#34d399;animation:pdot 2s infinite;display:inline-block}
-        .tick-track{display:flex;animation:tick 30s linear infinite;white-space:nowrap}
-        .tick-track:hover{animation-play-state:paused}
         .reveal{opacity:0;transform:translateY(22px);transition:opacity .65s ease,transform .65s ease}
         .reveal.visible{opacity:1;transform:none}
-        .bc-hover{transition:box-shadow .25s,transform .25s;cursor:default}
-        .bc-hover:hover{box-shadow:0 4px 6px rgba(0,0,0,.04),0 20px 48px rgba(0,0,0,.09)!important;transform:translateY(-3px)}
         .rc-hover{transition:box-shadow .25s,transform .25s}
         .rc-hover:hover{box-shadow:0 4px 6px rgba(0,0,0,.04),0 20px 48px rgba(0,0,0,.09)!important;transform:translateY(-4px)}
         .pill-style{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:100px;border:1px solid #E5E7EB;background:#fff;font-size:.78rem;font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.07);color:#111827}
         .pill-style.active{border-color:#4F46E5;background:#EEF2FF;color:#4F46E5}
         @media(max-width:900px){.nav-links-hide{display:none!important}.sk-two-col{grid-template-columns:1fr!important;gap:40px!important}.roles-4col{grid-template-columns:1fr 1fr!important}.gdpr-3col{grid-template-columns:1fr 1fr!important}}
-        @media(max-width:640px){.bento-c4,.bento-c5,.bento-c6,.bento-c7,.bento-c8{grid-column:span 12!important}.roles-4col{grid-template-columns:1fr!important}.gdpr-3col{grid-template-columns:1fr!important}.pbody-grid{grid-template-columns:1fr 1fr!important}}
+        @media(max-width:640px){.roles-4col{grid-template-columns:1fr!important}.gdpr-3col{grid-template-columns:1fr!important}.pbody-grid{grid-template-columns:1fr 1fr!important}}
       `}</style>
 
       {/* NAV */}
@@ -147,7 +142,7 @@ export default function Home() {
           DanceApp
         </Link>
         <ul className="nav-links-hide" style={{ display: "flex", gap: 28, listStyle: "none" }}>
-          {[["#features","Funkce"],["#roles","Role"],["#scoring","Skating systém"],["#security","Bezpečnost"]].map(([href, label]) => (
+          {[["#roles","Role"],["#scoring","Skating systém"],["#security","Bezpečnost"]].map(([href, label]) => (
             <li key={href}>
               <a href={href} style={{ fontSize: ".875rem", textDecoration: "none", fontWeight: 500, color: navLight ? "#4B5563" : "rgba(255,255,255,.65)", transition: "color .2s" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "#4F46E5")}
@@ -163,11 +158,11 @@ export default function Home() {
             color: navLight ? "#4B5563" : "#fff",
             border: navLight ? "1px solid #E5E7EB" : "1px solid rgba(255,255,255,.2)",
           }}>Přihlásit se</Link>
-          <a href="#cta" style={{
+          <Link href="/login" style={{
             padding: "7px 18px", borderRadius: 8, fontSize: ".85rem", fontWeight: 600, textDecoration: "none", transition: "all .2s",
             background: navLight ? "#4F46E5" : "#fff",
             color: navLight ? "#fff" : "#0A1628",
-          }}>Začít zdarma</a>
+          }}>Začít zdarma</Link>
         </div>
       </nav>
 
@@ -197,7 +192,7 @@ export default function Home() {
 
         <h1 className="hero-anim-1" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(2.8rem,6vw,5.2rem)", fontWeight: 800, lineHeight: 1.05, letterSpacing: "-.04em", color: "#fff", maxWidth: 860, marginBottom: 22 }}>
           Systém pro organizátory<br />
-          <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 45%,#6ee7b7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>tanečních soutěží.</em>
+          <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 45%,#6ee7b7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>tanečních soutěží.</em>
         </h1>
 
         <p className="hero-anim-2" style={{ fontSize: "1.1rem", lineHeight: 1.72, color: "rgba(255,255,255,.55)", maxWidth: 540, marginBottom: 38 }}>
@@ -205,11 +200,11 @@ export default function Home() {
         </p>
 
         <div className="hero-anim-3" style={{ display: "flex", gap: 13, flexWrap: "wrap", justifyContent: "center", marginBottom: 72 }}>
-          <a href="#cta" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", background: "#fff", color: "#0A1628", border: "none", fontWeight: 700, textDecoration: "none", transition: "all .2s" }}
+          <Link href="/login" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", background: "#fff", color: "#0A1628", border: "none", fontWeight: 700, textDecoration: "none", transition: "all .2s" }}
             onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 8px 30px rgba(255,255,255,.15)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "none"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none"; }}
-          >Začít zdarma →</a>
-          <a href="#features" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", border: "1px solid rgba(255,255,255,.22)", color: "#fff", fontWeight: 500, textDecoration: "none", background: "rgba(255,255,255,.06)", transition: "all .2s" }}>Jak to funguje</a>
+          >Začít zdarma →</Link>
+          <a href="#roles" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", border: "1px solid rgba(255,255,255,.22)", color: "#fff", fontWeight: 500, textDecoration: "none", background: "rgba(255,255,255,.06)", transition: "all .2s" }}>Jak to funguje</a>
         </div>
 
         {/* Dashboard preview */}
@@ -278,207 +273,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TICKER */}
-      <div style={{ overflow: "hidden", background: "#111827", padding: "16px 0", borderTop: "1px solid rgba(255,255,255,.06)", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
-        <div className="tick-track">
-          {[
-            ["4 role", "Organizátor, Admin, Rozhodčí, Tanečník"],
-            ["100%", "Bez papírů — od přihlášek po diplomy"],
-            ["≤ 1 s", "Výsledky v reálném čase přes SSE"],
-            ["GDPR", "Export dat, 2FA, bezpečné tokeny"],
-            ["Skating", "Mezinárodní systém — Rules 5–11"],
-            ["Offline", "Hodnocení bez připojení k internetu"],
-            ["XLSX", "Import párů a kategorií z Excelu"],
-            // duplicate
-            ["4 role", "Organizátor, Admin, Rozhodčí, Tanečník"],
-            ["100%", "Bez papírů — od přihlášek po diplomy"],
-            ["≤ 1 s", "Výsledky v reálném čase přes SSE"],
-            ["GDPR", "Export dat, 2FA, bezpečné tokeny"],
-            ["Skating", "Mezinárodní systém — Rules 5–11"],
-            ["Offline", "Hodnocení bez připojení k internetu"],
-            ["XLSX", "Import párů a kategorií z Excelu"],
-          ].map(([num, label], i) => (
-            <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "0 44px", fontSize: ".83rem", fontWeight: 500, color: "rgba(255,255,255,.6)", borderRight: "1px solid rgba(255,255,255,.09)" }}>
-              <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".9rem", fontWeight: 700, color: "#fff" }}>{num}</span>
-              {label}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* FEATURES BENTO */}
-      <section id="features" style={{ padding: "96px 5vw", background: "#fff" }}>
-        <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-          <div className="reveal">
-            <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>Pro organizátory</div>
-            <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.85rem,3.5vw,2.85rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: "-.03em", color: "#111827", marginBottom: 14 }}>
-              Vše co potřebujete<br />
-              <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>den soutěže</em>
-            </h2>
-            <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, marginBottom: 52 }}>Od vytvoření soutěže po tisk diplomů — bez papírů, bez chaosu.</p>
-          </div>
-
-          {/* bento grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(12,1fr)", gap: 16 }}>
-
-            {/* Wide — competition management */}
-            <div className="bc-hover bento-c8 reveal" style={{ gridColumn: "span 8", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "linear-gradient(135deg,#818CF8,#6366F1)" }}>🏆</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#111827" }}>Správa soutěže od A do Z</div>
-              <div style={{ fontSize: ".83rem", color: "#4B5563", lineHeight: 1.65 }}>Vytvořte soutěž za minuty — datum, místo, kapacita, vstupné. Definujte kategorie dle stylu, věku a úrovně. Import z Excelu.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "#EEF2FF", color: "#4F46E5" }}>Organizátor</span>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginTop: 15 }}>
-                {[
-                  ["Standard — Junioři I", "24 párů · 7 R", "#4F46E5"],
-                  ["Latin — Dospělí", "18 párů · 5 R", "#7C3AED"],
-                  ["Standard — Děti II", "32 párů · 5 R", "#F59E0B"],
-                ].map(([name, val, color]) => (
-                  <div key={name} style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, padding: 9, fontSize: ".73rem" }}>
-                    <div style={{ color: "#4B5563", marginBottom: 2 }}>{name}</div>
-                    <div style={{ fontWeight: 600, color }}>{val}</div>
-                  </div>
-                ))}
-                <div style={{ background: "#F5F3FF", border: "1px solid #c4b5fd", borderRadius: 8, padding: 9, fontSize: ".73rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ fontWeight: 600, color: "#4F46E5" }}>+ Přidat kategorii</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Payments */}
-            <div className="bc-hover bento-c4 reveal" style={{ gridColumn: "span 4", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "linear-gradient(135deg,#4ade80,#10B981)" }}>💳</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#111827" }}>Platby a poplatky</div>
-              <div style={{ fontSize: ".83rem", color: "#4B5563", lineHeight: 1.65 }}>Přehled uhrazených a čekajících poplatků. Hromadné potvrzení, export do CSV.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "#EEF2FF", color: "#4F46E5" }}>Organizátor</span>
-              <div style={{ marginTop: 15 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".73rem", marginBottom: 5 }}>
-                  <span style={{ color: "#4B5563" }}>Uhrazeno</span>
-                  <span style={{ color: "#4F46E5", fontWeight: 600 }}>142 / 184</span>
-                </div>
-                <div style={{ background: "#F3F4F6", borderRadius: 100, height: 5 }}>
-                  <div style={{ height: 5, borderRadius: 100, background: "linear-gradient(90deg,#4F46E5,#7C3AED)", width: "77%" }} />
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5, fontSize: ".67rem", color: "#9CA3AF" }}>
-                  <span>Čeká: 31</span><span>Prominuto: 11</span>
-                </div>
-              </div>
-            </div>
-
-            {/* QR Judges */}
-            <div className="bc-hover bento-c4 reveal" style={{ gridColumn: "span 4", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "linear-gradient(135deg,#FCD34D,#F59E0B)" }}>📲</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#111827" }}>Rozhodčí přes QR kód</div>
-              <div style={{ fontSize: ".83rem", color: "#4B5563", lineHeight: 1.65 }}>Vygenerujte QR kód — rozhodčí se připojí bez instalace, přímo v prohlížeči mobilu nebo tabletu.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "#FFFBEB", color: "#D97706" }}>Rozhodčí</span>
-            </div>
-
-            {/* Diplomas */}
-            <div className="bc-hover bento-c4 reveal" style={{ gridColumn: "span 4", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "linear-gradient(135deg,#A78BFA,#7C3AED)" }}>🎖️</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#111827" }}>Diplomy na klik</div>
-              <div style={{ fontSize: ".83rem", color: "#4B5563", lineHeight: 1.65 }}>Po finále tiskněte diplomy jedním kliknutím. Jméno, umístění a kategorie se doplní automaticky.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "#EEF2FF", color: "#4F46E5" }}>Organizátor</span>
-            </div>
-
-            {/* Crisis — dark */}
-            <div className="bc-hover bento-c4 reveal" style={{ gridColumn: "span 4", background: "#111827", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "rgba(255,255,255,.1)" }}>⚠️</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#fff" }}>Řešení nečekaných situací</div>
-              <div style={{ fontSize: ".83rem", color: "rgba(255,255,255,.58)", lineHeight: 1.65 }}>Odhlaste pár, udělte napomenutí nebo srážku bodů — vše zdokumentováno s auditní stopou.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.9)" }}>Admin soutěže</span>
-            </div>
-
-            {/* Offline — indigo gradient */}
-            <div className="bc-hover bento-c8 reveal" style={{ gridColumn: "span 8", background: "linear-gradient(135deg,#4338CA 0%,#6D28D9 100%)", border: "none", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "rgba(255,255,255,.1)" }}>🔌</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#fff" }}>Offline podpora pro rozhodčí</div>
-              <div style={{ fontSize: ".83rem", color: "rgba(255,255,255,.58)", lineHeight: 1.65 }}>Hodnocení se ukládá lokálně. Po obnovení Wi-Fi se automaticky synchronizuje — spolehlivé i ve špatně pokrytých sálech.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.9)" }}>Rozhodčí</span>
-              <div style={{ marginTop: 15, display: "flex", flexDirection: "column", gap: 7 }}>
-                {[
-                  ["#4ade80", "Hodnocení uloženo lokálně (offline)", "12:43:01"],
-                  ["#4ade80", "Síť obnovena — synchronizuji 3 hodnocení", "12:49:15"],
-                  ["#a5b4fc", "Synchronizace dokončena ✓", "12:49:16"],
-                ].map(([color, text, time]) => (
-                  <div key={time} style={{ display: "flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 8, padding: "9px 11px", fontSize: ".75rem", color: "rgba(255,255,255,.85)" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, display: "inline-block" }} />
-                    {text}
-                    <span style={{ fontSize: ".63rem", color: "rgba(255,255,255,.3)", marginLeft: "auto" }}>{time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Realtime — teal gradient */}
-            <div className="bc-hover bento-c6 reveal" style={{ gridColumn: "span 6", background: "linear-gradient(135deg,#0891B2 0%,#0D9488 100%)", border: "none", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "rgba(255,255,255,.1)" }}>⚡</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#fff" }}>Výsledky v reálném čase</div>
-              <div style={{ fontSize: ".83rem", color: "rgba(255,255,255,.58)", lineHeight: 1.65 }}>Výsledky, průběh hodnocení i stavy kol se aktualizují okamžitě — bez obnovení stránky.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.9)" }}>Všechny role</span>
-              <div style={{ marginTop: 15, display: "flex", flexDirection: "column", gap: 7 }}>
-                {[
-                  ["#67e8f9", "Latin — Dospělí: Finále uzavřeno", "LIVE"],
-                  ["#6ee7b7", "Skating systém: výsledky vypočítány", "LIVE"],
-                ].map(([color, text, time]) => (
-                  <div key={text} style={{ display: "flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 8, padding: "9px 11px", fontSize: ".75rem", color: "rgba(255,255,255,.85)" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, display: "inline-block" }} />
-                    {text}
-                    <span style={{ fontSize: ".63rem", color: "rgba(255,255,255,.3)", marginLeft: "auto" }}>{time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Presentation mode */}
-            <div className="bc-hover bento-c6 reveal" style={{ gridColumn: "span 6", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "linear-gradient(135deg,#F9A8D4,#EC4899)" }}>🎬</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#111827" }}>Prezentační režim</div>
-              <div style={{ fontSize: ".83rem", color: "#4B5563", lineHeight: 1.65 }}>Výsledky na projektor — tmavé pozadí, postupné odhalování klávesnicí. Moderátor se připojí bez přihlášení přes jednorázový odkaz.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "#ECFDF5", color: "#059669" }}>Admin / Moderátor</span>
-            </div>
-
-            {/* Import */}
-            <div className="bc-hover bento-c4 reveal" style={{ gridColumn: "span 4", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "linear-gradient(135deg,#22D3EE,#06B6D4)" }}>📥</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#111827" }}>Import a export</div>
-              <div style={{ fontSize: ".83rem", color: "#4B5563", lineHeight: 1.65 }}>Importujte páry a kategorie z Excelu. Exportujte platby do CSV — propojení s vaším stávajícím workflow.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "#EEF2FF", color: "#4F46E5" }}>Organizátor</span>
-            </div>
-
-            {/* Check-in */}
-            <div className="bc-hover bento-c4 reveal" style={{ gridColumn: "span 4", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "linear-gradient(135deg,#4ade80,#10B981)" }}>✅</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#111827" }}>Check-in na soutěžní den</div>
-              <div style={{ fontSize: ".83rem", color: "#4B5563", lineHeight: 1.65 }}>Zaznamenávejte příchod párů v reálném čase. Vždy víte, koho čekáte.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "#EEF2FF", color: "#4F46E5" }}>Organizátor</span>
-            </div>
-
-            {/* Analytics */}
-            <div className="bc-hover bento-c4 reveal" style={{ gridColumn: "span 4", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 26, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", marginBottom: 16, background: "linear-gradient(135deg,#A78BFA,#7C3AED)" }}>📊</div>
-              <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: ".97rem", fontWeight: 700, marginBottom: 7, color: "#111827" }}>Analytika a přehledy</div>
-              <div style={{ fontSize: ".83rem", color: "#4B5563", lineHeight: 1.65 }}>Srovnání ročníků a počtu párů na jedné stránce. Přehled trendů bez tabulek v Excelu.</div>
-              <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: ".67rem", fontWeight: 600, marginTop: 13, background: "#EEF2FF", color: "#4F46E5" }}>Organizátor</span>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
       {/* ROLES */}
       <section id="roles" style={{ padding: "96px 5vw", background: "#F9FAFB" }}>
         <div className="reveal" style={{ maxWidth: 1160, margin: "0 auto 52px", textAlign: "center" }}>
           <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>Role v systému</div>
           <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.85rem,3.5vw,2.85rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: "-.03em", color: "#111827", marginBottom: 14 }}>
-            Jeden systém, <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>čtyři perspektivy</em>
+            Jeden systém, <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>čtyři perspektivy</em>
           </h2>
           <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, margin: "0 auto" }}>Každá role dostane přesně to, co potřebuje.</p>
         </div>
         <div className="roles-4col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 18, maxWidth: 1160, margin: "0 auto" }}>
           {[
-            { icon: "🗂️", iconBg: "linear-gradient(135deg,#818CF8,#6366F1)", title: "Organizátor", desc: "Správa soutěže před i po soutěžním dni.", items: ["Tvorba soutěží a kategorií","Import párů z Excelu","Správa plateb a diplomů","Analytika ročníků"] },
-            { icon: "🖥️", iconBg: "linear-gradient(135deg,#4ade80,#059669)", title: "Admin soutěže", desc: "Operativní řízení průběhu v reálném čase.", items: ["Živý dashboard","Otevírání a uzavírání kol","Skating systém + řešení kolizí","Prezentační režim"] },
-            { icon: "📱", iconBg: "linear-gradient(135deg,#FCD34D,#F59E0B)", title: "Rozhodčí", desc: "Bodování v prohlížeči, bez instalace.", items: ["Připojení přes QR kód","Offline s auto-synchronizací","Předkola i finálová kola"] },
+            { icon: "🗂️", iconBg: "linear-gradient(135deg,#3395ff,#0a84ff)", title: "Organizátor", desc: "Správa soutěže před i po soutěžním dni.", items: ["Tvorba soutěží a kategorií","Import párů z Excelu","Správa plateb a poplatků","Diplomy jedním kliknutím","Check-in na soutěžní den","Analytika a přehledy ročníků"] },
+            { icon: "🖥️", iconBg: "linear-gradient(135deg,#4ade80,#059669)", title: "Admin soutěže", desc: "Operativní řízení průběhu v reálném čase.", items: ["Živý dashboard soutěže","Otevírání a uzavírání kol","Skating systém + řešení kolizí","Výsledky v reálném čase","Prezentační režim na projektor","Řešení nečekaných situací"] },
+            { icon: "📱", iconBg: "linear-gradient(135deg,#FCD34D,#F59E0B)", title: "Rozhodčí", desc: "Bodování v prohlížeči, bez instalace.", items: ["Připojení přes QR kód","Bodování přímo v prohlížeči","Offline s auto-synchronizací","Předkola i finálová kola"] },
             { icon: "💃", iconBg: "linear-gradient(135deg,#F9A8D4,#EC4899)", title: "Tanečník", desc: "Přihlášení, živé výsledky, bez nutnosti účtu.", items: ["Registrace bez vytváření účtu","Živý výsledkový servis","Veřejné výsledky bez přihlášení"] },
           ].map((role) => (
             <div key={role.title} className="rc-hover reveal" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 16, padding: "26px 22px", boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.05)" }}>
@@ -504,7 +312,7 @@ export default function Home() {
             <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>Scoring engine</div>
             <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.85rem,3.5vw,2.85rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: "-.03em", color: "#111827", marginBottom: 14 }}>
               Mezinárodní<br />
-              <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Skating systém</em>
+              <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>Skating systém</em>
             </h2>
             <p style={{ fontSize: ".97rem", color: "#4B5563", lineHeight: 1.72, marginBottom: 24 }}>Automatický výpočet podle mezinárodního Skating systému (Rules 5–11). Matice hodnocení je průhledná a auditovatelná. Kolize jsou detekovány automaticky včetně návrhu Dance-off kol.</p>
             <div style={{ display: "flex", gap: 9, flexWrap: "wrap", marginTop: 26 }}>
@@ -563,7 +371,7 @@ export default function Home() {
         <div className="inner cx reveal" style={{ maxWidth: 1160, margin: "0 auto 52px", textAlign: "center" }}>
           <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>Scénáře použití</div>
           <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.85rem,3.5vw,2.85rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: "-.03em", color: "#111827", marginBottom: 14 }}>
-            Od malé přehlídky<br />po <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>federační turnaj</em>
+            Od malé přehlídky<br />po <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>federační turnaj</em>
           </h2>
           <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, margin: "0 auto" }}>Systém se přizpůsobí rozsahu vaší soutěže.</p>
         </div>
@@ -579,13 +387,13 @@ export default function Home() {
         <div className="reveal" style={{ maxWidth: 1160, margin: "0 auto 52px", textAlign: "center" }}>
           <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>Bezpečnost &amp; GDPR</div>
           <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.85rem,3.5vw,2.85rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: "-.03em", color: "#111827", marginBottom: 14 }}>
-            Spolehlivé a <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>bezpečné</em>
+            Spolehlivé a <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>bezpečné</em>
           </h2>
           <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, margin: "0 auto" }}>Systém splňuje požadavky GDPR a zajišťuje transparentnost pro organizátory i účastníky.</p>
         </div>
         <div className="gdpr-3col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18, maxWidth: 1160, margin: "0 auto" }}>
           {[
-            { iconBg: "linear-gradient(135deg,#818CF8,#6366F1)", icon: "🔐", title: "Dvoufaktorové ověřování", desc: "TOTP přes autentikátorovou aplikaci. Rozhodčí a moderátoři se připojují přes jednorázové tokeny bez trvalých hesel." },
+            { iconBg: "linear-gradient(135deg,#3395ff,#0a84ff)", icon: "🔐", title: "Dvoufaktorové ověřování", desc: "TOTP přes autentikátorovou aplikaci. Rozhodčí a moderátoři se připojují přes jednorázové tokeny bez trvalých hesel." },
             { iconBg: "linear-gradient(135deg,#FCD34D,#F59E0B)", icon: "📋", title: "Auditní stopa", desc: "Každá akce admina a rozhodčího je logována s časovým razítkem — plná transparentnost výsledků." },
             { iconBg: "linear-gradient(135deg,#A78BFA,#7C3AED)", icon: "🛡️", title: "GDPR compliant", desc: "Data zpracována pouze v EU. Účastníci mohou exportovat nebo smazat svá data přímo z profilu." },
           ].map((item) => (
@@ -612,7 +420,7 @@ export default function Home() {
           <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#67e8f9", marginBottom: 11 }}>Začít dnes</div>
           <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(2rem,4vw,3.4rem)", fontWeight: 800, letterSpacing: "-.04em", lineHeight: 1.1, color: "#fff", maxWidth: 700, margin: "0 auto 16px" }}>
             Uspořádejte první soutěž<br />
-            <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>bez papírů.</em>
+            <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>bez papírů.</em>
           </h2>
           <p style={{ color: "rgba(255,255,255,.5)", fontSize: "1rem", maxWidth: 450, margin: "0 auto 36px", lineHeight: 1.7 }}>
             Zaregistrujte se zdarma a zkuste to nanečisto — nebo nás kontaktujte a vše vám ukážeme.
@@ -632,7 +440,7 @@ export default function Home() {
             DanceApp
           </Link>
           <ul style={{ display: "flex", gap: 24, listStyle: "none" }}>
-            {[["#features","Funkce"],["#","Dokumentace"],["mailto:info@danceapp.cz","Kontakt"],["#security","GDPR"]].map(([href, label]) => (
+            {[["#","Funkce"],["#","Dokumentace"],["mailto:info@danceapp.cz","Kontakt"],["#security","GDPR"]].map(([href, label]) => (
               <li key={label}><a href={href} style={{ fontSize: ".8rem", color: "#4B5563", textDecoration: "none" }}>{label}</a></li>
             ))}
           </ul>

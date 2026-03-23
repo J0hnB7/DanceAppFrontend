@@ -174,10 +174,10 @@ export default function SectionResultsPage({
     mutationFn: () => scoringApi.calculateSectionSummary(sectionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["section-summary", sectionId] });
-      toast({ title: t("results.summaryCalculated"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("results.summaryCalculated"), variant: "success" });
     },
     onError: (err: unknown) => {
-      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     },
   });
 
@@ -185,10 +185,10 @@ export default function SectionResultsPage({
     mutationFn: () => scoringApi.approveResults(sectionId),
     onSuccess: () => {
       setApproved(true);
-      toast({ title: t("results.approved"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("results.approved"), variant: "success" });
     },
     onError: (err: unknown) => {
-      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" } as Parameters<typeof toast>[0]);
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     },
   });
 

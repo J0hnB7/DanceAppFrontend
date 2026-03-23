@@ -54,7 +54,7 @@ export function CompetitionCard({ competition, registrationOpen }: CompetitionCa
 
   return (
     <div
-      className="cursor-pointer rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-md"
+      className="cursor-pointer rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:-translate-y-px"
       onClick={() => router.push(`/dashboard/competitions/${competition.id}`)}
     >
       {/* Name + badge */}

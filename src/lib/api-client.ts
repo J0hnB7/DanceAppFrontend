@@ -10,6 +10,7 @@ const apiClient = axios.create({
   baseURL: "/api/v1",
   headers: { "Content-Type": "application/json" },
   withCredentials: true,
+  timeout: 15000, // 15 s — prevents infinite hang when backend is down
 });
 
 // Request interceptor — attach JWT access token

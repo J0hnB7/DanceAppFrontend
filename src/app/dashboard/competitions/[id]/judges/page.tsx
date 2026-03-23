@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState, useEffect, useRef } from "react";
-import { Copy, Plus, Trash2, Download, Printer, QrCode, X, ClipboardList, Eye, EyeOff } from "lucide-react";
+import { Copy, Plus, Trash2, Download, Printer, QrCode, X, ClipboardList, Eye, EyeOff, UserX } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -140,7 +140,7 @@ function QRModal({
                   className="flex-1"
                   onClick={() => {
                     navigator.clipboard.writeText(url);
-                    toast({ title: t("judges.linkCopied") } as Parameters<typeof toast>[0]);
+                    toast({ title: t("judges.linkCopied") });
                   }}
                 >
                   <Copy className="h-4 w-4" /> {t("judges.copyLink")}
@@ -292,6 +292,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
   const [qrToken, setQrToken] = useState<JudgeTokenDto | null>(null);
   const [printMode, setPrintMode] = useState(false);
   const [fallbackOpen, setFallbackOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const judgeBaseUrl =
@@ -320,14 +321,19 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
       setCreateOpen(false);
-      toast({ title: t("judges.createDialog.tokensCreated", { count }), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("judges.createDialog.tokensCreated", { count }), variant: "success" });
     },
   });
 
-  const revokeToken = useMutation({
-    mutationFn: (tokenId: string) => judgeTokensApi.revoke(id, tokenId),
+  const deleteTokenPermanent = useMutation({
+    mutationFn: (tokenId: string) => judgeTokensApi.deletePermanent(id, tokenId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
+      setDeleteConfirmId(null);
+      toast({ title: "Porotce byl smazán", variant: "success" });
+    },
+    onError: () => {
+      toast({ title: "Nepodařilo se smazat porotce", variant: "destructive" });
     },
   });
 
@@ -453,7 +459,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                         const raw = getTokenRaw(tk);
                         if (!raw) return;
                         navigator.clipboard.writeText(`${judgeBaseUrl}/${raw}`);
-                        toast({ title: t("judges.linkCopied") } as Parameters<typeof toast>[0]);
+                        toast({ title: t("judges.linkCopied") });
                       }}
                     >
                       <Copy className="h-3.5 w-3.5" />
@@ -461,9 +467,9 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      title={t("judges.revokeToken")}
+                      title="Smazat porotce"
                       className="text-[var(--text-tertiary)] hover:text-[var(--destructive)]"
-                      onClick={() => revokeToken.mutate(tk.id)}
+                      onClick={() => setDeleteConfirmId(tk.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -574,6 +580,39 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
           tokens={tokens ?? []}
           onClose={() => setFallbackOpen(false)}
         />
+      )}
+
+      {/* Permanent delete confirmation */}
+      {deleteConfirmId !== null && (
+        <Dialog open onOpenChange={(v) => !v && setDeleteConfirmId(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Trash2 className="h-5 w-5 text-[var(--destructive)]" />
+                Smazat porotce #{tokens?.find((t) => t.id === deleteConfirmId)?.judgeNumber}?
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-[var(--text-secondary)]">
+              {tokens?.find((t) => t.id === deleteConfirmId)?.name
+                ? <><strong>{tokens?.find((t) => t.id === deleteConfirmId)?.name}</strong> bude trvale odstraněn.</>
+                : "Porotce bude trvale odstraněn."}
+              {" "}Tuto akci nelze vrátit zpět.
+            </p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+                Zrušit
+              </Button>
+              <Button
+                variant="destructive"
+                loading={deleteTokenPermanent.isPending}
+                onClick={() => deleteTokenPermanent.mutate(deleteConfirmId)}
+              >
+                <UserX className="h-4 w-4" />
+                Smazat
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Create tokens dialog */}

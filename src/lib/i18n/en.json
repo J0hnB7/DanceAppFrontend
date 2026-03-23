@@ -456,7 +456,7 @@
     "createAccount": "Create account",
     "createAccountDesc": "Start managing your competitions",
     "name": "Name",
-    "namePlaceholder": "Jan Novák",
+    "namePlaceholder": "John Smith",
     "organizationOptional": "Organization (optional)",
     "organizationPlaceholder": "Dance Club Prague",
     "passwordMin": "Min. 8 characters, uppercase letter, number",
@@ -507,7 +507,7 @@
     "registrationFailed": "Registration failed",
     "deadline": "Deadline:",
     "contact": "Contact:",
-    "propozice": "Propozice",
+    "propozice": "Regulations",
     "registrationClosed": "Registration is not open",
     "registrationClosedDesc": "Registration for this competition is not currently available.",
     "backToCompetitionShort": "Back to competition",
@@ -1375,5 +1375,17 @@
     "connected": "Connected",
     "scoresSubmitted": "Scores submitted",
     "disconnected": "Disconnected"
+  },
+
+  "scoring": {
+    "title": "Scoring Monitor",
+    "received": "Received:",
+    "calculate": "Calculate results",
+    "waiting": "Waiting...",
+    "offline_badge": "Offline",
+    "submitted_at": "Submitted",
+    "conflict": "Marks conflict",
+    "resolve_online": "Keep online",
+    "resolve_offline": "Keep offline"
   }
 }

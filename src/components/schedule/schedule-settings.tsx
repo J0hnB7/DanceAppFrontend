@@ -6,7 +6,6 @@ import { scheduleConfigApi, type ScheduleConfig } from "@/lib/api/schedule";
 import { useScheduleStore } from "@/store/schedule-store";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 interface ScheduleSettingsProps {
   competitionId: string;
@@ -79,7 +78,8 @@ export function ScheduleSettings({
   onRegenerateRequest,
 }: ScheduleSettingsProps) {
   const { toast } = useToast();
-  const { scheduleStatus } = useScheduleStore();
+  const queryClient = useQueryClient();
+  const { scheduleStatus, generateSchedule, isGenerating } = useScheduleStore();
 
   const [config, setConfig] = useState<ScheduleConfig>({
     danceDurationSeconds: initialConfig?.danceDurationSeconds ?? 120,
@@ -118,8 +118,13 @@ export function ScheduleSettings({
         ...config,
         scheduleStartTime: buildStartTimeISO(startTime),
       }),
-    onSuccess: () => {
-      toast({ title: "Nastavení uloženo", variant: "success" });
+    onSuccess: async () => {
+      // Invalidate competition cache so ScheduleBuilder picks up new maxPairsOnFloor etc.
+      await queryClient.invalidateQueries({ queryKey: ["competition", competitionId] });
+      // Regenerate schedule with updated config
+      await generateSchedule(competitionId);
+      toast({ title: "Nastavení uloženo, harmonogram přegenerován", variant: "success" });
+      onRegenerateRequest?.();
     },
     onError: () => {
       toast({ title: "Chyba při ukládání", variant: "destructive" });
@@ -281,14 +286,9 @@ export function ScheduleSettings({
       </div>
 
       <div className="flex gap-2 pt-1">
-        <Button onClick={() => mutate()} loading={isPending}>
-          Uložit
+        <Button onClick={() => mutate()} loading={isPending || isGenerating}>
+          ⟳ Uložit a přegenerovat
         </Button>
-        {onRegenerateRequest && (
-          <Button variant="outline" onClick={onRegenerateRequest} loading={isPending}>
-            ⟳ Přegenerovat
-          </Button>
-        )}
       </div>
     </div>
   );

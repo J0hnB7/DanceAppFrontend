@@ -107,4 +107,9 @@ function useToast() {
   };
 }
 
-export { useToast, toast };
+// Typed convenience wrapper — avoids `as Parameters<typeof toast>[0]` casts at call sites
+function showToast(props: Toast) {
+  return toast(props);
+}
+
+export { useToast, toast, showToast };

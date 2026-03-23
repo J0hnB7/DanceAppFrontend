@@ -1,10 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Users } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { PageHeader } from "@/components/layout/page-header";
-import { Card } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/ui/data-table";
@@ -27,6 +28,17 @@ export default function ParticipantsPage() {
       render: (row) => (
         <span className="font-mono font-semibold">
           {String(row.startNumber).padStart(3, "0")}
+        </span>
+      ),
+    },
+    {
+      key: "athlete1Id",
+      label: "ID",
+      sortable: true,
+      className: "w-20",
+      render: (row) => (
+        <span className="font-mono text-xs text-[var(--text-tertiary)]">
+          {row.athlete1Id ?? "—"}
         </span>
       ),
     },
@@ -91,7 +103,7 @@ export default function ParticipantsPage() {
     },
   ];
 
-  const { data: compsData, isLoading: loadingComps } = useQuery({
+  const { data: compsData, isLoading: loadingComps, isError: errorComps, refetch: refetchComps } = useQuery({
     queryKey: ["competitions", "all"],
     queryFn: () => competitionsApi.list(),
   });
@@ -115,30 +127,37 @@ export default function ParticipantsPage() {
 
   const allPairs = allPairsData ?? [];
   const isLoading = loadingComps || loadingPairs;
+  const isError = errorComps;
   const paidCount = allPairs.filter((p) => p.paymentStatus === "PAID").length;
   const pendingCount = allPairs.filter((p) => p.paymentStatus === "PENDING").length;
 
+  if (isError) {
+    return (
+      <AppShell>
+        <EmptyState icon={<AlertCircle className="h-10 w-10" />} title="Nepodařilo se načíst účastníky" description="Zkontroluj připojení nebo to zkus znovu." action={<Button onClick={() => refetchComps()}>Zkusit znovu</Button>} />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
-      <PageHeader
-        title={t("participants.title")}
-        description={t("participants.description", { count: allPairs.length, competitions: competitions.length })}
-      />
+      {/* Header */}
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)" }}>
+            {t("participants.title")}
+          </h1>
+          <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+            {t("participants.description", { count: allPairs.length, competitions: competitions.length })}
+          </p>
+        </div>
+      </div>
 
       {/* Stats */}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Card className="p-4 text-center">
-          <p className="text-3xl font-bold text-[var(--text-primary)]">{allPairs.length}</p>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">{t("participants.totalPairs")}</p>
-        </Card>
-        <Card className="p-4 text-center">
-          <p className="text-3xl font-bold text-green-600">{paidCount}</p>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">{t("participants.paid")}</p>
-        </Card>
-        <Card className="p-4 text-center">
-          <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">{t("participants.pendingPayment")}</p>
-        </Card>
+        <StatCard value={allPairs.length} label={t("participants.totalPairs")} sub={`${competitions.length} soutěží`} color="bg-blue-500" />
+        <StatCard value={paidCount} label={t("participants.paid")} sub={`${allPairs.length > 0 ? Math.round((paidCount / allPairs.length) * 100) : 0}% zaplaceno`} color="bg-emerald-500" />
+        <StatCard value={pendingCount} label={t("participants.pendingPayment")} sub="čeká na platbu" color="bg-amber-500" />
       </div>
 
       {isLoading ? (

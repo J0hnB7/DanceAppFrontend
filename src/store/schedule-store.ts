@@ -15,6 +15,7 @@ interface ScheduleStore {
   generateSchedule: (competitionId: string, startTime?: string) => Promise<void>;
   moveSlot: (competitionId: string, slotId: string, newPosition: number) => void;
   addBreak: (competitionId: string, afterSlotId: string, durationMinutes: number) => Promise<void>;
+  removeSlot: (competitionId: string, slotId: string) => Promise<void>;
   publishSchedule: (competitionId: string) => Promise<void>;
   recalculateTimesLocally: () => void;
   setSlots: (slots: ScheduleSlot[]) => void;
@@ -91,6 +92,20 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       set({ slots, isDirty: true });
     } catch (e: unknown) {
       const msg = (e as Error).message ?? "Chyba při vkládání pauzy";
+      set({ error: msg });
+      useAlertsStore.getState().addAlert({ level: "error", title: msg });
+    }
+  },
+
+  removeSlot: async (competitionId, slotId) => {
+    const prevSlots = get().slots;
+    // Optimistic remove
+    set({ slots: prevSlots.filter((s) => s.id !== slotId), isDirty: true });
+    try {
+      await scheduleApi.remove(competitionId, slotId);
+    } catch (e: unknown) {
+      set({ slots: prevSlots });
+      const msg = (e as Error).message ?? "Chyba při mazání bloku";
       set({ error: msg });
       useAlertsStore.getState().addAlert({ level: "error", title: msg });
     }

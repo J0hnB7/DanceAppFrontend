@@ -35,7 +35,7 @@ export function SessionExpiryWarning() {
       await checkAuth();
       setExpiresAt(getTokenExpiryMs());
       setShowWarning(false);
-      toast({ title: t("sessionExpiry.refreshed"), variant: "success" } as Parameters<typeof toast>[0]);
+      toast({ title: t("sessionExpiry.refreshed"), variant: "success" });
     } catch {
       // Will redirect to login via auth guard
     } finally {

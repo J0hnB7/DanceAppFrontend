@@ -759,7 +759,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                 onClick={tb.onClick ?? (() => setTab(tb.value))}
                 className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-3 text-sm font-medium transition-colors lg:px-4 ${
                   tab === tb.value
-                    ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#6366F1]"
+                    ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#0a84ff]"
                     : "text-white/45 hover:text-white/80"
                 }`}
               >
