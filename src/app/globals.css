@@ -21,10 +21,11 @@
 
 :root {
   /* ── Backgrounds ─────────────────────────────────────── */
-  --background: #F3F4F6;
+  --background: #E8E8ED;
   --surface: #ffffff;
-  --surface-secondary: #f8f9fa;
-  --surface-hover: #f1f2f4;
+  --surface-secondary: #F5F5F7;
+  --surface-hover: #EBEBED;
+  --surface-2: #EBEBED;
 
   /* ── Sidebar ─────────────────────────────────────────── */
   --sidebar-bg: #0A1628;
@@ -33,14 +34,14 @@
   --sidebar-active-bg: #4F46E5;
 
   /* ── Borders ─────────────────────────────────────────── */
-  --border: #E5E7EB;
-  --border-secondary: #D1D5DB;
+  --border: #D1D1D6;
+  --border-secondary: #AEAEB2;
 
   /* ── Text ────────────────────────────────────────────── */
-  --foreground: #111827;
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-tertiary: #9CA3AF;
+  --foreground: #0F172A;
+  --text-primary: #0F172A;
+  --text-secondary: #374151;
+  --text-tertiary: #5C6B7F;
 
   /* ── Blue accent ─────────────────────────────────────── */
   --accent: #0a84ff;
@@ -77,6 +78,7 @@
   --surface: #151F2E;
   --surface-secondary: #1a2540;
   --surface-hover: #1e2b4a;
+  --surface-2: #1c2a42;
 
   /* ── Sidebar ─────────────────────────────────────────── */
   --sidebar-bg: #060d18;

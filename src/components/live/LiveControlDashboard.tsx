@@ -87,6 +87,26 @@ export function LiveControlDashboard({
     }
   })
 
+  // Polling fallback — refresh judge statuses immediately + every 8s when a heat is active
+  // Catches any updates missed by SSE (connection drops, reconnects, etc.)
+  useEffect(() => {
+    if (!selectedHeatId) return;
+    const realHeatId = heatIdMap[selectedHeatId];
+    if (!realHeatId) return;
+    const poll = () => {
+      liveApi.getJudgeStatuses(realHeatId)
+        .then((statuses) => {
+          for (const s of statuses) {
+            updateJudgeStatus(s.judgeId, s.status);
+          }
+        })
+        .catch(() => {});
+    };
+    poll(); // immediate fetch on mount / heat change
+    const id = setInterval(poll, 8_000);
+    return () => clearInterval(id);
+  }, [selectedHeatId, heatIdMap, updateJudgeStatus])
+
   // SSE — results published (all judges done) → load results (legacy fallback)
   useSSE(competitionId, 'results-published', async () => {
     if (!selectedHeatId) return

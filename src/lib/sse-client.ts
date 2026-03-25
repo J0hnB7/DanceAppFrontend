@@ -78,9 +78,16 @@ class SSEClient {
 
   private connect(competitionId: string) {
     const lastEventId = this.lastEventIds.get(competitionId);
-    const url = lastEventId
-      ? `/api/v1/sse/competitions/${competitionId}?lastEventId=${lastEventId}`
-      : `/api/v1/sse/competitions/${competitionId}`;
+    // EventSource can't send Authorization headers — pass JWT as query param instead
+    // Import is deferred to avoid potential circular import at module init time
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { getAccessToken } = require('./api-client') as { getAccessToken: () => string | null };
+    const token = getAccessToken();
+    const params = new URLSearchParams();
+    if (lastEventId) params.set('lastEventId', lastEventId);
+    if (token) params.set('authToken', token);
+    const qs = params.toString();
+    const url = `/api/v1/sse/competitions/${competitionId}/admin${qs ? `?${qs}` : ''}`;
     const source = new EventSource(url, { withCredentials: true });
 
     if (!this.handlers.has(competitionId)) {
@@ -166,3 +173,23 @@ class SSEClient {
 }
 
 export const sseClient = new SSEClient();
+
+// Hook that tracks SSE connection state for a competition.
+// Returns true when EventSource is open, false on disconnect/polling fallback.
+import { useState, useEffect } from 'react';
+
+export function useSSEConnected(competitionId: string): boolean {
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    const unsubReconnect = sseClient.onReconnect(competitionId, () => setConnected(true));
+    const unsubFallback = sseClient.onPollingFallback(competitionId, () => setConnected(false));
+
+    return () => {
+      unsubReconnect();
+      unsubFallback();
+    };
+  }, [competitionId]);
+
+  return connected;
+}

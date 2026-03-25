@@ -1,16 +1,17 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Settings, Users, CalendarDays, ArrowLeft, Radio, Pencil } from "lucide-react";
+import { CheckCircle2, Users, CalendarDays, ArrowLeft, Radio, Pencil } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { competitionsApi } from "@/lib/api/competitions";
 import { ScheduleSettings } from "@/components/schedule/schedule-settings";
 import { SectionManager } from "@/components/schedule/section-manager";
 import { ScheduleBuilder } from "@/components/schedule/schedule-builder";
-import { ScheduleTimeline } from "@/components/schedule/schedule-timeline";
 import { useScheduleStore } from "@/store/schedule-store";
+import { scheduleApi } from "@/lib/api/schedule";
+import { useSSE } from "@/hooks/use-sse";
 import { cn } from "@/lib/utils";
 
 type Step = 1 | 2 | 3;
@@ -135,7 +136,17 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [liveView, setLiveView] = useState<LiveView>("live");
+  const [activeFloor, setActiveFloor] = useState<{ danceName: string; heatNumber: number } | null>(null);
   const { loadSchedule, scheduleStatus } = useScheduleStore();
+
+  useSSE<{ type: string; danceName: string; heatNumber: number }>(competitionId, "floor-control", (data) => {
+    setActiveFloor({ danceName: data.danceName, heatNumber: data.heatNumber });
+  });
+
+  const handleFloorControl = useCallback(async (danceName: string, heatNumber: number) => {
+    setActiveFloor({ danceName, heatNumber });
+    try { await scheduleApi.floorControl(competitionId, danceName, heatNumber); } catch { /* ignore */ }
+  }, [competitionId]);
 
   const { data: competition } = useQuery({
     queryKey: ["competition", competitionId],
@@ -233,11 +244,21 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
             </div>
 
             {liveView === "live" ? (
-              <ScheduleTimeline
-                competitionId={competitionId}
-                role="organizer"
-                canManageRounds
-              />
+              <>
+                {activeFloor && (
+                  <div className="flex items-center gap-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/8 px-4 py-2 text-sm font-medium text-[var(--accent)]">
+                    <div className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
+                    Na parketu: {activeFloor.danceName} · Skupina {activeFloor.heatNumber}
+                  </div>
+                )}
+                <ScheduleBuilder
+                  competitionId={competitionId}
+                  competition={competition}
+                  restrictedEdit
+                  onFloorControl={handleFloorControl}
+                  activeFloor={activeFloor}
+                />
+              </>
             ) : (
               <ScheduleBuilder
                 competitionId={competitionId}

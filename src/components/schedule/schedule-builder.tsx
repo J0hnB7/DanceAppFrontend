@@ -40,6 +40,8 @@ interface ScheduleBuilderProps {
   competition?: CompetitionDto;
   /** In restricted mode, COMPLETED and RUNNING slots cannot be dragged or deleted */
   restrictedEdit?: boolean;
+  onFloorControl?: (danceName: string, heatNumber: number) => void;
+  activeFloor?: { danceName: string; heatNumber: number } | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -68,42 +70,38 @@ function parsePairCount(label: string): number | null {
   return match ? parseInt(match[1]) : null;
 }
 
-interface HeatItem {
-  type: "dance" | "transition";
-  name: string;
+interface GroupItem {
+  type: "group" | "transition";
+  num?: number;        // for type=group
   startMs: number;
   durationSec: number;
 }
 
-function buildHeats(
+/** Builds dance-first view: dance[] → group items (inverted from old heat-first view) */
+function buildDanceGroups(
   slotStartMs: number,
   heatCount: number,
   danceNames: string[],
   danceDurationSec: number,
   transitionSec: number,
 ) {
-  // Nástup/odchod after EACH dance: heat = danceCount × (danceDuration + transition)
   const perDanceSec = danceDurationSec + transitionSec;
   const heatSec = danceNames.length * perDanceSec;
 
-  return Array.from({ length: heatCount }, (_, h) => {
-    const heatStartMs = slotStartMs + h * heatSec * 1000;
-    const items: HeatItem[] = [];
-
-    danceNames.forEach((name, d) => {
-      const danceStartMs = heatStartMs + d * perDanceSec * 1000;
-      items.push({ type: "dance", name, startMs: danceStartMs, durationSec: danceDurationSec });
+  return danceNames.map((danceName, d) => {
+    const items: GroupItem[] = [];
+    for (let h = 0; h < heatCount; h++) {
+      const groupStartMs = slotStartMs + h * heatSec * 1000 + d * perDanceSec * 1000;
+      items.push({ type: "group", num: h + 1, startMs: groupStartMs, durationSec: danceDurationSec });
       if (transitionSec > 0) {
         items.push({
           type: "transition",
-          name: "Nástup / odchod",
-          startMs: danceStartMs + danceDurationSec * 1000,
+          startMs: groupStartMs + danceDurationSec * 1000,
           durationSec: transitionSec,
         });
       }
-    });
-
-    return { num: h + 1, items, startMs: heatStartMs };
+    }
+    return { danceName, items };
   });
 }
 
@@ -229,13 +227,18 @@ interface RoundCardProps {
   maxPairsOnFloor: number;
   drawAllowed: boolean;
   onAddBreakAfter: (slotId: string) => void;
+  /** If provided, Skupina rows are clickable — sends floor-control signal to judges */
+  onFloorControl?: (danceName: string, heatNumber: number) => void;
+  /** Currently active floor item (for highlighting) */
+  activeFloor?: { danceName: string; heatNumber: number } | null;
 }
 
 function RoundCard({
   slot, competitionId, danceNames, danceCount, advancingCount,
   danceDurationSec, transitionSec, maxPairsOnFloor, drawAllowed, onAddBreakAfter,
+  onFloorControl, activeFloor,
 }: RoundCardProps) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(!onFloorControl);
   const [showPairs, setShowPairs] = useState(false);
   const { toast } = useToast();
 
@@ -281,7 +284,7 @@ function RoundCard({
   const effectiveDances = danceNames.length > 0
     ? danceNames
     : Array.from({ length: danceCount || 3 }, (_, i) => `Tanec ${i + 1}`);
-  const heats = buildHeats(
+  const danceGroups = buildDanceGroups(
     new Date(slot.startTime).getTime(),
     heatCount,
     effectiveDances,
@@ -468,37 +471,45 @@ function RoundCard({
             </div>
           )}
 
-          {heats.map((heat) => (
-            <div key={heat.num}>
-              {/* Heat label */}
-              {heatCount > 1 && (
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">
-                    Skupina {heat.num}
-                  </span>
-                  <div className="flex-1 h-px bg-[var(--border)]" />
-                </div>
-              )}
+          {danceGroups.map((dance) => (
+            <div key={dance.danceName}>
+              {/* Dance label (primary grouping) */}
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">
+                  {dance.danceName}
+                </span>
+                <div className="flex-1 h-px bg-[var(--border)]" />
+              </div>
 
-              {/* Dances + transitions */}
+              {/* Groups + transitions */}
               <div className="space-y-0">
-                {heat.items.map((item, i) => (
-                  item.type === "dance" ? (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 py-1 border-b border-[var(--border)] last:border-0"
-                    >
-                      <span className="font-mono text-xs text-[var(--text-tertiary)] w-11 shrink-0 tabular-nums">
-                        {formatTimeMs(item.startMs)}
-                      </span>
-                      <span className="text-sm text-[var(--text-primary)] flex-1">
-                        {item.name}
-                      </span>
-                      <span className="text-xs text-[var(--text-tertiary)] tabular-nums shrink-0">
-                        {formatDurSec(item.durationSec)}
-                      </span>
-                    </div>
-                  ) : (
+                {dance.items.map((item, i) => {
+                  if (item.type === "group") {
+                    const isActive = activeFloor?.danceName === dance.danceName && activeFloor?.heatNumber === item.num;
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => onFloorControl?.(dance.danceName, item.num!)}
+                        className={cn(
+                          "flex items-center gap-3 py-1 border-b border-[var(--border)] last:border-0 transition-colors",
+                          onFloorControl ? "cursor-pointer hover:bg-[var(--accent)]/8" : "",
+                          isActive ? "bg-[var(--accent)]/15 border-l-2 border-l-[var(--accent)]" : ""
+                        )}
+                      >
+                        <span className="font-mono text-xs text-[var(--text-tertiary)] w-11 shrink-0 tabular-nums">
+                          {formatTimeMs(item.startMs)}
+                        </span>
+                        <span className={cn("text-sm flex-1", isActive ? "text-[var(--accent)] font-semibold" : "text-[var(--text-primary)]")}>
+                          Skupina {item.num}
+                          {isActive && <span className="ml-2 text-[10px] font-bold uppercase tracking-widest opacity-70">● na parketu</span>}
+                        </span>
+                        <span className="text-xs text-[var(--text-tertiary)] tabular-nums shrink-0">
+                          {formatDurSec(item.durationSec)}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
                     <div
                       key={i}
                       className="flex items-center gap-3 py-0.5 border-b border-[var(--border)] last:border-0"
@@ -513,8 +524,8 @@ function RoundCard({
                         {formatDurSec(item.durationSec)}
                       </span>
                     </div>
-                  )
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -611,7 +622,7 @@ function SimpleCard({ slot, competitionId, onDelete }: SimpleCardProps) {
 
 // ── ScheduleBuilder ────────────────────────────────────────────────────────────
 
-export function ScheduleBuilder({ competitionId, competition, restrictedEdit = false }: ScheduleBuilderProps) {
+export function ScheduleBuilder({ competitionId, competition, restrictedEdit = false, onFloorControl, activeFloor }: ScheduleBuilderProps) {
   const { toast } = useToast();
   const { slots, isDirty, isGenerating, scheduleStatus, moveSlot, generateSchedule, publishSchedule, removeSlot } = useScheduleStore();
   const [breakAfterSlotId, setBreakAfterSlotId] = useState<string | null>(null);
@@ -822,6 +833,8 @@ export function ScheduleBuilder({ competitionId, competition, restrictedEdit = f
                     maxPairsOnFloor={maxPairsOnFloor}
                     drawAllowed={drawAllowedMap.get(slot.id) ?? false}
                     onAddBreakAfter={setBreakAfterSlotId}
+                    onFloorControl={onFloorControl}
+                    activeFloor={activeFloor}
                   />
                 );
               }

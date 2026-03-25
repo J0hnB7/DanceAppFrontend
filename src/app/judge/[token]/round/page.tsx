@@ -1,9 +1,9 @@
 "use client";
 
-import { use, useState, useEffect, useCallback } from "react";
+import { use, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useOnline } from "@/hooks/use-online";
-import { CloudOff, Wifi, WifiOff, AlertTriangle, Sun, Moon, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle2, Bell, CloudOff, Wifi, WifiOff, AlertTriangle, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
@@ -16,48 +16,31 @@ import { cn } from "@/lib/utils";
 interface PairDto {
   id: string;
   startNumber: number;
-  dancer1FirstName?: string;
   dancer1LastName?: string;
-  dancer2FirstName?: string;
   dancer2LastName?: string;
 }
 
 interface DanceDto { id: string; name: string; code?: string; danceName?: string; }
+interface HeatGroup { heatNumber: number; pairIds: string[]; }
 
 interface RoundInfo {
   id: string;
   roundNumber: number;
   roundType: string;
   pairsToAdvance?: number | null;
-  dances?: DanceDto[];
 }
-
-interface HeatGroup { heatNumber: number; pairIds: string[]; }
 
 interface ActiveRoundResponse {
   round: RoundInfo;
   dances: DanceDto[];
   pairs: PairDto[];
   heats: HeatGroup[];
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function roundLabel(type: string): string {
-  switch (type) {
-    case "PRELIMINARY":   return "Předkolo";
-    case "QUARTER_FINAL": return "Čtvrtfinále";
-    case "SEMIFINAL":     return "Semifinále";
-    case "FINAL":         return "Finále";
-    default:              return type;
-  }
+  sectionName?: string;
 }
 
 // ── Couple tile ───────────────────────────────────────────────────────────────
 
-function CoupleTile({
-  pair, isSelected, isDisabled, onToggle,
-}: {
+function CoupleTile({ pair, isSelected, isDisabled, onToggle }: {
   pair: PairDto; isSelected: boolean; isDisabled: boolean; onToggle: () => void;
 }) {
   return (
@@ -65,8 +48,7 @@ function CoupleTile({
       onClick={onToggle}
       disabled={isDisabled && !isSelected}
       className={cn(
-        "relative flex flex-col items-center justify-center rounded-xl border-2 p-2 transition-all active:scale-95 select-none",
-        "min-h-[76px]",
+        "relative flex flex-col items-center justify-center rounded-xl border-2 p-2 transition-all active:scale-95 select-none min-h-[76px]",
         isSelected
           ? "border-[var(--accent)] bg-[var(--accent)] shadow-lg"
           : isDisabled
@@ -77,11 +59,9 @@ function CoupleTile({
       {isSelected && (
         <span className="absolute right-1.5 top-1.5 flex h-[14px] w-[14px] items-center justify-center rounded-full bg-white/25 text-[8px] font-bold text-white">✓</span>
       )}
-      {/* Dominant number */}
       <span className={cn("text-[22px] font-black leading-none tabular-nums", isSelected ? "text-white" : "text-[var(--text-primary)]")}>
         {pair.startNumber}
       </span>
-      {/* Surname line */}
       {(pair.dancer1LastName || pair.dancer2LastName) && (
         <span className={cn("mt-1 w-full truncate text-center text-[8px] font-medium leading-tight", isSelected ? "text-white/70" : "text-[var(--text-tertiary)]")}>
           {[pair.dancer1LastName, pair.dancer2LastName].filter(Boolean).join(" / ")}
@@ -115,7 +95,9 @@ function ConfirmSheet({ open, selected, required, onConfirm, onBack }: {
         </div>
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1" onClick={onBack}>Zpět</Button>
-          <Button className="flex-1" onClick={onConfirm}>Odeslat tak</Button>
+          {selected > required && (
+            <Button className="flex-1" onClick={onConfirm}>Odeslat tak</Button>
+          )}
         </div>
       </div>
     </div>
@@ -131,16 +113,24 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   const isOnline = useOnline();
 
   const [round, setRound] = useState<RoundInfo | null>(null);
+  const [sectionName, setSectionName] = useState<string | null>(null);
+  const [dances, setDances] = useState<DanceDto[]>([]);
   const [pairs, setPairs] = useState<PairDto[]>([]);
   const [heats, setHeats] = useState<HeatGroup[]>([]);
+
+  // Active dance index — first dance shown by default, updated by floor-control SSE
   const [activeDanceIdx, setActiveDanceIdx] = useState(0);
-  const [currentHeatIdx, setCurrentHeatIdx] = useState(0);
-  // danceCode → Set<pairId>
-  const [selected, setSelected] = useState<Map<string, Set<string>>>(new Map());
+  // Active heat (group) — 0-indexed, updated by floor-control SSE
+  const [activeHeatIdx, setActiveHeatIdx] = useState(0);
+
+  // Global recalled set — one cross per pair across the whole round
+  const [recalled, setRecalled] = useState<Set<string>>(new Set());
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState<Set<string>>(new Set());
+  const [submitted, setSubmitted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [pingAlert, setPingAlert] = useState(false);
   const [isDark, setIsDark] = useState(() =>
     typeof document !== "undefined" && document.documentElement.classList.contains("dark")
   );
@@ -160,66 +150,98 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     apiClient
       .get<ActiveRoundResponse>("/judge/active-round", { params: { competitionId } })
       .then((r) => {
-        const dances = (r.data.dances ?? []).map((d) => ({
-          id: d.id,
-          name: d.danceName ?? d.name ?? "",
-          code: d.code,
-        }));
-        setRound({ ...r.data.round, dances });
+        setRound(r.data.round);
+        setDances((r.data.dances ?? []).map((d) => ({ ...d, name: d.danceName ?? d.name ?? "" })));
         setPairs(r.data.pairs);
         setHeats(r.data.heats ?? []);
+        setSectionName(r.data.sectionName ?? null);
       })
       .catch(() => router.push(`/judge/${token}/lobby`))
       .finally(() => setLoading(false));
   }, [competitionId, token, router]);
 
-  const activeDance     = round?.dances?.[activeDanceIdx];
-  const activeDanceCode = activeDance?.code ?? activeDance?.name ?? "";
-  const activeSelected  = selected.get(activeDanceCode) ?? new Set<string>();
+  // Refs to avoid stale closure in SSE callback
+  const dancesRef = useRef<DanceDto[]>([]);
+  const heatsRef  = useRef<HeatGroup[]>([]);
+  useEffect(() => { dancesRef.current = dances; }, [dances]);
+  useEffect(() => { heatsRef.current  = heats;  }, [heats]);
 
-  // Skating System: judge may give at most `pairsToAdvance` crosses
+  // Subscribe to public SSE channel: floor-control + judge-ping
+  useEffect(() => {
+    if (!competitionId) return;
+    const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
+    es.addEventListener("floor-control", (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { danceName: string; heatNumber: number };
+        const danceIdx = dancesRef.current.findIndex((d) => d.name === data.danceName);
+        if (danceIdx >= 0) setActiveDanceIdx(danceIdx);
+        const heatIdx = heatsRef.current.findIndex((h) => h.heatNumber === data.heatNumber);
+        if (heatIdx >= 0) setActiveHeatIdx(heatIdx);
+      } catch { /* ignore malformed */ }
+    });
+    es.addEventListener("judge-ping", (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { judgeTokenId: string };
+        if (data.judgeTokenId === adjudicatorId) {
+          setPingAlert(true);
+          setTimeout(() => setPingAlert(false), 4000);
+        }
+      } catch { /* ignore */ }
+    });
+    return () => es.close();
+  }, [competitionId, adjudicatorId]);
+
+  // Heartbeat every 20s — keeps admin dashboard online indicator accurate
+  useEffect(() => {
+    if (!adjudicatorId || !isOnline) return;
+    const sendHeartbeat = () =>
+      apiClient.put(`/judge-access/${adjudicatorId}/heartbeat`).catch(() => {});
+    sendHeartbeat();
+    const id = setInterval(sendHeartbeat, 20_000);
+    return () => clearInterval(id);
+  }, [adjudicatorId, isOnline]);
+
+  const activeDance = dances[activeDanceIdx];
+  const activeHeat  = heats.length > 0 ? heats[activeHeatIdx] : null;
+
+  // Show pairs for the selected group only; fall back to all pairs if no heats
+  const visiblePairs = activeHeat
+    ? pairs.filter((p) => activeHeat.pairIds.includes(p.id))
+    : pairs;
+
   const allowedCrosses = round?.pairsToAdvance ?? 0;
-  const givenCrosses   = activeSelected.size;
+  const givenCrosses   = recalled.size;
   const remaining      = Math.max(0, allowedCrosses - givenCrosses);
   const atLimit        = allowedCrosses > 0 && givenCrosses >= allowedCrosses;
-
-  // Current heat — if no heat groups, treat all pairs as one virtual heat
-  const currentHeat     = heats.length > 0 ? heats[currentHeatIdx] : null;
-  const currentHeatPairs = currentHeat
-    ? pairs.filter((p) => currentHeat.pairIds.includes(p.id))
-    : pairs;
-  const totalHeats = heats.length;
+  const isExact        = allowedCrosses > 0 && givenCrosses === allowedCrosses;
 
   const togglePair = (pairId: string) => {
-    setSelected((prev) => {
-      const next = new Map(prev);
-      const s = new Set(next.get(activeDanceCode) ?? []);
-      if (s.has(pairId)) {
-        s.delete(pairId);
+    setRecalled((prev) => {
+      const next = new Set(prev);
+      if (next.has(pairId)) {
+        next.delete(pairId);
       } else {
-        // Hard limit — WDSF Skating System: never exceed pairsToAdvance
-        if (allowedCrosses > 0 && s.size >= allowedCrosses) return prev;
-        s.add(pairId);
+        if (allowedCrosses > 0 && next.size >= allowedCrosses) return prev;
+        next.add(pairId);
       }
-      next.set(activeDanceCode, s);
       return next;
     });
   };
 
   const doSubmit = useCallback(async () => {
-    if (!round || !adjudicatorId || !activeDance) return;
+    if (!round || !adjudicatorId) return;
     setSubmitting(true);
     setShowConfirm(false);
 
-    const recalls = pairs.map((p) => ({ pairId: p.id, recalled: activeSelected.has(p.id) }));
+    const selectedPairIds = pairs.filter((p) => recalled.has(p.id)).map((p) => p.id);
 
     try {
-      await Promise.all(recalls.map((r) =>
+      await Promise.all(pairs.map((p) =>
         judgeOfflineStore.saveMark({
-          key: `${adjudicatorId}-${round.id}-${activeDanceCode}-${r.pairId}`,
+          key: `${adjudicatorId}-${round.id}-${p.id}`,
           judgeTokenId: adjudicatorId, roundId: round.id,
-          dance: activeDanceCode, danceId: activeDance.id,
-          pairId: r.pairId, recalled: r.recalled,
+          dance: "", danceId: "",
+          pairId: p.id, recalled: recalled.has(p.id),
           deviceToken: deviceToken ?? "", createdAt: new Date().toISOString(), synced: false,
         })
       ));
@@ -229,22 +251,16 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       try {
         await apiClient.post(
           `/rounds/${round.id}/callbacks`,
-          { dance: activeDanceCode, recalls, deviceToken },
+          { selectedPairIds },
           { params: { judgeTokenId: adjudicatorId } }
         );
-        await judgeOfflineStore.markAsSynced(recalls.map((r) => `${adjudicatorId}-${round.id}-${activeDanceCode}-${r.pairId}`));
+        await judgeOfflineStore.markAsSynced(pairs.map((p) => `${adjudicatorId}-${round.id}-${p.id}`));
       } catch { /* saved offline */ }
     }
 
-    setSubmitted((prev) => new Set([...prev, activeDanceCode]));
-    if (activeDanceIdx < (round.dances?.length ?? 1) - 1) {
-      setActiveDanceIdx((i) => i + 1);
-      setCurrentHeatIdx(0);
-    } else {
-      router.push(`/judge/${token}/lobby`);
-    }
+    setSubmitted(true);
     setSubmitting(false);
-  }, [round, adjudicatorId, activeDance, activeDanceCode, activeDanceIdx, activeSelected, deviceToken, isOnline, pairs, router, token]);
+  }, [round, adjudicatorId, pairs, recalled, deviceToken, isOnline, router, token]);
 
   const handleSubmit = () => {
     if (allowedCrosses > 0 && givenCrosses !== allowedCrosses) {
@@ -257,14 +273,16 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   if (loading) return <div className="flex min-h-screen items-center justify-center"><Spinner size="lg" /></div>;
   if (!round) return null;
 
-  const dances = round.dances ?? [];
-  const isAlreadyDone = submitted.has(activeDanceCode);
-  const isExact = allowedCrosses > 0 && givenCrosses === allowedCrosses;
-
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)]">
 
       {/* Offline banner */}
+      {pingAlert && (
+        <div className="flex items-center justify-center gap-2 border-b border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-2.5 text-sm font-semibold text-[var(--accent)]">
+          <Bell className="h-4 w-4" /> Upozornění od porotní komise — prosím odevzdejte hodnocení
+        </div>
+      )}
+
       {!isOnline && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
           <CloudOff className="h-3.5 w-3.5" /> Offline — hodnocení se uloží lokálně
@@ -273,30 +291,17 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
 
       {/* ── Header ── */}
       <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2 shadow-sm">
+        {sectionName && (
+          <p className="mx-auto max-w-lg truncate pb-1 text-[11px] font-medium text-[var(--text-tertiary)]">
+            {sectionName}
+          </p>
+        )}
         <div className="mx-auto max-w-lg flex items-center justify-between gap-2">
 
-          {/* Dance tabs */}
-          <div className="flex gap-1 overflow-x-auto">
-            {dances.length > 1 ? dances.map((d, i) => {
-              const code = d.code ?? d.name;
-              const done = submitted.has(code);
-              return (
-                <button key={d.id} onClick={() => { setActiveDanceIdx(i); setCurrentHeatIdx(0); }}
-                  className={cn(
-                    "flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                    i === activeDanceIdx ? "bg-[var(--accent)] text-white"
-                      : done ? "bg-green-600 text-white"
-                      : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
-                  )}>
-                  {d.name}{done && <span className="text-[9px]">✓</span>}
-                </button>
-              );
-            }) : activeDance ? (
-              <span className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white">
-                {activeDance.name}
-              </span>
-            ) : null}
-          </div>
+          {/* Current dance — single read-only pill */}
+          <span className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white">
+            {activeDance?.name ?? round.roundType}
+          </span>
 
           {/* Right controls */}
           <div className="flex shrink-0 items-center gap-2">
@@ -312,59 +317,66 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       {/* ── Body ── */}
       <div className="mx-auto w-full max-w-lg flex-1 px-4 pt-4 pb-36">
 
-        {isAlreadyDone ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-2xl">✓</div>
-            <p className="font-semibold text-[var(--text-primary)]">Hodnocení odesláno</p>
-            <p className="text-sm text-[var(--text-secondary)]">{activeDance?.name} — přejdi na další tanec</p>
+        {submitted ? (
+          <div className="flex flex-col items-center gap-6 py-16 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--success)]/10">
+              <CheckCircle2 className="h-10 w-10 text-[var(--success)]" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-[var(--text-primary)]">Hodnocení odesláno</p>
+              <p className="mt-1.5 text-sm text-[var(--text-secondary)]">Čeká se na další kolo</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)]" />
+              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.2s]" />
+              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.4s]" />
+            </div>
           </div>
         ) : (
           <>
-            {/* ── Cross counter — Skating System ── */}
+            {/* ── Cross counter ── */}
             {allowedCrosses > 0 && (
-              <div className="mb-5 text-center">
+              <div className="mb-4 text-center">
                 <p className="mb-1 text-xs font-medium uppercase tracking-widest text-[var(--text-tertiary)]">Vybráno</p>
                 <p className={cn(
                   "text-4xl font-black tabular-nums leading-none transition-colors",
-                  isExact ? "text-green-500" : givenCrosses > allowedCrosses ? "text-red-500" : "text-[var(--text-primary)]"
+                  isExact ? "text-green-500" : "text-[var(--text-primary)]"
                 )}>
                   {givenCrosses} <span className="text-[var(--text-tertiary)] font-light">/</span> {allowedCrosses}
                 </p>
+                {remaining > 0 && (
+                  <p className="mt-1 text-sm text-[var(--text-tertiary)]">{remaining} zbývá</p>
+                )}
               </div>
             )}
 
-            {/* ── Heat navigation ── */}
-            {totalHeats > 1 && (
-              <div className="mb-4 flex items-center justify-between">
-                <button
-                  onClick={() => setCurrentHeatIdx((i) => Math.max(0, i - 1))}
-                  disabled={currentHeatIdx === 0}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] disabled:opacity-30"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <span className="text-sm font-semibold text-[var(--text-primary)]">
-                  Skupina {currentHeatIdx + 1}
-                  <span className="ml-1 text-[var(--text-tertiary)] font-normal">/ {totalHeats}</span>
-                  <span className="ml-2 text-xs text-[var(--text-tertiary)]">· {currentHeatPairs.length} párů</span>
-                </span>
-                <button
-                  onClick={() => setCurrentHeatIdx((i) => Math.min(totalHeats - 1, i + 1))}
-                  disabled={currentHeatIdx === totalHeats - 1}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] disabled:opacity-30"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+            {/* ── Group selector ── */}
+            {heats.length > 1 && (
+              <div className="mb-4 flex gap-1.5 flex-wrap">
+                {heats.map((heat, i) => (
+                  <button
+                    key={heat.heatNumber}
+                    onClick={() => setActiveHeatIdx(i)}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors border",
+                      i === activeHeatIdx
+                        ? "bg-[var(--accent)] border-[var(--accent)] text-white"
+                        : "bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]"
+                    )}
+                  >
+                    Skupina {heat.heatNumber}
+                  </button>
+                ))}
               </div>
             )}
 
-            {/* ── Couple grid ── */}
+            {/* ── Pairs grid for selected group ── */}
             <div className="grid grid-cols-4 gap-2">
-              {currentHeatPairs.map((pair) => (
+              {visiblePairs.map((pair) => (
                 <CoupleTile
                   key={pair.id}
                   pair={pair}
-                  isSelected={activeSelected.has(pair.id)}
+                  isSelected={recalled.has(pair.id)}
                   isDisabled={atLimit}
                   onToggle={() => togglePair(pair.id)}
                 />
@@ -375,48 +387,32 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       </div>
 
       {/* ── Bottom bar ── */}
-      {!isAlreadyDone && (
+      {!submitted && (
         <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--border)] bg-[var(--surface)] px-4 pt-3 pb-4 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
           <div className="mx-auto max-w-lg space-y-2">
-
-            {/* Main actions */}
             <div className="flex gap-2">
               <Button
                 variant="outline" size="lg" className="shrink-0 px-5 font-semibold"
-                onClick={() => setSelected((prev) => { const next = new Map(prev); next.set(activeDanceCode, new Set()); return next; })}
+                onClick={() => setRecalled(new Set())}
               >
                 {t("judge.clear", locale)}
               </Button>
 
-              {/* Submit button with counter pill */}
-              <button
+              <Button
+                size="lg"
+                className="flex-1 font-bold text-base"
                 onClick={handleSubmit}
                 disabled={submitting || givenCrosses === 0}
-                className={cn(
-                  "flex flex-1 items-center justify-between overflow-hidden rounded-[var(--radius-md)] transition-all disabled:opacity-40",
-                  isExact ? "bg-[var(--accent)]" : "bg-[var(--accent)]/75"
-                )}
+                loading={submitting}
               >
-                <span className="flex-1 px-4 text-sm font-bold text-white">
-                  {givenCrosses} {t("judge.selected_of", locale) || "vybráno"}
-                </span>
-                <span className={cn(
-                  "flex items-center gap-1 px-4 py-4 text-sm font-bold",
-                  isExact ? "bg-white/15 text-white" : "bg-black/20 text-white/80"
-                )}>
-                  {remaining > 0 && <span className="text-xs">+{remaining} ◆ </span>}
-                  Odeslat
-                </span>
-              </button>
+                Odeslat
+              </Button>
             </div>
 
-            {/* Context footer: "Judging: Čtvrtfinále · Skupina 3 · Cha Cha" */}
             <p className="text-center text-[11px] text-[var(--text-tertiary)]">
-              Hodnotíš: <span className="font-semibold text-[var(--text-secondary)]">
-                {roundLabel(round.roundType)}
-                {totalHeats > 1 && ` · Skupina ${currentHeatIdx + 1}`}
-                {activeDance && ` · ${activeDance.name}`}
-              </span>
+              {activeDance?.name ?? ""}
+              {heats.length > 1 && ` · Skupina ${heats[activeHeatIdx]?.heatNumber ?? 1}`}
+              {` · ${pairs.length} párů · postupuje ${allowedCrosses}`}
             </p>
           </div>
         </div>

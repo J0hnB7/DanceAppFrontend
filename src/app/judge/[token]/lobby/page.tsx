@@ -3,7 +3,7 @@
 import { use, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useOnline } from "@/hooks/use-online";
-import { Trophy, WifiOff, Clock, CheckCircle2 } from "lucide-react";
+import { Trophy, WifiOff, Clock, CheckCircle2, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
@@ -42,6 +42,11 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
   const competitionId = typeof window !== "undefined"
     ? localStorage.getItem("judge_competition_id")
     : null;
+  const adjudicatorId = typeof window !== "undefined"
+    ? localStorage.getItem("judge_adjudicator_id")
+    : null;
+
+  const [pingAlert, setPingAlert] = useState(false);
 
   // SSE reconnect rehydration: on reconnect, check for active round and navigate if found
   const { pollingFallback } = useJudgeSSERehydration(
@@ -105,7 +110,6 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
   useEffect(() => {
     if (isOnline && pendingCount > 0) {
       const deviceToken = localStorage.getItem("judge_device_token");
-      const adjudicatorId = localStorage.getItem("judge_adjudicator_id");
       if (adjudicatorId && deviceToken) {
         judgeOfflineStore.syncAll(adjudicatorId, deviceToken).then(() => {
           judgeOfflineStore.getPendingCount().then(setPendingCount);
@@ -113,6 +117,32 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
       }
     }
   }, [isOnline, pendingCount]);
+
+  // Heartbeat every 20s — keeps admin dashboard online indicator accurate
+  useEffect(() => {
+    if (!adjudicatorId || !isOnline) return;
+    const sendHeartbeat = () =>
+      apiClient.put(`/judge-access/${adjudicatorId}/heartbeat`).catch(() => {});
+    sendHeartbeat();
+    const id = setInterval(sendHeartbeat, 20_000);
+    return () => clearInterval(id);
+  }, [adjudicatorId, isOnline]);
+
+  // Listen for judge-ping on public SSE channel
+  useEffect(() => {
+    if (!competitionId || !adjudicatorId) return;
+    const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
+    es.addEventListener("judge-ping", (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { judgeTokenId: string };
+        if (data.judgeTokenId === adjudicatorId) {
+          setPingAlert(true);
+          setTimeout(() => setPingAlert(false), 4000);
+        }
+      } catch { /* ignore */ }
+    });
+    return () => es.close();
+  }, [competitionId, adjudicatorId]);
 
   if (loading) {
     return (
@@ -124,6 +154,13 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)]">
+      {/* Ping alert */}
+      {pingAlert && (
+        <div className="flex items-center justify-center gap-2 border-b border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-2.5 text-sm font-semibold text-[var(--accent)]">
+          <Bell className="h-4 w-4" /> Upozornění od porotní komise
+        </div>
+      )}
+
       {/* Polling fallback banner */}
       {pollingFallback && isOnline && (
         <div className="flex items-center justify-center gap-2 border-b border-amber-200/30 bg-amber-50/20 px-4 py-2 text-xs font-medium text-amber-700 dark:text-amber-400">

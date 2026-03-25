@@ -1,8 +1,17 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import webpack from "webpack";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
+  webpack(config) {
+    if (process.env.NEXT_PUBLIC_MOCK_API !== "true") {
+      config.plugins.push(
+        new webpack.IgnorePlugin({ resourceRegExp: /src\/mocks/ })
+      );
+    }
+    return config;
+  },
   async rewrites() {
     return [
       {

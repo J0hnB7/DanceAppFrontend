@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Copy, Plus, Trash2, Download, Printer, QrCode, X, ClipboardList, Eye, EyeOff } from "lucide-react";
+import { Copy, Plus, Trash2, Download, Printer, QrCode, X, ClipboardList, Eye, EyeOff, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { judgeTokensApi, type JudgeTokenDto } from "@/lib/api/judge-tokens";
+import { liveApi } from "@/lib/api/live";
+import { useLiveStore } from "@/store/live-store";
+import { useSSE } from "@/hooks/use-sse";
 import { toast } from "@/hooks/use-toast";
 import QRCode from "qrcode";
 import { useLocale } from "@/contexts/locale-context";
@@ -142,6 +145,16 @@ function PinCell({ pin }: { pin?: string }) {
   );
 }
 
+function OnlineDot({ online }: { online: boolean }) {
+  return (
+    <div
+      className={`h-2 w-2 rounded-full ${online ? "animate-pulse" : ""}`}
+      style={{ background: online ? "var(--success)" : "var(--text-tertiary)" }}
+      title={online ? "Online" : "Offline"}
+    />
+  );
+}
+
 export function JudgesTab({ competitionId }: { competitionId: string }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [count, setCount] = useState("5");
@@ -238,6 +251,22 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
     window.addEventListener("afterprint", afterPrint);
   };
 
+  // SSE: track online/status per judge
+  const { judgeStatuses, updateJudgeStatus, selectedHeatId } = useLiveStore();
+
+  useSSE(competitionId, "judge:status-changed", (data: { judgeId: string; status: string }) => {
+    updateJudgeStatus(data.judgeId, data.status as Parameters<typeof updateJudgeStatus>[1]);
+  });
+
+  const handlePing = useCallback(async (judgeId: string) => {
+    try {
+      await liveApi.pingJudge(judgeId);
+      toast({ title: "Ping odeslán porotci" });
+    } catch {
+      toast({ title: "Ping se nezdařil", variant: "destructive" });
+    }
+  }, []);
+
   const activeTokens = tokens?.filter((tok) => tok.active) ?? [];
 
   if (printMode) {
@@ -289,6 +318,7 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
               <TableHead>{t("judges.table.status")}</TableHead>
               <TableHead>Jméno</TableHead>
               <TableHead>Země</TableHead>
+              <TableHead className="w-16">Online</TableHead>
               <TableHead className="w-36">{t("judges.table.actions")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -322,9 +352,31 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
                   />
                 </TableCell>
                 <TableCell>
+                  <div className="flex items-center justify-center">
+                    <OnlineDot online={tok.connected ?? false} />
+                  </div>
+                </TableCell>
+                <TableCell>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => setQrToken(tok)}><QrCode className="h-3.5 w-3.5" /></Button>
                     <Button variant="ghost" size="icon-sm" onClick={() => { navigator.clipboard.writeText(`${judgeBaseUrl}/${tok.rawToken ?? tok.token}`); toast({ title: t("judges.linkCopied") }); }}><Copy className="h-3.5 w-3.5" /></Button>
+                    {/* Ping — only when live heat is active and judge is pending/scoring */}
+                    {selectedHeatId && tok.id && (() => {
+                      const status = judgeStatuses[tok.id];
+                      if (status === "pending" || status === "scoring") {
+                        return (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            title="Ping porotce"
+                            onClick={() => handlePing(tok.id)}
+                          >
+                            <Bell className="h-3.5 w-3.5" />
+                          </Button>
+                        );
+                      }
+                      return null;
+                    })()}
                     <Button variant="ghost" size="icon-sm" className="text-[var(--text-tertiary)] hover:text-[var(--destructive)]" onClick={() => setRevokeConfirmId(tok.id)} disabled={revokeToken.isPending}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </TableCell>

@@ -32,6 +32,7 @@ import {
   Download,
   ArrowLeft,
   Settings,
+  Activity,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -749,10 +750,12 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
               { value: "sections", label: "Kategorie", icon: <Plus className="h-3.5 w-3.5" /> },
               { value: "pairs", label: t("competitionDetail.pairs"), icon: <Users className="h-3.5 w-3.5" /> },
               { value: "judges", label: t("competitionDetail.judges"), icon: <UserCircle2 className="h-3.5 w-3.5" /> },
-              { value: "analytics", label: "Vyhodnocení", icon: <ListOrdered className="h-3.5 w-3.5" /> },
-              { value: "schedule", label: "Harmonogram", icon: <Clock className="h-3.5 w-3.5" />, onClick: () => router.push(`/dashboard/competitions/${id}/schedule`) },
               { value: "content", label: t("competitionDetail.content"), icon: <Newspaper className="h-3.5 w-3.5" /> },
               { value: "settings", label: t("competitionDetail.settings"), icon: <Settings className="h-3.5 w-3.5" /> },
+              { value: "checkin", label: "Check in", icon: <ClipboardCheck className="h-3.5 w-3.5" />, onClick: () => router.push(`/dashboard/competitions/${id}/presence`) },
+              { value: "schedule", label: "Harmonogram", icon: <Clock className="h-3.5 w-3.5" />, onClick: () => router.push(`/dashboard/competitions/${id}/schedule`) },
+              { value: "live", label: "Live řízení", icon: <Activity className="h-3.5 w-3.5" />, onClick: () => router.push(`/dashboard/competitions/${id}/live`) },
+              { value: "analytics", label: "Vyhodnocení", icon: <ListOrdered className="h-3.5 w-3.5" /> },
             ] as { value: string; label: string; icon: React.ReactNode; onClick?: () => void }[]).map((tb) => (
               <button
                 key={tb.value}
@@ -1439,6 +1442,51 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                 </div>
               </CardContent>
             </Card>
+
+            {/* Veřejné zobrazení */}
+            <Card>
+              <CardContent className="flex flex-col gap-4 pt-5">
+                <div>
+                  <p className="mb-1 text-sm font-semibold text-[var(--text-primary)]">Kiosk / projekce</p>
+                  <p className="mb-3 text-xs text-[var(--text-secondary)]">
+                    Odkaz pro zobrazení live stavu na velkoplošné obrazovce nebo kioskovém zařízení.
+                    Stránka nevyžaduje přihlášení.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-1.5 text-xs text-[var(--text-secondary)] overflow-x-auto">
+                      {typeof window !== "undefined" ? `${window.location.origin}/competitions/${competition.id}/display` : `/competitions/${competition.id}/display`}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/competitions/${competition.id}/display`); toast({ title: "Odkaz zkopírován" }); }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`/competitions/${competition.id}/display`, "_blank")}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Sponsors placeholder */}
+                <div>
+                  <p className="mb-1 text-sm font-semibold text-[var(--text-primary)]">Sponzoři / partneři</p>
+                  <p className="mb-2 text-xs text-[var(--text-secondary)]">
+                    Logotip a odkaz na web sponzora.
+                  </p>
+                  <div className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center">
+                    <p className="text-sm text-[var(--text-tertiary)]">Správa sponzorů bude dostupná v příští verzi.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
@@ -1555,17 +1603,65 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                   <p className="mb-2 text-xs text-[var(--text-secondary)]">
                     {t("competition.settings.publicPageDesc")}
                   </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      window.open(`/competitions/${competition.id}`, "_blank")
-                    }
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    {t("competition.openPublicPage")}
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        window.open(`/competitions/${competition.id}`, "_blank")
+                      }
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      {t("competition.openPublicPage")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        window.open(`/competitions/${competition.id}/display`, "_blank")
+                      }
+                    >
+                      <Layers className="h-4 w-4" />
+                      Kiosk / projekce
+                    </Button>
+                  </div>
                 </div>
+
+                <Separator />
+
+                {/* Scoring system per section */}
+                {sections && sections.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">Soutěžní systém</p>
+                    <p className="mb-3 text-xs text-[var(--text-secondary)]">Způsob hodnocení pro každou kategorii.</p>
+                    <div className="flex flex-col gap-2">
+                      {sections.map((section) => (
+                        <div key={section.id} className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+                          <div>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{section.name}</p>
+                            <p className="text-xs text-[var(--text-secondary)]">{section.ageCategory} · {section.level}</p>
+                          </div>
+                          <Select
+                            defaultValue={(section as unknown as { scoringSystem?: string }).scoringSystem ?? "skating"}
+                            onValueChange={(v) => {
+                              // Optimistic update — actual persistence would need a section PATCH endpoint
+                              toast({ title: `Systém pro ${section.name} nastaven na ${v}` });
+                            }}
+                          >
+                            <SelectTrigger className="h-8 w-36 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="skating">Skating System</SelectItem>
+                              <SelectItem value="wdsf">WDSF</SelectItem>
+                              <SelectItem value="custom">Vlastní</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
