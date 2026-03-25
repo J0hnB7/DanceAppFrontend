@@ -13,7 +13,6 @@ interface SectionProgressionPreviewProps {
 }
 
 const ROUND_TYPE_LABELS: Record<string, string> = {
-  PRELIMINARY: "Předkolo",
   QUARTER_FINAL: "Čtvrtfinále",
   SEMIFINAL: "Semifinále",
   FINAL: "Finále",
@@ -67,7 +66,7 @@ export function SectionProgressionPreview({
               ROUND_TYPE_COLORS[r.type] ?? "bg-gray-100 text-gray-700"
             )}
           >
-            {ROUND_TYPE_LABELS[r.type] ?? r.type}
+            {r.type === "PRELIMINARY" ? `Kolo ${r.roundNumber}` : (ROUND_TYPE_LABELS[r.type] ?? r.type)}
             <span className="opacity-70">
               {r.startingPairs}p / {r.heatCount}h
             </span>

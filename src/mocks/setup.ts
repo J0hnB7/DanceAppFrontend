@@ -503,7 +503,16 @@ export function setupMockApi() {
   // ── Judge tokens ─────────────────────────────────────────────────────────────
   mock.onGet(/\/competitions\/[^/]+\/judge-tokens$/).reply((config) => {
     const compId = config.url!.split("/")[2];
-    return [200, judgeTokens.filter((j) => j.competitionId === compId)];
+    const tokens = judgeTokens.filter((j) => j.competitionId === compId);
+    if (tokens.length > 0) return [200, tokens];
+    // Fallback: return 5 sample judges for any unknown competition
+    return [200, [
+      { id: `${compId}-jt-1`, competitionId: compId, judgeNumber: 1, token: "T1", rawToken: "T1", active: true, pin: "1111", role: "JUDGE", name: "P. Novák", connected: true },
+      { id: `${compId}-jt-2`, competitionId: compId, judgeNumber: 2, token: "T2", rawToken: "T2", active: true, pin: "2222", role: "JUDGE", name: "J. Procházková", connected: true },
+      { id: `${compId}-jt-3`, competitionId: compId, judgeNumber: 3, token: "T3", rawToken: "T3", active: true, pin: "3333", role: "JUDGE", name: "T. Dvořák", connected: true },
+      { id: `${compId}-jt-4`, competitionId: compId, judgeNumber: 4, token: "T4", rawToken: "T4", active: true, pin: "4444", role: "JUDGE", name: "M. Horáková", connected: false },
+      { id: `${compId}-jt-5`, competitionId: compId, judgeNumber: 5, token: "T5", rawToken: "T5", active: true, pin: "5555", role: "JUDGE", name: "J. Krejčí", connected: true },
+    ]];
   });
 
   mock.onPost(/\/competitions\/[^/]+\/judge-tokens$/).reply((config) => {
@@ -566,6 +575,32 @@ export function setupMockApi() {
 
   mock.onPost(/\/rounds\/[^/]+\/calculate/).reply(200, { roundId: "round-001", roundType: "PRELIMINARY", dances: [] });
   mock.onGet(/\/rounds\/[^/]+\/results/).reply(200, { roundId: "round-001", roundType: "PRELIMINARY", dances: [] });
+
+  // Preliminary round results with per-judge marks (Skating visualization)
+  mock.onGet(/\/rounds\/[^/]+\/preliminary/).reply(200, {
+    pairs: [
+      { pairId: "p1", startNumber: 12, dancer1Name: "Novák & Nováková", voteCount: 5, advances: true,
+        judgeMarks: [
+          { letter: "A", voted: true }, { letter: "B", voted: true }, { letter: "C", voted: false },
+          { letter: "D", voted: true }, { letter: "E", voted: true }, { letter: "F", voted: true }, { letter: "G", voted: false },
+        ] },
+      { pairId: "p2", startNumber: 24, dancer1Name: "Svoboda & Svobodová", voteCount: 4, advances: true,
+        judgeMarks: [
+          { letter: "A", voted: true }, { letter: "B", voted: false }, { letter: "C", voted: true },
+          { letter: "D", voted: true }, { letter: "E", voted: false }, { letter: "F", voted: true }, { letter: "G", voted: true },
+        ] },
+      { pairId: "p3", startNumber: 36, dancer1Name: "Dvořák & Dvořáková", voteCount: 2, advances: false,
+        judgeMarks: [
+          { letter: "A", voted: false }, { letter: "B", voted: true }, { letter: "C", voted: false },
+          { letter: "D", voted: false }, { letter: "E", voted: false }, { letter: "F", voted: true }, { letter: "G", voted: false },
+        ] },
+      { pairId: "p4", startNumber: 48, dancer1Name: "Krejčí & Krejčová", voteCount: 6, advances: true,
+        judgeMarks: [
+          { letter: "A", voted: true }, { letter: "B", voted: true }, { letter: "C", voted: true },
+          { letter: "D", voted: true }, { letter: "E", voted: false }, { letter: "F", voted: true }, { letter: "G", voted: true },
+        ] },
+    ],
+  });
 
   mock.onGet(/\/sections\/[^/]+\/final-summary$/).reply((config) => {
     const sectionId = config.url!.split("/")[2];
@@ -650,6 +685,8 @@ export function setupMockApi() {
     if (!hasSlots) return [404];
     return [200, { id: `sched-${compId}`, status: "DRAFT", publishedAt: null, version: 1 }];
   });
+
+  mock.onPost(/\/competitions\/[^/]+\/floor-control$/).passThrough();
 
   mock.onPost(/\/competitions\/[^/]+\/schedule\/generate$/).reply((config) => {
     const compId = config.url!.split("/")[2];
@@ -854,7 +891,7 @@ export function setupMockApi() {
     const roundPairs = pairs.filter((p) =>
       p.sectionId === activeRound.sectionId && presentPairIds.includes(p.id)
     );
-    return [200, { round: { ...activeRound, dances: section?.dances ?? [] }, pairs: roundPairs }];
+    return [200, { round: { ...activeRound, dances: section?.dances ?? [] }, pairs: roundPairs, heats: [], sectionName: section?.name ?? null }];
   });
 
   // ── Presence ─────────────────────────────────────────────────────────────────
@@ -1015,6 +1052,76 @@ export function setupMockApi() {
   mock.onPut("/auth/me").reply(200, mockUser);
   mock.onPut("/auth/password").reply(204);
   mock.onGet("/me/profile").reply(200, mockUser);
+
+  // ── Live řízení ───────────────────────────────────────────────────────────────
+  mock.onPost(/\/heats\/.*\/send/).reply(200, { sentAt: new Date().toISOString() });
+
+  mock.onGet(/\/heats\/.*\/judge-statuses/).reply(200, [
+    { judgeId: "judge-1", letter: "A", name: "Jana Nováková", status: "pending", online: true },
+    { judgeId: "judge-2", letter: "B", name: "Petr Svoboda", status: "scoring", online: true },
+    { judgeId: "judge-3", letter: "C", name: "Marie Horáková", status: "submitted", submittedAt: new Date().toISOString(), online: true },
+    { judgeId: "judge-4", letter: "D", name: "Jan Dvořák", status: "pending", online: false },
+    { judgeId: "judge-5", letter: "E", name: "Eva Procházková", status: "pending", online: true },
+  ]);
+
+  mock.onGet(/\/heats\/.*\/results/).reply(200, [
+    { pairId: "pair-1", pairNumber: 12, votes: 4, totalJudges: 5, advances: true },
+    { pairId: "pair-2", pairNumber: 34, votes: 2, totalJudges: 5, advances: false },
+    { pairId: "pair-3", pairNumber: 56, votes: 5, totalJudges: 5, advances: true },
+    { pairId: "pair-4", pairNumber: 78, votes: 3, totalJudges: 5, advances: true },
+    { pairId: "pair-5", pairNumber: 91, votes: 1, totalJudges: 5, advances: false },
+  ]);
+
+  // Live rounds (for LiveControlDashboard)
+  mock.onGet(/\/competitions\/.*\/live-rounds/).reply(200, [
+    {
+      id: "round-1",
+      name: "Kolo 1",
+      status: "active",
+      dances: [
+        { id: "dance-1", name: "Waltz" },
+        { id: "dance-2", name: "Tango" },
+        { id: "dance-3", name: "Foxtrot" },
+      ],
+      heats: [
+        { id: "heat-1", number: 1, pairNumbers: [12, 24, 36, 48, 60], status: "active" },
+        { id: "heat-2", number: 2, pairNumbers: [13, 25, 37, 49, 61], status: "pending" },
+        { id: "heat-3", number: 3, pairNumbers: [14, 26, 38, 50, 62], status: "pending" },
+      ],
+    },
+    {
+      id: "round-2",
+      name: "Semifinále",
+      status: "upcoming",
+      dances: [
+        { id: "dance-1", name: "Waltz" },
+        { id: "dance-2", name: "Tango" },
+      ],
+      heats: [],
+    },
+  ]);
+
+  mock.onPost(/\/judges\/.*\/ping/).reply(200, { delivered: true });
+
+  const mockIncidents: unknown[] = [];
+  mock.onPost(/\/competitions\/.*\/incidents/).reply((config) => {
+    const body = JSON.parse(config.data) as { type: string; pairNumber?: number; note: string; roundId?: string; heatId?: string };
+    const incident = { id: `inc-${Date.now()}`, ...body, timestamp: new Date().toISOString() };
+    mockIncidents.unshift(incident);
+    return [201, incident];
+  });
+
+  mock.onGet(/\/competitions\/.*\/incidents/).reply(200, mockIncidents);
+
+  mock.onPost(/\/heats\/.*\/skip/).reply(204);
+
+  mock.onPut(/\/heats\/.*\/pairs\/.*\/withdraw/).reply(200, { status: "withdrawn" });
+
+  mock.onPost(/\/judges\/.*\/heats\/.*\/unlock/).reply(204);
+
+  mock.onPost(/\/rounds\/.*\/reorder/).reply(204);
+
+  mock.onPut(/\/rounds\/.*\/heats\/auto-assign/).reply(200, { assigned: true });
 
   return mock;
 }

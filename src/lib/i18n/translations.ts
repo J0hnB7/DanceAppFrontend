@@ -48,7 +48,7 @@ const T = {
   "scoring.resolve_offline": { cs: "Zachovat offline", en: "Keep offline" },
 
   // Judge — round type labels
-  "round.preliminary": { cs: "Předkolo", en: "Preliminary" },
+  "round.preliminary": { cs: "Kolo {{n}}", en: "Round {{n}}" },
   "round.final": { cs: "Finále", en: "Final" },
   "round.label": { cs: "Kolo", en: "Round" },
 

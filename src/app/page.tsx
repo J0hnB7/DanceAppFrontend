@@ -241,7 +241,7 @@ export default function Home() {
                 {[
                   { name: "Standard — Junioři I · Semifinále", meta: null, judges: true, chip: "● Probíhá", chipBg: "rgba(52,211,153,.15)", chipColor: "#34d399", chipBorder: "rgba(52,211,153,.3)" },
                   { name: "Latin — Dospělí · Finále", meta: "Skating systém · ke schválení", judges: false, chip: "Ke schválení", chipBg: "rgba(165,180,252,.15)", chipColor: "#a5b4fc", chipBorder: "rgba(165,180,252,.3)" },
-                  { name: "Standard — Děti I · Předkolo", meta: "24 párů → 12 postupuje", judges: false, chip: "Hotovo", chipBg: "rgba(255,255,255,.07)", chipColor: "rgba(255,255,255,.4)", chipBorder: "rgba(255,255,255,.1)" },
+                  { name: "Standard — Děti I · Kolo 1", meta: "24 párů → 12 postupuje", judges: false, chip: "Hotovo", chipBg: "rgba(255,255,255,.07)", chipColor: "rgba(255,255,255,.4)", chipBorder: "rgba(255,255,255,.1)" },
                 ].map((row, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,.05)" : "none", fontSize: ".76rem", color: "#fff" }}>
                     <div>

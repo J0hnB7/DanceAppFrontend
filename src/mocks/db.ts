@@ -2,7 +2,7 @@
 import type { CompetitionDto, CompetitionNewsItem } from "@/lib/api/competitions";
 import type { SectionDto } from "@/lib/api/sections";
 import type { PairDto } from "@/lib/api/pairs";
-import { japSections, japPairs } from "./jap-2026-data";
+import { japSections, japPairs } from "../../tests/mocks/jap-2026-data";
 
 export const mockUser = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -217,23 +217,25 @@ export const pairs: PairWithPresence[] = [
 ];
 
 // ── Rounds ─────────────────────────────────────────────────────────────────────
+// sec-001: Adult Standard A — 18 párů, finalSize=6
+// CSTS tabulka (6 ve finále, 18 párů = řádek 18–24): PRELIMINARY→12, FINAL→6
 export const rounds = [
   {
     id: "round-001",
     sectionId: "sec-001",
     roundType: "PRELIMINARY",
-    status: "CALCULATED",
+    status: "IN_PROGRESS",
     roundNumber: 1,
     judgeCount: 5,
-    pairsToAdvance: 8,
-    startedAt: "2026-04-15T10:00:00",
-    closedAt: "2026-04-15T10:45:00",
+    pairsToAdvance: 12,   // CSTS: 18 párů, finalSize=6 → postupuje 12
+    startedAt: new Date().toISOString(),
+    closedAt: null,
   },
   {
     id: "round-002",
     sectionId: "sec-001",
     roundType: "FINAL",
-    status: "OPEN",
+    status: "PENDING",
     roundNumber: 2,
     judgeCount: 5,
     pairsToAdvance: null,
@@ -333,8 +335,8 @@ export const scheduleSlots: {
   manuallyMoved: boolean; suggested: boolean; durationLocked: boolean; roundNumber: number | null;
 }[] = [
   { id: "slot-001", competitionId: "comp-001", sectionId: "sec-003", roundId: null, label: "Junior Standard C — Finále (6 párů)", startTime: "2026-04-15T09:00:00", durationMinutes: 15, orderIndex: 0, type: "ROUND", liveStatus: "NOT_STARTED", manuallyMoved: false, suggested: false, durationLocked: false, roundNumber: 1 },
-  { id: "slot-002", competitionId: "comp-001", sectionId: "sec-001", roundId: null, label: "Adult Standard A — Předkolo (18 párů)", startTime: "2026-04-15T09:15:00", durationMinutes: 20, orderIndex: 1, type: "ROUND", liveStatus: "NOT_STARTED", manuallyMoved: false, suggested: false, durationLocked: false, roundNumber: 1 },
-  { id: "slot-003", competitionId: "comp-001", sectionId: "sec-002", roundId: null, label: "Youth Latin B — Předkolo (14 párů)", startTime: "2026-04-15T09:35:00", durationMinutes: 15, orderIndex: 2, type: "ROUND", liveStatus: "NOT_STARTED", manuallyMoved: false, suggested: false, durationLocked: false, roundNumber: 1 },
+  { id: "slot-002", competitionId: "comp-001", sectionId: "sec-001", roundId: null, label: "Adult Standard A — Kolo 1 (18 párů)", startTime: "2026-04-15T09:15:00", durationMinutes: 20, orderIndex: 1, type: "ROUND", liveStatus: "NOT_STARTED", manuallyMoved: false, suggested: false, durationLocked: false, roundNumber: 1 },
+  { id: "slot-003", competitionId: "comp-001", sectionId: "sec-002", roundId: null, label: "Youth Latin B — Kolo 1 (14 párů)", startTime: "2026-04-15T09:35:00", durationMinutes: 15, orderIndex: 2, type: "ROUND", liveStatus: "NOT_STARTED", manuallyMoved: false, suggested: false, durationLocked: false, roundNumber: 1 },
   { id: "slot-004", competitionId: "comp-001", sectionId: null, roundId: null, label: "Přestávka", startTime: "2026-04-15T09:50:00", durationMinutes: 15, orderIndex: 3, type: "BREAK", liveStatus: "NOT_STARTED", manuallyMoved: false, suggested: true, durationLocked: false, roundNumber: null },
   { id: "slot-005", competitionId: "comp-001", sectionId: "sec-001", roundId: null, label: "Adult Standard A — Semifinále (12 párů)", startTime: "2026-04-15T10:05:00", durationMinutes: 20, orderIndex: 4, type: "ROUND", liveStatus: "NOT_STARTED", manuallyMoved: false, suggested: false, durationLocked: false, roundNumber: 2 },
   { id: "slot-006", competitionId: "comp-001", sectionId: "sec-001", roundId: null, label: "Adult Standard A — Finále (6 párů)", startTime: "2026-04-15T10:25:00", durationMinutes: 10, orderIndex: 5, type: "ROUND", liveStatus: "NOT_STARTED", manuallyMoved: false, suggested: false, durationLocked: false, roundNumber: 3 },

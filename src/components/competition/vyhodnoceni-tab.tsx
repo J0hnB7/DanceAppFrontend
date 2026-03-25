@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { scoringApi, type PairFinalResultRow, type RoundResultsResponse } from "@/lib/api/scoring";
 import { roundsApi, type RoundDto } from "@/lib/api/rounds";
 import { type SectionDto } from "@/lib/api/sections";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import { CheckCircle2 } from "lucide-react";
 
 interface PairInfo {
   id: string;
@@ -28,11 +29,15 @@ type ResultView = "vysledky" | string; // "vysledky" | roundId
 
 const ROUND_TYPE_LABEL: Record<string, string> = {
   HEAT: "1. kolo",
-  PRELIMINARY: "Předkolo",
   SEMIFINAL: "Semifinále",
   FINAL: "Finále",
   SINGLE_ROUND: "Kolo",
 };
+
+function roundLabel(r: { roundType: string; roundNumber: number }): string {
+  if (r.roundType === "PRELIMINARY") return `Kolo ${r.roundNumber}`;
+  return ROUND_TYPE_LABEL[r.roundType] ?? r.roundType;
+}
 
 function pairName(pair: PairInfo) {
   const n1 = [pair.dancer1FirstName, pair.dancer1LastName].filter(Boolean).join(" ");
@@ -132,7 +137,21 @@ function VysledkovaListina({
   );
 }
 
-// ── Preliminary round (X/- callback format) ───────────────────────────────────
+interface JudgeMark {
+  letter: string;
+  voted: boolean;
+}
+
+interface PrelimPair {
+  pairId: string;
+  startNumber: number;
+  dancer1Name: string;
+  voteCount: number;
+  advances: boolean;
+  judgeMarks?: JudgeMark[];
+}
+
+// ── Preliminary round (Skating callback format) ────────────────────────────────
 function PreliminaryRoundView({
   roundId,
   pairs,
@@ -153,52 +172,78 @@ function PreliminaryRoundView({
     <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">Výsledky nejsou k dispozici.</p>
   );
 
-  const sorted = [...data.pairs].sort((a: { startNumber: number }, b: { startNumber: number }) => a.startNumber - b.startNumber);
+  const sorted = [...(data.pairs as PrelimPair[])].sort((a, b) => a.startNumber - b.startNumber);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr className="border-b border-[var(--border)]">
-            <th className="py-2 pr-3 text-left text-xs font-medium text-[var(--text-tertiary)] w-10">#</th>
-            <th className="py-2 pr-4 text-left text-xs font-medium text-[var(--text-tertiary)]">Tančící</th>
-            <th className="py-2 pr-3 text-center text-xs font-medium text-[var(--text-tertiary)] w-16">Hlasy</th>
-            <th className="py-2 text-center text-xs font-medium text-[var(--text-tertiary)] w-20">Postup</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((p: { pairId: string; startNumber: number; dancer1Name: string; voteCount: number; advances: boolean }) => {
-            const pair = lookupPair(pairs, p.startNumber);
-            return (
-              <tr
-                key={p.pairId}
-                className={cn(
-                  "border-b border-[var(--border)]",
-                  p.advances && "bg-[var(--success)]/5"
-                )}
-              >
-                <td className="py-2 pr-3 font-bold text-[var(--text-primary)]">{p.startNumber}</td>
-                <td className="py-2 pr-4 text-[var(--text-primary)]">
-                  {pair ? pairName(pair) : p.dancer1Name}
-                  {pair?.club && (
-                    <span className="ml-2 text-xs text-[var(--text-tertiary)]">{pair.club}</span>
-                  )}
-                </td>
-                <td className="py-2 pr-3 text-center font-mono text-[var(--text-primary)]">
-                  {p.voteCount}
-                </td>
-                <td className="py-2 text-center">
-                  {p.advances ? (
-                    <span className="text-xs font-semibold text-[var(--success)]">✓</span>
-                  ) : (
-                    <span className="text-xs text-[var(--text-tertiary)]">—</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="flex flex-col gap-2">
+      {sorted.map((p) => {
+        const pair = lookupPair(pairs, p.startNumber);
+        const totalJudges = p.judgeMarks?.length ?? 0;
+        return (
+          <div
+            key={p.pairId}
+            className={cn(
+              "flex items-center gap-3 rounded-xl border px-4 py-3",
+              p.advances
+                ? "border-[var(--success)]/30 bg-[var(--success)]/5"
+                : "border-[var(--border)] bg-[var(--surface)]"
+            )}
+          >
+            {/* Start number */}
+            <span
+              className="w-10 shrink-0 text-sm font-bold tabular-nums"
+              style={{ fontFamily: "var(--font-sora)", color: "var(--text-primary)" }}
+            >
+              {p.startNumber}
+            </span>
+
+            {/* Pair name */}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                {pair ? pairName(pair) : p.dancer1Name}
+              </div>
+              {pair?.club && (
+                <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>{pair.club}</div>
+              )}
+            </div>
+
+            {/* Judge chips */}
+            {p.judgeMarks && (
+              <div className="flex gap-1">
+                {p.judgeMarks.map((m) => (
+                  <span
+                    key={m.letter}
+                    className="font-mono text-xs font-bold"
+                    style={{ color: m.voted ? "var(--success)" : "var(--text-tertiary)" }}
+                    title={`Porotce ${m.letter}: ${m.voted ? "hlasoval ✓" : "nehlasoval ✗"}`}
+                  >
+                    {m.letter}{m.voted ? "✓" : "✗"}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Vote count */}
+            <span
+              className="shrink-0 text-sm font-bold tabular-nums"
+              style={{ fontFamily: "var(--font-sora)", color: "var(--text-primary)" }}
+            >
+              {p.voteCount}{totalJudges > 0 ? `/${totalJudges}` : ""}
+            </span>
+
+            {/* Result badge */}
+            <span
+              className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold"
+              style={{
+                background: p.advances ? "rgba(48,209,88,.12)" : "rgba(255,59,48,.1)",
+                color: p.advances ? "var(--success)" : "var(--destructive)",
+              }}
+            >
+              {p.advances ? "POSTUPUJE" : "VYŘAZEN"}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -314,10 +359,16 @@ function SectionResults({
   pairs?: PairInfo[];
 }) {
   const [view, setView] = useState<ResultView>("vysledky");
+  const queryClient = useQueryClient();
 
   const { data: rounds = [], isLoading: roundsLoading } = useQuery({
     queryKey: ["rounds", competitionId, section.id],
     queryFn: () => roundsApi.list(competitionId, section.id),
+  });
+
+  const approveRoundMutation = useMutation({
+    mutationFn: (roundId: string) => roundsApi.close(roundId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["rounds", competitionId, section.id] }),
   });
 
   const completedRounds = rounds
@@ -347,7 +398,7 @@ function SectionResults({
     { id: "vysledky", label: "Výsledková listina" },
     ...completedRounds.map((r) => ({
       id: r.id,
-      label: `${ROUND_TYPE_LABEL[r.roundType] ?? r.roundType}`,
+      label: roundLabel(r),
     })),
   ];
 
@@ -370,6 +421,33 @@ function SectionResults({
           </button>
         ))}
       </div>
+
+      {/* Approval button for CALCULATED rounds */}
+      {view !== "vysledky" && (() => {
+        const round = completedRounds.find((r) => r.id === view);
+        if (!round || round.status !== "CALCULATED") return null;
+        return (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/5 px-4 py-3">
+            <div className="flex-1">
+              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                Výsledky čekají na schválení
+              </p>
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Po schválení bude kolo uzavřeno a nelze ho znovu otevřít.
+              </p>
+            </div>
+            <button
+              onClick={() => approveRoundMutation.mutate(round.id)}
+              disabled={approveRoundMutation.isPending}
+              className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-white transition-colors disabled:opacity-50"
+              style={{ background: "var(--success)" }}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {approveRoundMutation.isPending ? "Schvaluji…" : "Schválit a uzavřít kolo"}
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Content */}
       {view === "vysledky" ? (
