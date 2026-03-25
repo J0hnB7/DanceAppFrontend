@@ -12,6 +12,7 @@ import {
   BarChart3,
   Presentation,
   AlertTriangle,
+  FileSpreadsheet,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
@@ -239,6 +240,18 @@ export default function SectionResultsPage({
             >
               <CheckCircle2 className="h-4 w-4" />
               {t("results.approveAndPublish")}
+            </Button>
+          )}
+          {summary && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                window.open(`/api/v1/sections/${sectionId}/results/export?format=xlsx`, '_blank')
+              }
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Exportovat XLSX
             </Button>
           )}
           {summary && (
