@@ -1,5 +1,17 @@
 import apiClient from "@/lib/api-client";
 
+/** Replace legacy "Předkolo" in stored labels with "Kolo N" using roundNumber. */
+function normalizeSlotLabel(slot: ScheduleSlot): ScheduleSlot {
+  if (slot.roundNumber && /předkolo/i.test(slot.label)) {
+    return { ...slot, label: slot.label.replace(/předkolo/gi, `Kolo ${slot.roundNumber}`) };
+  }
+  return slot;
+}
+
+function normalizeSlots(slots: ScheduleSlot[]): ScheduleSlot[] {
+  return slots.map(normalizeSlotLabel);
+}
+
 export type ScheduleBlockType = "ROUND" | "BREAK" | "JUDGE_BREAK" | "AWARD_CEREMONY" | "CUSTOM";
 export type BlockLiveStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
 export type ScheduleStatus = "DRAFT" | "PUBLISHED";
@@ -87,12 +99,12 @@ export interface HeatAssignmentGroup {
 
 export const scheduleApi = {
   list: (competitionId: string) =>
-    apiClient.get<ScheduleSlot[]>(`/competitions/${competitionId}/schedule`).then((r) => r.data),
+    apiClient.get<ScheduleSlot[]>(`/competitions/${competitionId}/schedule`).then((r) => normalizeSlots(r.data)),
 
   generate: (competitionId: string, startTime?: string) =>
     apiClient
       .post<ScheduleSlot[]>(`/competitions/${competitionId}/schedule/generate`, { startTime })
-      .then((r) => r.data),
+      .then((r) => normalizeSlots(r.data)),
 
   publish: (competitionId: string) =>
     apiClient
@@ -107,19 +119,19 @@ export const scheduleApi = {
   reorderSlot: (competitionId: string, slotId: string, newPosition: number) =>
     apiClient
       .patch<ScheduleSlot[]>(`/competitions/${competitionId}/schedule/slots/${slotId}/reorder`, { newPosition })
-      .then((r) => r.data),
+      .then((r) => normalizeSlots(r.data)),
 
   insertBreak: (competitionId: string, slotId: string, durationMinutes?: number) =>
     apiClient
       .post<ScheduleSlot[]>(`/competitions/${competitionId}/schedule/slots/${slotId}/break`, {
         durationMinutes,
       })
-      .then((r) => r.data),
+      .then((r) => normalizeSlots(r.data)),
 
   updateBlockStatus: (competitionId: string, slotId: string, liveStatus: BlockLiveStatus) =>
     apiClient
       .patch<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots/${slotId}/status`, { liveStatus })
-      .then((r) => r.data),
+      .then((r) => normalizeSlotLabel(r.data)),
 
   getMySections: (competitionId: string) =>
     apiClient
@@ -156,23 +168,29 @@ export const scheduleApi = {
       .post<HeatAssignmentGroup[]>(`/competitions/${competitionId}/schedule/slots/${slotId}/draw-heats`)
       .then((r) => r.data),
 
+  /** POST /floor-control → broadcasts SSE to all judge interfaces */
+  floorControl: (competitionId: string, danceName: string, heatNumber: number) =>
+    apiClient
+      .post<void>(`/competitions/${competitionId}/floor-control`, { danceName, heatNumber })
+      .then((r) => r.data),
+
   /** POST /slots/{slotId}/activate → 200 ScheduleSlot (idempotent) */
   activateSlot: (competitionId: string, slotId: string) =>
     apiClient
       .post<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots/${slotId}/activate`)
-      .then((r) => r.data),
+      .then((r) => normalizeSlotLabel(r.data)),
 
   /** POST /slots/{slotId}/complete → 200 ScheduleSlot (idempotent) */
   completeSlot: (competitionId: string, slotId: string) =>
     apiClient
       .post<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots/${slotId}/complete`)
-      .then((r) => r.data),
+      .then((r) => normalizeSlotLabel(r.data)),
 
   /** POST /slots/{slotId}/revert → 200 ScheduleSlot (idempotent) */
   revertSlot: (competitionId: string, slotId: string) =>
     apiClient
       .post<ScheduleSlot>(`/competitions/${competitionId}/schedule/slots/${slotId}/revert`)
-      .then((r) => r.data),
+      .then((r) => normalizeSlotLabel(r.data)),
 
   /** POST /slots/{slotId}/assign-advancing-pairs?force=false → 204 */
   assignAdvancingPairs: (competitionId: string, slotId: string, force = false) =>
