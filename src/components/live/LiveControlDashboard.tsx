@@ -284,7 +284,7 @@ export function LiveControlDashboard({
       if (activeRoundId) {
         await liveApi.startRound(activeRoundId).catch(() => {/* already started — ignore */})
       }
-      await liveApi.sendHeat(realHeatId)
+      await liveApi.sendHeat(realHeatId, selectedDanceName ?? undefined)
       setLastSentAt(new Date().toISOString())
       toast({ title: 'Skupina odeslána porotcům' })
       // Refresh judge statuses + online immediately after sending

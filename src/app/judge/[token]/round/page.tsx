@@ -36,6 +36,8 @@ interface ActiveRoundResponse {
   pairs: PairDto[];
   heats: HeatGroup[];
   sectionName?: string;
+  /** Dance names this judge has already submitted — used to skip completed dances */
+  submittedDances?: string[];
 }
 
 // ── Couple tile ───────────────────────────────────────────────────────────────
@@ -118,10 +120,13 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   const [pairs, setPairs] = useState<PairDto[]>([]);
   const [heats, setHeats] = useState<HeatGroup[]>([]);
 
-  // Active dance index — first dance shown by default, updated by floor-control SSE
+  // Active dance index — first unsubmitted dance shown by default, updated by floor-control SSE
   const [activeDanceIdx, setActiveDanceIdx] = useState(0);
   // Active heat (group) — 0-indexed, updated by floor-control SSE
   const [activeHeatIdx, setActiveHeatIdx] = useState(0);
+
+  // Dance names this judge has already submitted — prevent re-scoring
+  const [submittedDanceNames, setSubmittedDanceNames] = useState<Set<string>>(new Set());
 
   // Global recalled set — one cross per pair across the whole round
   const [recalled, setRecalled] = useState<Set<string>>(new Set());
@@ -148,13 +153,31 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   useEffect(() => {
     if (!competitionId) { router.push(`/judge/${token}`); return; }
     apiClient
-      .get<ActiveRoundResponse>("/judge/active-round", { params: { competitionId } })
+      .get<ActiveRoundResponse>("/judge/active-round", {
+        params: { competitionId, ...(adjudicatorId ? { judgeTokenId: adjudicatorId } : {}) },
+      })
       .then((r) => {
         setRound(r.data.round);
-        setDances((r.data.dances ?? []).map((d) => ({ ...d, name: d.danceName ?? d.name ?? "" })));
+        const mappedDances = (r.data.dances ?? []).map((d) => ({ ...d, name: d.danceName ?? d.name ?? "" }));
+        setDances(mappedDances);
         setPairs(r.data.pairs);
         setHeats(r.data.heats ?? []);
         setSectionName(r.data.sectionName ?? null);
+
+        // Track which dances are already submitted
+        const submitted = new Set(r.data.submittedDances ?? []);
+        setSubmittedDanceNames(submitted);
+
+        // Auto-skip to first unsubmitted dance
+        if (submitted.size > 0 && mappedDances.length > 0) {
+          const firstUnsubmitted = mappedDances.findIndex((d) => !submitted.has(d.name));
+          if (firstUnsubmitted >= 0) {
+            setActiveDanceIdx(firstUnsubmitted);
+          } else {
+            // All dances submitted — show last dance as submitted
+            setActiveDanceIdx(mappedDances.length - 1);
+          }
+        }
       })
       .catch(() => router.push(`/judge/${token}/lobby`))
       .finally(() => setLoading(false));
@@ -203,6 +226,8 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
 
   const activeDance = dances[activeDanceIdx];
   const activeHeat  = heats.length > 0 ? heats[activeHeatIdx] : null;
+  const currentDanceAlreadySubmitted = activeDance ? submittedDanceNames.has(activeDance.name) : false;
+  const allDancesSubmitted = dances.length > 0 && dances.every((d) => submittedDanceNames.has(d.name));
 
   // Show pairs for the selected group only; fall back to all pairs if no heats
   const visiblePairs = activeHeat
@@ -259,9 +284,28 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       } catch { /* saved offline */ }
     }
 
-    setSubmitted(true);
+    // Mark this dance as submitted and auto-advance to next unsubmitted dance
+    const danceName = activeDance?.name ?? 'UNKNOWN';
+    setSubmittedDanceNames((prev) => {
+      const next = new Set(prev);
+      next.add(danceName);
+      return next;
+    });
+
+    // Find next unsubmitted dance
+    const nextIdx = dances.findIndex((d, i) => i > activeDanceIdx && !submittedDanceNames.has(d.name) && d.name !== danceName);
+    if (nextIdx >= 0) {
+      // Auto-advance to next dance after a brief delay
+      setTimeout(() => {
+        setActiveDanceIdx(nextIdx);
+        setRecalled(new Set());
+        setSubmitted(false);
+      }, 2000);
+    } else {
+      setSubmitted(true);
+    }
     setSubmitting(false);
-  }, [round, adjudicatorId, pairs, recalled, deviceToken, isOnline, router, token]);
+  }, [round, adjudicatorId, pairs, recalled, deviceToken, isOnline, router, token, activeDance, dances, activeDanceIdx, submittedDanceNames]);
 
   const handleSubmit = () => {
     if (allowedCrosses > 0 && givenCrosses !== allowedCrosses) {
@@ -299,10 +343,25 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         )}
         <div className="mx-auto max-w-lg flex items-center justify-between gap-2">
 
-          {/* Current dance — single read-only pill */}
-          <span className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white">
-            {activeDance?.name ?? round.roundType}
-          </span>
+          {/* Dance tabs — show which are done */}
+          <div className="flex gap-1 overflow-x-auto">
+            {dances.map((d, i) => {
+              const isDone = submittedDanceNames.has(d.name);
+              const isActive = i === activeDanceIdx;
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => { setActiveDanceIdx(i); if (!isDone) { setRecalled(new Set()); setSubmitted(false); } }}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors",
+                    isActive ? "bg-[var(--accent)] text-white" : isDone ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
+                  )}
+                >
+                  {isDone && "✓ "}{d.name}
+                </button>
+              );
+            })}
+          </div>
 
           {/* Right controls */}
           <div className="flex shrink-0 items-center gap-2">
@@ -318,19 +377,39 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       {/* ── Body ── */}
       <div className="mx-auto w-full max-w-lg flex-1 px-4 pt-4 pb-36">
 
-        {submitted ? (
+        {allDancesSubmitted || submitted ? (
           <div className="flex flex-col items-center gap-6 py-16 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--success)]/10">
               <CheckCircle2 className="h-10 w-10 text-[var(--success)]" />
             </div>
             <div>
-              <p className="text-xl font-bold text-[var(--text-primary)]">Hodnocení odesláno</p>
-              <p className="mt-1.5 text-sm text-[var(--text-secondary)]">Čeká se na další kolo</p>
+              <p className="text-xl font-bold text-[var(--text-primary)]">
+                {allDancesSubmitted ? "Všechny tance ohodnoceny" : "Hodnocení odesláno"}
+              </p>
+              <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
+                {allDancesSubmitted ? "Děkujeme — čeká se na uzavření kola" : "Čeká se na další tanec"}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)]" />
-              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.2s]" />
-              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.4s]" />
+            {!allDancesSubmitted && (
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)]" />
+                <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.2s]" />
+                <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.4s]" />
+              </div>
+            )}
+          </div>
+        ) : currentDanceAlreadySubmitted ? (
+          <div className="flex flex-col items-center gap-6 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success)]/10">
+              <CheckCircle2 className="h-8 w-8 text-[var(--success)]" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-[var(--text-primary)]">
+                {activeDance?.name} — již ohodnoceno
+              </p>
+              <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
+                Tento tanec jste již ohodnotili. Vyberte jiný tanec výše.
+              </p>
             </div>
           </div>
         ) : (
@@ -388,7 +467,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       </div>
 
       {/* ── Bottom bar ── */}
-      {!submitted && (
+      {!submitted && !allDancesSubmitted && !currentDanceAlreadySubmitted && (
         <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--border)] bg-[var(--surface)] px-4 pt-3 pb-4 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
           <div className="mx-auto max-w-lg space-y-2">
             <div className="flex gap-2">

@@ -11,9 +11,11 @@ export interface JudgeStatusDto {
 }
 
 export const liveApi = {
-  sendHeat: (heatId: string) =>
+  sendHeat: (heatId: string, dance?: string) =>
     apiClient
-      .post<{ sentAt: string }>(`/heats/${heatId}/send`)
+      .post<{ sentAt: string }>(`/heats/${heatId}/send`, null, {
+        params: dance ? { dance } : {},
+      })
       .then((r) => r.data),
 
   startRound: (roundId: string) =>
