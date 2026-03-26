@@ -47,6 +47,7 @@ interface ScheduleBuilderProps {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function formatTimeMs(ms: number): string {
+  if (!isFinite(ms)) return "--:--";
   return new Date(ms).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
 }
 

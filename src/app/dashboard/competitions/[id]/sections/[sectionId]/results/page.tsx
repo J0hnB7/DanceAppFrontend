@@ -13,6 +13,7 @@ import {
   Presentation,
   AlertTriangle,
   FileSpreadsheet,
+  Swords,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
@@ -28,12 +29,109 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { scoringApi, type SectionFinalSummaryResponse } from "@/lib/api/scoring";
+import { SimpleDialog } from "@/components/ui/dialog";
+import { scoringApi, type PairFinalResultRow, type SectionFinalSummaryResponse } from "@/lib/api/scoring";
 import { sectionsApi } from "@/lib/api/sections";
 import { pairsApi } from "@/lib/api/pairs";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
+
+/** Returns groups of pairs tied with tieResolution=DANCE_OFF at the same finalPlacement */
+function getDanceOffGroups(rankings: PairFinalResultRow[]): Map<number, PairFinalResultRow[]> {
+  const groups = new Map<number, PairFinalResultRow[]>();
+  for (const row of rankings) {
+    if (row.tieResolution === "DANCE_OFF") {
+      const existing = groups.get(row.finalPlacement) ?? [];
+      groups.set(row.finalPlacement, [...existing, row]);
+    }
+  }
+  // Only return groups with 2+ pairs (actual unresolved ties)
+  for (const [pos, pairs] of groups) {
+    if (pairs.length < 2) groups.delete(pos);
+  }
+  return groups;
+}
+
+interface DanceOffModalProps {
+  position: number;
+  pairs: PairFinalResultRow[];
+  pairNames: Record<string, string>;
+  sectionId: string;
+  onClose: () => void;
+  onResolved: (updated: SectionFinalSummaryResponse) => void;
+}
+
+function DanceOffModal({ position, pairs, pairNames, sectionId, onClose, onResolved }: DanceOffModalProps) {
+  const { t } = useLocale();
+  const [winnerId, setWinnerId] = useState<string>("");
+
+  const resolve = useMutation({
+    mutationFn: () => {
+      const loserId = pairs.find((p) => p.pairId !== winnerId)!.pairId;
+      return scoringApi.resolveDanceOff(sectionId, winnerId, loserId);
+    },
+    onSuccess: (data) => {
+      toast({ title: t("results.danceOffResolved"), variant: "success" });
+      onResolved(data);
+      onClose();
+    },
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
+    },
+  });
+
+  return (
+    <SimpleDialog
+      open
+      onClose={onClose}
+      title={t("results.danceOffModalTitle").replace("{{position}}", String(position))}
+    >
+      <div className="space-y-4 py-2">
+        <p className="text-sm text-[var(--text-secondary)]">
+          {t("results.danceOffDesc").replace("{{position}}", String(position))}
+        </p>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-[var(--text-tertiary)]">
+            {t("results.danceOffWinnerLabel").toUpperCase()}
+          </p>
+          {pairs.map((pair) => (
+            <button
+              key={pair.pairId}
+              type="button"
+              onClick={() => setWinnerId(pair.pairId)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left transition-colors",
+                winnerId === pair.pairId
+                  ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
+                  : "border-[var(--border)] hover:bg-[var(--surface-hover)]"
+              )}
+            >
+              <span className="font-mono font-bold">#{pair.startNumber}</span>
+              <span className="text-sm">
+                {pairNames[pair.pairId] ?? `Pár #${pair.startNumber}`}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            size="sm"
+            disabled={!winnerId}
+            loading={resolve.isPending}
+            onClick={() => resolve.mutate()}
+          >
+            <Swords className="h-4 w-4" />
+            {t("results.danceOffConfirm")}
+          </Button>
+        </div>
+      </div>
+    </SimpleDialog>
+  );
+}
 
 // Medal display for top 3 placements
 function PlacementCell({ placement }: { placement: number }) {
@@ -155,16 +253,19 @@ export default function SectionResultsPage({
   const router = useRouter();
   const qc = useQueryClient();
   const [approved, setApproved] = useState(false);
+  const [danceOffPosition, setDanceOffPosition] = useState<number | null>(null);
 
   const { data: section, isLoading: sectionLoading } = useQuery({
     queryKey: ["sections", competitionId, sectionId],
     queryFn: () => sectionsApi.get(competitionId, sectionId),
   });
 
-  const { data: summary, isLoading: summaryLoading, refetch } = useQuery({
+  const [summaryOverride, setSummaryOverride] = useState<SectionFinalSummaryResponse | null>(null);
+  const { data: summaryData, isLoading: summaryLoading, refetch } = useQuery({
     queryKey: ["section-summary", sectionId],
     queryFn: () => scoringApi.getSectionSummary(sectionId),
   });
+  const summary = summaryOverride ?? summaryData;
 
   const { data: pairs } = useQuery({
     queryKey: ["pairs", competitionId, sectionId],
@@ -194,6 +295,8 @@ export default function SectionResultsPage({
   });
 
   const danceNames = (section?.dances.map((d) => d.name).filter(Boolean) ?? []) as string[];
+  const danceOffGroups = summary ? getDanceOffGroups(summary.rankings) : new Map<number, PairFinalResultRow[]>();
+  const hasPendingDanceOff = danceOffGroups.size > 0;
 
   // Build pair name map from pairs data
   const pairNames = Object.fromEntries(
@@ -304,8 +407,52 @@ export default function SectionResultsPage({
         </Card>
       )}
 
+      {/* Dance-off modal */}
+      {danceOffPosition !== null && summary && (
+        <DanceOffModal
+          position={danceOffPosition}
+          pairs={danceOffGroups.get(danceOffPosition) ?? []}
+          pairNames={pairNames}
+          sectionId={sectionId}
+          onClose={() => setDanceOffPosition(null)}
+          onResolved={(updated) => {
+            setSummaryOverride(updated);
+            qc.setQueryData(["section-summary", sectionId], updated);
+          }}
+        />
+      )}
+
       {summary && summary.rankings.length > 0 && (
         <>
+          {/* Dance-off banners — one per unresolved tied position */}
+          {hasPendingDanceOff && Array.from(danceOffGroups.entries()).map(([position, tiedPairs]) => (
+            <div
+              key={position}
+              className="mb-4 flex items-start gap-3 rounded-[var(--radius-lg)] border border-orange-500/30 bg-orange-500/5 p-4"
+            >
+              <Swords className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+              <div className="flex-1 text-sm">
+                <p className="font-semibold text-[var(--text-primary)]">
+                  {t("results.danceOffRequired")}
+                </p>
+                <p className="text-[var(--text-secondary)]">
+                  {t("results.danceOffDesc").replace("{{position}}", String(position))}
+                  {" "}
+                  {tiedPairs.map((p) => `#${p.startNumber}`).join(", ")}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 border-orange-500/50 text-orange-500 hover:bg-orange-500/10"
+                onClick={() => setDanceOffPosition(position)}
+              >
+                <Swords className="h-4 w-4" />
+                {t("results.danceOffResolve")}
+              </Button>
+            </div>
+          ))}
+
           {/* Podium cards */}
           <div className="mb-6 grid gap-4 sm:grid-cols-3">
             {summary.rankings.slice(0, 3).map((row) => (

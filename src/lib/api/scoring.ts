@@ -80,4 +80,9 @@ export const scoringApi = {
 
   approveResults: (sectionId: string) =>
     apiClient.post(`/sections/${sectionId}/results/approve`).then((r) => r.data),
+
+  resolveDanceOff: (sectionId: string, winnerId: string, loserId: string) =>
+    apiClient
+      .post<SectionFinalSummaryResponse>(`/sections/${sectionId}/dance-off`, { winnerId, loserId })
+      .then((r) => r.data),
 };

@@ -127,6 +127,28 @@ export function setupMockApi() {
   restoreNews();
   const mock = new MockAdapter(apiClient, { delayResponse: 150, onNoMatch: "throwException" });
 
+  // localStorage-backed judge submission tracking: "roundId:dance" → Set of submitted judgeTokenIds
+  // Key is per round+dance because a judge confirms ONCE for the entire dance (e.g. Waltz),
+  // covering ALL groups/heats. 0 X marks in a group is a valid choice, not a missing submission.
+  // Using localStorage so cross-tab mock state is shared (e.g. judge tab ↔ admin tab, same origin)
+  const SUBMISSIONS_KEY = "mock_roundDanceSubmissions";
+  function getSubmissions(): Record<string, string[]> {
+    try { return JSON.parse(localStorage.getItem(SUBMISSIONS_KEY) ?? "{}"); } catch { return {}; }
+  }
+  function submissionKey(roundId: string, dance?: string): string {
+    return dance ? `${roundId}:${dance}` : roundId;
+  }
+  function addSubmission(roundId: string, judgeTokenId: string, dance?: string) {
+    const data = getSubmissions();
+    const key = submissionKey(roundId, dance);
+    if (!data[key]) data[key] = [];
+    if (!data[key].includes(judgeTokenId)) data[key].push(judgeTokenId);
+    try { localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+  }
+  function isSubmitted(roundId: string, judgeTokenId: string, dance?: string): boolean {
+    return (getSubmissions()[submissionKey(roundId, dance)] ?? []).includes(judgeTokenId);
+  }
+
   // ── Auth ────────────────────────────────────────────────────────────────────
   mock.onPost("/auth/register").reply(201, mockTokenResponse);
   mock.onPost("/auth/login").reply(200, mockTokenResponse);
@@ -460,9 +482,28 @@ export function setupMockApi() {
   });
 
   // ── Rounds ──────────────────────────────────────────────────────────────────
-  mock.onGet(/\/sections\/[^/]+\/rounds$/).reply((config) => {
+  // GET /competitions/:id/sections/:sectionId/rounds — used by live page to resolve activeRoundId
+  // Must be registered BEFORE the shorter pattern to prevent the shorter regex from matching this URL
+  mock.onGet(/\/competitions\/[^/]+\/sections\/[^/]+\/rounds$/).reply((config) => {
+    const parts = config.url!.split("/");
+    const sectionId = parts[4];
+    return [200, rounds.filter((r) => r.sectionId === sectionId)];
+  });
+
+  // GET /sections/:sectionId/rounds — shorter path (anchored to avoid matching the longer URL above)
+  mock.onGet(/^\/sections\/[^/]+\/rounds$/).reply((config) => {
     const sectionId = config.url!.split("/")[2];
     return [200, rounds.filter((r) => r.sectionId === sectionId)];
+  });
+
+  // GET /rounds/:roundId/heats — used by live page to build heatIdMap (synthetic→real UUID)
+  mock.onGet(/\/rounds\/[^/]+\/heats$/).reply((config) => {
+    const roundId = config.url!.split("/")[2];
+    // Return 2 heats — IDs encode roundId so judge-statuses can map back to roundSubmissions
+    return [200, [
+      { id: `${roundId}-h1`, heatNumber: 1, status: "PENDING" },
+      { id: `${roundId}-h2`, heatNumber: 2, status: "PENDING" },
+    ]];
   });
 
   mock.onGet(/\/rounds\/[^/]+$/).reply((config) => {
@@ -501,18 +542,26 @@ export function setupMockApi() {
   });
 
   // ── Judge tokens ─────────────────────────────────────────────────────────────
-  mock.onGet(/\/competitions\/[^/]+\/judge-tokens$/).reply((config) => {
-    const compId = config.url!.split("/")[2];
-    const tokens = judgeTokens.filter((j) => j.competitionId === compId);
-    if (tokens.length > 0) return [200, tokens];
-    // Fallback: return 5 sample judges for any unknown competition
-    return [200, [
+
+  // Shared helper: get active judge tokens for a competition (real or fallback)
+  function getActiveJudgesForCompetition(compId: string) {
+    const tokens = judgeTokens.filter((j) => j.competitionId === compId && j.active);
+    if (tokens.length > 0) return tokens;
+    // Fallback: 5 sample judges for any unknown competition — stable IDs per competition
+    return [
       { id: `${compId}-jt-1`, competitionId: compId, judgeNumber: 1, token: "T1", rawToken: "T1", active: true, pin: "1111", role: "JUDGE", name: "P. Novák", connected: true },
       { id: `${compId}-jt-2`, competitionId: compId, judgeNumber: 2, token: "T2", rawToken: "T2", active: true, pin: "2222", role: "JUDGE", name: "J. Procházková", connected: true },
       { id: `${compId}-jt-3`, competitionId: compId, judgeNumber: 3, token: "T3", rawToken: "T3", active: true, pin: "3333", role: "JUDGE", name: "T. Dvořák", connected: true },
       { id: `${compId}-jt-4`, competitionId: compId, judgeNumber: 4, token: "T4", rawToken: "T4", active: true, pin: "4444", role: "JUDGE", name: "M. Horáková", connected: false },
       { id: `${compId}-jt-5`, competitionId: compId, judgeNumber: 5, token: "T5", rawToken: "T5", active: true, pin: "5555", role: "JUDGE", name: "J. Krejčí", connected: true },
-    ]];
+    ];
+  }
+
+  mock.onGet(/\/competitions\/[^/]+\/judge-tokens$/).reply((config) => {
+    const compId = config.url!.split("/")[2];
+    const tokens = judgeTokens.filter((j) => j.competitionId === compId);
+    if (tokens.length > 0) return [200, tokens];
+    return [200, getActiveJudgesForCompetition(compId)];
   });
 
   mock.onPost(/\/competitions\/[^/]+\/judge-tokens$/).reply((config) => {
@@ -554,9 +603,31 @@ export function setupMockApi() {
   });
 
   // ── Scoring ─────────────────────────────────────────────────────────────────
-  mock.onPost(/\/rounds\/[^/]+\/callbacks/).reply(204);
+  mock.onPost(/\/rounds\/[^/]+\/callbacks/).reply((config) => {
+    // Judge confirms once per dance — track by roundId:dance
+    const roundId = config.url!.split("/")[2];
+    const params = config.params as Record<string, string> | undefined;
+    const judgeTokenId = params?.judgeTokenId;
+    const dance = params?.dance ?? (typeof config.data === "string" ? JSON.parse(config.data)?.dance : config.data?.dance);
+    if (roundId && judgeTokenId) {
+      addSubmission(roundId, judgeTokenId, dance);
+    }
+    return [204];
+  });
   mock.onPut(/\/rounds\/[^/]+\/callbacks/).reply(204);
-  mock.onGet(/\/rounds\/[^/]+\/callbacks/).reply(200, { selectedPairIds: [] });
+  mock.onGet(/\/rounds\/[^/]+\/callbacks/).reply((config) => {
+    const judgeTokenId = (config.params as Record<string, string> | undefined)?.judgeTokenId ?? "";
+    // Return different subsets of pair IDs per judge for demo purposes
+    const allPairs = ["p1", "p2", "p3", "p4"];
+    // Deterministically vary which pairs each judge selected based on their ID suffix
+    const suffix = judgeTokenId.slice(-1);
+    const selected = suffix === "1" ? ["p1", "p2", "p4"]
+                   : suffix === "2" ? ["p1", "p3"]
+                   : suffix === "3" ? ["p1", "p2", "p3", "p4"]
+                   : suffix === "4" ? ["p2", "p4"]
+                   : allPairs;
+    return [200, selected];
+  });
 
   mock.onPost(/\/rounds\/[^/]+\/placements\//).reply(204);
   mock.onGet(/\/rounds\/[^/]+\/placements\//).reply(200, { pairPlacements: {} });
@@ -573,8 +644,41 @@ export function setupMockApi() {
     ],
   });
 
-  mock.onPost(/\/rounds\/[^/]+\/calculate/).reply(200, { roundId: "round-001", roundType: "PRELIMINARY", dances: [] });
-  mock.onGet(/\/rounds\/[^/]+\/results/).reply(200, { roundId: "round-001", roundType: "PRELIMINARY", dances: [] });
+  mock.onPost(/\/rounds\/[^/]+\/calculate/).reply((config) => {
+    const roundId = config.url!.split("/")[2];
+    const r = rounds.find((r) => r.id === roundId);
+    if (r) { r.status = "CALCULATED"; }
+    return [200, {
+      pairsToAdvance: 4,
+      pairs: [
+        { pairId: "p1", startNumber: 12, dancer1Name: "Novák & Nováková", voteCount: 14, advances: true },
+        { pairId: "p2", startNumber: 24, dancer1Name: "Svoboda & Svobodová", voteCount: 11, advances: true },
+        { pairId: "p3", startNumber: 36, dancer1Name: "Dvořák & Dvořáková", voteCount: 10, advances: true },
+        { pairId: "p4", startNumber: 48, dancer1Name: "Krejčí & Krejčová", voteCount: 9, advances: true },
+        { pairId: "p5", startNumber: 60, dancer1Name: "Horák & Horáková", voteCount: 5, advances: false },
+        { pairId: "p6", startNumber: 72, dancer1Name: "Novotný & Novotná", voteCount: 3, advances: false },
+      ],
+      tieAtBoundary: false,
+      tiedPairsAtBoundary: [],
+      nextRoundId: "round-next-001",
+      advancedPairIds: ["p1", "p2", "p3", "p4"],
+    }];
+  });
+  mock.onGet(/\/rounds\/[^/]+\/results/).reply(200, {
+    pairsToAdvance: 4,
+    pairs: [
+      { pairId: "p1", startNumber: 12, dancer1Name: "Novák & Nováková", voteCount: 14, advances: true },
+      { pairId: "p2", startNumber: 24, dancer1Name: "Svoboda & Svobodová", voteCount: 11, advances: true },
+      { pairId: "p3", startNumber: 36, dancer1Name: "Dvořák & Dvořáková", voteCount: 10, advances: true },
+      { pairId: "p4", startNumber: 48, dancer1Name: "Krejčí & Krejčová", voteCount: 9, advances: true },
+      { pairId: "p5", startNumber: 60, dancer1Name: "Horák & Horáková", voteCount: 5, advances: false },
+      { pairId: "p6", startNumber: 72, dancer1Name: "Novotný & Novotná", voteCount: 3, advances: false },
+    ],
+    tieAtBoundary: false,
+    tiedPairsAtBoundary: [],
+    nextRoundId: "round-next-001",
+    advancedPairIds: ["p1", "p2", "p3", "p4"],
+  });
 
   // Preliminary round results with per-judge marks (Skating visualization)
   mock.onGet(/\/rounds\/[^/]+\/preliminary/).reply(200, {
@@ -862,6 +966,22 @@ export function setupMockApi() {
   mock.onDelete(/\/me\/registrations\//).reply(204);
 
   // ── Judge session ────────────────────────────────────────────────────────────
+  mock.onPost("/judge-access/connect").reply((config) => {
+    const { token, pin } = JSON.parse(config.data);
+    const jt = judgeTokens.find((j) => (j.token === token || j.rawToken === token) && j.active);
+    if (!jt) return [401, { message: "Invalid token" }];
+    if (pin !== jt.pin.slice(0, 4) && pin !== jt.pin) return [401, { message: "Wrong PIN" }];
+    return [200, {
+      accessToken: `judge-access-${jt.id}`,
+      deviceToken: `judge-device-${jt.id}`,
+      adjudicatorId: jt.id,
+      competitionId: jt.competitionId,
+      competitionName: competitions.find((c) => c.id === jt.competitionId)?.name ?? "Competition",
+    }];
+  });
+
+  mock.onPut(/\/judge-access\/.*\/heartbeat/).reply(204);
+
   mock.onPost("/judge-tokens/validate").reply((config) => {
     const { token } = JSON.parse(config.data);
     const jt = judgeTokens.find((j) => j.token === token || j.rawToken === token);
@@ -1056,13 +1176,27 @@ export function setupMockApi() {
   // ── Live řízení ───────────────────────────────────────────────────────────────
   mock.onPost(/\/heats\/.*\/send/).reply(200, { sentAt: new Date().toISOString() });
 
-  mock.onGet(/\/heats\/.*\/judge-statuses/).reply(200, [
-    { judgeId: "judge-1", letter: "A", name: "Jana Nováková", status: "pending", online: true },
-    { judgeId: "judge-2", letter: "B", name: "Petr Svoboda", status: "scoring", online: true },
-    { judgeId: "judge-3", letter: "C", name: "Marie Horáková", status: "submitted", submittedAt: new Date().toISOString(), online: true },
-    { judgeId: "judge-4", letter: "D", name: "Jan Dvořák", status: "pending", online: false },
-    { judgeId: "judge-5", letter: "E", name: "Eva Procházková", status: "pending", online: true },
-  ]);
+  mock.onGet(/\/heats\/.*\/judge-statuses/).reply((config) => {
+    // Judge confirms ONCE per dance (roundId:dance), not per group.
+    // Extract roundId from heatId (format: "${roundId}-h${n}") and check per roundId:dance.
+    const heatId = config.url!.split("/")[2];
+    const roundId = heatId.replace(/-h\d+$/, "");
+    const params = config.params as Record<string, string> | undefined;
+    const dance = params?.dance;
+    const compId = params?.competitionId;
+    // Use same judge list as the judge-tokens endpoint (consistent IDs)
+    const activeTokens = compId
+      ? getActiveJudgesForCompetition(compId)
+      : judgeTokens.filter((jt) => jt.active);
+    return [200, activeTokens.map((jt, i) => ({
+      judgeId: jt.id,
+      letter: String.fromCharCode(65 + i),
+      name: (jt as Record<string, unknown>).name ?? `Porotce ${jt.judgeNumber}`,
+      status: isSubmitted(roundId, jt.id, dance) ? "submitted" : "pending",
+      online: true,
+      submittedAt: isSubmitted(roundId, jt.id, dance) ? new Date().toISOString() : undefined,
+    }))];
+  });
 
   mock.onGet(/\/heats\/.*\/results/).reply(200, [
     { pairId: "pair-1", pairNumber: 12, votes: 4, totalJudges: 5, advances: true },

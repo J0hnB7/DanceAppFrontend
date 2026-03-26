@@ -42,10 +42,13 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
   const { id: competitionId } = use(params);
   const { loadSchedule, slots } = useScheduleStore();
   const selectedRoundId = useLiveStore((s) => s.selectedRoundId);
+  const selectedDanceId = useLiveStore((s) => s.selectedDanceId);
   const selectedHeatId = useLiveStore((s) => s.selectedHeatId);
 
   const [dances, setDances] = useState<DanceItem[]>([]);
   const [heats, setHeats] = useState<HeatItem[]>([]);
+  // Per-heat submission counts — fetched when dance changes
+  const [heatSubmissions, setHeatSubmissions] = useState<Record<string, { submitted: number; total: number }>>({});
   const [baseJudges, setBaseJudges] = useState<JudgeStatusDto[]>([]);
   const [judgeDetails, setJudgeDetails] = useState<JudgeStatusDto[]>([]);
   // Real backend round UUID (needed to start round before scoring)
@@ -63,11 +66,16 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
     loadSchedule(competitionId);
   }, [competitionId, loadSchedule]);
 
+  const { updateJudgeOnline, setDanceConfirmation, setRoundClosed } = useLiveStore();
+  // sectionId from the selected slot — needed for round close/complete API
+  const [sectionId, setSectionId] = useState<string | null>(null);
+
   const markJudgeOnline = useCallback((judgeTokenId: string) => {
     setBaseJudges((prev) =>
       prev.map((j) => j.judgeId === judgeTokenId ? { ...j, online: true } : j)
     );
-  }, []);
+    updateJudgeOnline(judgeTokenId, true);
+  }, [updateJudgeOnline]);
 
   // Load judges from Porota section on mount
   useEffect(() => {
@@ -81,10 +89,25 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
             letter: String.fromCharCode(65 + i),
             name: t.name ?? `Porotce ${i + 1}`,
             status: "pending" as const,
-            online: t.connectedAt != null || t.connected === true,
+            online: false, // default offline — real status comes from connectivity poll + SSE
           }));
         setBaseJudges(mapped);
         setJudgeDetails(mapped);
+
+        // Immediately fetch real connectivity status
+        apiClient.get<{ judges: Array<{ judgeTokenId: string; status: string }> }>(
+          `/competitions/${competitionId}/connectivity`
+        ).then((res) => {
+          setBaseJudges((prev) =>
+            prev.map((j) => {
+              const conn = res.data.judges?.find((c) => c.judgeTokenId === j.judgeId);
+              if (!conn) return j;
+              const isOnline = conn.status === 'ONLINE';
+              updateJudgeOnline(j.judgeId, isOnline);
+              return { ...j, online: isOnline };
+            })
+          );
+        }).catch(() => {});
       })
       .catch(() => {});
   }, [competitionId]);
@@ -92,6 +115,16 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
   // SSE — judge connected (online status)
   useSSE(competitionId, 'judge-connected', (data: { judgeTokenId: string }) => {
     if (data.judgeTokenId) markJudgeOnline(data.judgeTokenId);
+  });
+
+  // SSE — judge disconnected (offline status)
+  useSSE(competitionId, 'judge-disconnected', (data: { judgeTokenId: string }) => {
+    if (data.judgeTokenId) {
+      setBaseJudges((prev) =>
+        prev.map((j) => j.judgeId === data.judgeTokenId ? { ...j, online: false } : j)
+      );
+      updateJudgeOnline(data.judgeTokenId, false);
+    }
   });
 
   // Poll connectivity every 30s — refreshes online/offline based on heartbeats
@@ -105,15 +138,17 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
           prev.map((j) => {
             const conn = res.data.judges?.find((c) => c.judgeTokenId === j.judgeId);
             if (!conn) return j;
-            return { ...j, online: conn.status === 'ONLINE' };
+            const isOnline = conn.status === 'ONLINE';
+            updateJudgeOnline(j.judgeId, isOnline);
+            return { ...j, online: isOnline };
           })
         );
       }).catch(() => {});
     const id = setInterval(refresh, 30_000);
     return () => clearInterval(id);
-  }, [competitionId]);
+  }, [competitionId, updateJudgeOnline]);
 
-  // When heat changes: overlay statuses from heat endpoint (use real UUID)
+  // When heat or dance changes: overlay statuses from heat endpoint (use real UUID)
   useEffect(() => {
     if (!selectedHeatId || baseJudges.length === 0) {
       setJudgeDetails(baseJudges);
@@ -124,7 +159,8 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
       setJudgeDetails(baseJudges);
       return;
     }
-    liveApi.getJudgeStatuses(realHeatId)
+    const danceName = dances.find((d) => d.id === selectedDanceId)?.name;
+    liveApi.getJudgeStatuses(realHeatId, danceName, competitionId)
       .then((heatStatuses) => {
         setJudgeDetails(
           baseJudges.map((judge) => {
@@ -134,7 +170,31 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
         );
       })
       .catch(() => setJudgeDetails(baseJudges));
-  }, [selectedHeatId, heatIdMap, baseJudges]);
+  }, [selectedHeatId, selectedDanceId, dances, heatIdMap, baseJudges]);
+
+  // Fetch dance-level submission counts — judge confirms once per dance (roundId:dance),
+  // so all heats in the same dance share the same submission status.
+  // Only need to query ONE heat — the result applies to all heats in the dance.
+  useEffect(() => {
+    if (heats.length === 0 || Object.keys(heatIdMap).length === 0) {
+      setHeatSubmissions({});
+      return;
+    }
+    const danceName = dances.find((d) => d.id === selectedDanceId)?.name;
+    const firstRealId = heatIdMap[heats[0].id];
+    if (!firstRealId) return;
+    liveApi.getJudgeStatuses(firstRealId, danceName, competitionId).then((statuses) => {
+      const submitted = statuses.filter((j) => j.status === 'submitted').length;
+      const total = statuses.length;
+      // Apply same counts to ALL heats — submission is per-dance, not per-group
+      const map: Record<string, { submitted: number; total: number }> = {};
+      for (const h of heats) {
+        const realId = heatIdMap[h.id];
+        if (realId) map[realId] = { submitted, total };
+      }
+      setHeatSubmissions(map);
+    }).catch(() => {});
+  }, [heats, heatIdMap, selectedDanceId, dances]);
 
   // When round selected → derive dances + fetch heat assignments + find real roundId
   useEffect(() => {
@@ -170,6 +230,9 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
       })
       .catch(() => setHeats([]));
 
+    // Store sectionId for round close/complete API
+    setSectionId(slot.sectionId ?? null);
+
     // Fetch the real backend Round entity UUID for this slot
     if (slot.sectionId && slot.roundNumber) {
       apiClient
@@ -203,20 +266,56 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
       .catch(() => setHeatIdMap({}));
   }, [activeRoundId, selectedRoundId]);
 
+  // Fetch per-dance confirmation status for ALL dances in the round.
+  // This determines whether the "Close round" button is enabled.
+  useEffect(() => {
+    if (dances.length === 0 || heats.length === 0 || Object.keys(heatIdMap).length === 0) return;
+    const firstRealHeatId = heatIdMap[heats[0].id];
+    if (!firstRealHeatId) return;
+
+    for (const dance of dances) {
+      liveApi.getJudgeStatuses(firstRealHeatId, dance.name, competitionId).then((statuses) => {
+        const submitted = statuses.filter((j) => j.status === 'submitted').length;
+        const total = statuses.length;
+        setDanceConfirmation(dance.id, submitted, total);
+      }).catch(() => {});
+    }
+  }, [dances, heats, heatIdMap, competitionId, setDanceConfirmation]);
+
+  // Check if current round is already closed/calculated
+  useEffect(() => {
+    if (!activeRoundId) { setRoundClosed(false); return; }
+    apiClient.get<{ id: string; status: string }>(`/rounds/${activeRoundId}`)
+      .then((res) => {
+        setRoundClosed(res.data.status === 'CLOSED' || res.data.status === 'CALCULATED' || res.data.status === 'COMPLETED');
+      })
+      .catch(() => setRoundClosed(false));
+  }, [activeRoundId, setRoundClosed]);
+
   const rounds: RoundItem[] = slots.filter((s) => s.type === "ROUND").map(slotToRound);
   const totalPairs = competition?.registeredPairsCount ?? 0;
+  const selectedDanceName = dances.find((d) => d.id === selectedDanceId)?.name ?? null;
+
+  // Enrich heats with per-heat submission counts (X marks are per-dance, so status is per heat+dance)
+  const enrichedHeats: HeatItem[] = heats.map((h) => {
+    const realId = heatIdMap[h.id];
+    const sub = realId ? heatSubmissions[realId] : undefined;
+    return sub ? { ...h, submittedJudges: sub.submitted, totalJudges: sub.total } : h;
+  });
 
   return (
     <LiveControlDashboard
       competitionId={competitionId}
-      competitionName={competition?.name ?? "—"}
+      competitionName={competition?.name ?? ""}
       rounds={rounds}
       dances={dances}
-      heats={heats}
+      heats={enrichedHeats}
       judgeDetails={judgeDetails}
       activeRoundId={activeRoundId}
       totalPairs={totalPairs}
       heatIdMap={heatIdMap}
+      selectedDanceName={selectedDanceName}
+      sectionId={sectionId}
     />
   );
 }

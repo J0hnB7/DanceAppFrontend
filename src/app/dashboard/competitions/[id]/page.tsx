@@ -1420,9 +1420,9 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                           <CardContent className="flex items-start justify-between gap-4 py-4">
                             <div className="flex-1">
                               <p className="text-xs text-[var(--text-tertiary)]">
-                                {new Date(item.publishedAt).toLocaleDateString("en-GB", {
+                                {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString("en-GB", {
                                   day: "numeric", month: "long", year: "numeric",
-                                })}
+                                }) : "—"}
                               </p>
                               <p className="font-medium text-[var(--text-primary)]">{item.title}</p>
                               <p className="mt-1 text-sm text-[var(--text-secondary)]">{item.content}</p>

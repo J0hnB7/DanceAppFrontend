@@ -62,8 +62,8 @@ export function LiveStatusBar({
           <ArrowLeft className="h-4 w-4" />
         </button>
         <span
-          className="truncate text-sm font-semibold"
-          style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-sora)' }}
+          className="truncate text-sm font-semibold transition-opacity duration-300"
+          style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-sora)', opacity: competitionName ? 1 : 0 }}
         >
           {competitionName}
         </span>
@@ -90,7 +90,7 @@ export function LiveStatusBar({
             }}
           >
             <Signal className="h-3 w-3" />
-            {new Date(lastSentAt).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {(() => { const d = new Date(lastSentAt); return isFinite(d.getTime()) ? d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null; })()}
           </div>
         )}
 

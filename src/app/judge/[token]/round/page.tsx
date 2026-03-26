@@ -249,10 +249,11 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
 
     if (isOnline) {
       try {
+        // Judge confirms once per dance (roundId:dance) — covers all groups/heats
         await apiClient.post(
           `/rounds/${round.id}/callbacks`,
-          { selectedPairIds },
-          { params: { judgeTokenId: adjudicatorId } }
+          { selectedPairIds, dance: activeDance?.name ?? 'UNKNOWN' },
+          { params: { judgeTokenId: adjudicatorId, dance: activeDance?.name } }
         );
         await judgeOfflineStore.markAsSynced(pairs.map((p) => `${adjudicatorId}-${round.id}-${p.id}`));
       } catch { /* saved offline */ }

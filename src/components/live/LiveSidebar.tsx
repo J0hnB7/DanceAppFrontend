@@ -132,11 +132,7 @@ export function LiveSidebar({ running, stats, selectedBlock }: Props) {
               Poslední signál
             </div>
             <div className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-              {new Date(lastSentAt).toLocaleTimeString('cs-CZ', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })}
+              {(() => { const d = new Date(lastSentAt); return isFinite(d.getTime()) ? d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null; })()}
             </div>
           </div>
         </div>

@@ -19,8 +19,10 @@ export const liveApi = {
   startRound: (roundId: string) =>
     apiClient.post(`/rounds/${roundId}/start`).then((r) => r.data),
 
-  getJudgeStatuses: (heatId: string) =>
-    apiClient.get<JudgeStatusDto[]>(`/heats/${heatId}/judge-statuses`).then((r) => r.data),
+  getJudgeStatuses: (heatId: string, dance?: string, competitionId?: string) =>
+    apiClient.get<JudgeStatusDto[]>(`/heats/${heatId}/judge-statuses`, {
+      params: { ...(dance ? { dance } : {}), ...(competitionId ? { competitionId } : {}) },
+    }).then((r) => r.data),
 
   getHeatResults: (heatId: string) =>
     apiClient.get<HeatResult[]>(`/heats/${heatId}/results`).then((r) => r.data),
@@ -50,4 +52,9 @@ export const liveApi = {
 
   unlockScoring: (judgeId: string, heatId: string) =>
     apiClient.post(`/judges/${judgeId}/heats/${heatId}/unlock`).then((r) => r.data),
+
+  getJudgeCallbacks: (roundId: string, judgeTokenId: string) =>
+    apiClient
+      .get<string[]>(`/rounds/${roundId}/callbacks`, { params: { judgeTokenId } })
+      .then((r) => r.data),
 }

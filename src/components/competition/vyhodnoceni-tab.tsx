@@ -7,7 +7,8 @@ import { roundsApi, type RoundDto } from "@/lib/api/rounds";
 import { type SectionDto } from "@/lib/api/sections";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Download, Clock } from "lucide-react";
+import apiClient from "@/lib/api-client";
 
 interface PairInfo {
   id: string;
@@ -371,12 +372,14 @@ function SectionResults({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["rounds", competitionId, section.id] }),
   });
 
-  const completedRounds = rounds
-    .filter((r) => r.status === "COMPLETED" || r.status === "CALCULATED")
+  const VISIBLE_STATUSES = new Set(["COMPLETED", "CALCULATED", "IN_PROGRESS", "OPEN", "CLOSED"]);
+  const visibleRounds = rounds
+    .filter((r) => VISIBLE_STATUSES.has(r.status))
     .sort((a, b) => {
       const order = ["HEAT", "PRELIMINARY", "SEMIFINAL", "FINAL", "SINGLE_ROUND"];
       return order.indexOf(a.roundType) - order.indexOf(b.roundType);
     });
+  const completedRounds = visibleRounds;
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["section-summary", section.id],
@@ -386,40 +389,78 @@ function SectionResults({
 
   if (roundsLoading) return <div className="py-8 flex justify-center"><Spinner /></div>;
 
-  if (!completedRounds.length && !summary?.rankings?.length) {
+  if (!visibleRounds.length && !summary?.rankings?.length) {
     return (
       <p className="py-12 text-center text-sm text-[var(--text-tertiary)]">
-        Výsledky budou k dispozici po skončení soutěže.
+        Zatím nebyla zahájena žádná kola.
       </p>
     );
   }
 
-  const tabs: { id: ResultView; label: string }[] = [
-    { id: "vysledky", label: "Výsledková listina" },
+  const IN_PROGRESS_STATUSES = new Set(["IN_PROGRESS", "OPEN", "CLOSED"]);
+  const tabs: { id: ResultView; label: string; inProgress: boolean }[] = [
+    { id: "vysledky", label: "Výsledková listina", inProgress: false },
     ...completedRounds.map((r) => ({
       id: r.id,
       label: roundLabel(r),
+      inProgress: IN_PROGRESS_STATUSES.has(r.status),
     })),
   ];
 
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await apiClient.get(
+        `/sections/${section.id}/results/export`,
+        { params: { format: "xlsx", withAudit: true }, responseType: "blob" }
+      );
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vysledky-${section.name}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silently fail
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
-      {/* Round tabs */}
-      <div className="flex gap-1 border-b border-[var(--border)] mb-4 overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setView(tab.id)}
-            className={cn(
-              "px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors",
-              view === tab.id
-                ? "border-[var(--accent)] text-[var(--accent)]"
-                : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Round tabs + export */}
+      <div className="flex items-center gap-2 border-b border-[var(--border)] mb-4">
+        <div className="flex gap-1 overflow-x-auto flex-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setView(tab.id)}
+              className={cn(
+                "px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors flex items-center gap-1.5",
+                view === tab.id
+                  ? "border-[var(--accent)] text-[var(--accent)]"
+                  : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              )}
+            >
+              {tab.inProgress && <Clock className="h-3 w-3 text-[var(--warning)]" />}
+              {tab.label}
+              {tab.inProgress && (
+                <span className="text-[10px] font-bold text-[var(--warning)]">PROBÍHÁ</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors disabled:opacity-50 shrink-0 mb-1"
+          style={{ background: "var(--accent)" }}
+        >
+          <Download className="h-3.5 w-3.5" />
+          {exporting ? "Exportuji…" : "Export XLSX"}
+        </button>
       </div>
 
       {/* Approval button for CALCULATED rounds */}

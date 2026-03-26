@@ -1,13 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Send } from 'lucide-react'
+import { Send, Lock, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
 
+import apiClient from '@/lib/api-client'
 import { useLiveStore } from '@/store/live-store'
 import { liveApi, type JudgeStatusDto } from '@/lib/api/live'
 import { useSSE } from '@/hooks/use-sse'
 import { useSSEConnected } from '@/lib/sse-client'
 import { useToast } from '@/hooks/use-toast'
+
+import { roundsApi, type PreliminaryResultResponse } from '@/lib/api/rounds'
 
 import { LiveStatusBar } from './LiveStatusBar'
 import { RoundSelector, type RoundItem } from './RoundSelector'
@@ -31,6 +34,10 @@ interface Props {
   totalPairs: number
   /** Maps synthetic heat IDs (`${slotId}-h${heatNumber}`) → real backend UUID heat IDs */
   heatIdMap: Record<string, string>
+  /** Currently selected dance name (e.g., "Waltz") — passed to judge-statuses for per-dance filtering */
+  selectedDanceName: string | null
+  /** Section ID — needed for round close/complete API */
+  sectionId: string | null
 }
 
 export function LiveControlDashboard({
@@ -43,12 +50,15 @@ export function LiveControlDashboard({
   activeRoundId,
   totalPairs,
   heatIdMap,
+  selectedDanceName,
+  sectionId,
 }: Props) {
   const {
     selectedRoundId,
     selectedDanceId,
     selectedHeatId,
     judgeStatuses,
+    judgeOnline,
     heatResults,
     incidents,
     presMode,
@@ -57,28 +67,104 @@ export function LiveControlDashboard({
     selectDance,
     selectHeat,
     updateJudgeStatus,
+    updateJudgeOnline,
     setHeatResults,
     setLastSentAt,
     togglePresMode,
     hydrateFromServer,
+    danceConfirmations,
+    roundClosed,
+    setRoundClosed,
   } = useLiveStore()
 
   const { toast } = useToast()
   const [sending, setSending] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [showIncidentModal, setShowIncidentModal] = useState(false)
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [closeResult, setCloseResult] = useState<PreliminaryResultResponse | null>(null)
+  const [showCollisionDialog, setShowCollisionDialog] = useState(false)
 
   const sseConnected = useSSEConnected(competitionId)
 
-  // Hydrate when heat selected — use real backend UUID (not synthetic)
-  useEffect(() => {
-    if (selectedHeatId) {
-      const realHeatId = heatIdMap[selectedHeatId]
-      if (realHeatId) {
-        hydrateFromServer(competitionId, realHeatId)
+  // All dances confirmed = every dance has submitted === total and total > 0
+  const danceIds = Object.keys(danceConfirmations)
+  const allDancesConfirmed = danceIds.length > 0 && danceIds.every((id) => {
+    const dc = danceConfirmations[id]
+    return dc.total > 0 && dc.submitted === dc.total
+  })
+
+  // Close round + calculate handler
+  const handleCloseRound = useCallback(async () => {
+    if (!activeRoundId || !sectionId) return
+    setClosing(true)
+    try {
+      // 1. Close the round
+      await roundsApi.close(activeRoundId)
+      // 2. Calculate results
+      const result = await roundsApi.calculateResults(activeRoundId) as PreliminaryResultResponse
+      setCloseResult(result)
+
+      if (result.tieAtBoundary && result.tiedPairsAtBoundary?.length > 0) {
+        // Show collision resolution dialog
+        setShowCollisionDialog(true)
+      } else {
+        // Success — round closed and calculated
+        setRoundClosed(true)
+        toast({ title: 'Kolo uzavřeno a vyhodnoceno' })
       }
+    } catch (err) {
+      console.error('[LiveControlDashboard] close round failed', err)
+      toast({ title: 'Nepodařilo se uzavřít kolo', variant: 'destructive' })
+    } finally {
+      setClosing(false)
+      setShowCloseConfirm(false)
     }
-  }, [competitionId, selectedHeatId, heatIdMap, hydrateFromServer])
+  }, [activeRoundId, sectionId, setRoundClosed, toast])
+
+  // Collision resolution: "more" = all tied pairs advance, "less" = fewer advance
+  const handleResolveTie = useCallback(async (choice: 'more' | 'less') => {
+    if (!activeRoundId) return
+    setClosing(true)
+    try {
+      const result = await roundsApi.resolveTie(activeRoundId, choice) as PreliminaryResultResponse
+      setCloseResult(result)
+      setShowCollisionDialog(false)
+      setRoundClosed(true)
+      toast({ title: 'Kolo uzavřeno a vyhodnoceno' })
+    } catch (err) {
+      console.error('[LiveControlDashboard] resolve tie failed', err)
+      toast({ title: 'Nepodařilo se vyřešit remízu', variant: 'destructive' })
+    } finally {
+      setClosing(false)
+    }
+  }, [activeRoundId, setRoundClosed, toast])
+
+  // Resolve real heatId: heatIdMap first, then find RUNNING heat in active round as fallback
+  const resolveRealHeatId = useCallback(async (): Promise<string | null> => {
+    const fromMap = selectedHeatId ? heatIdMap[selectedHeatId] : undefined
+    if (fromMap) return fromMap
+    if (!activeRoundId) return null
+    try {
+      const res = await apiClient.get<Array<{ id: string; heatNumber: number; status: string }>>(
+        `/rounds/${activeRoundId}/heats`
+      )
+      // Prefer RUNNING heat; fall back to first heat if none running
+      const running = res.data.find((h) => h.status === 'RUNNING') ?? res.data[0]
+      return running?.id ?? null
+    } catch {
+      return null
+    }
+  }, [selectedHeatId, heatIdMap, activeRoundId])
+
+  // Hydrate when heat or dance selected or activeRoundId resolves
+  useEffect(() => {
+    if (!activeRoundId) return
+    resolveRealHeatId().then((realHeatId) => {
+      if (realHeatId) hydrateFromServer(competitionId, realHeatId, selectedDanceName)
+    })
+  }, [competitionId, selectedHeatId, selectedDanceName, heatIdMap, activeRoundId, hydrateFromServer, resolveRealHeatId])
 
   // SSE — judge submitted score
   useSSE(competitionId, 'score-submitted', (data: { judgeTokenId: string }) => {
@@ -87,25 +173,30 @@ export function LiveControlDashboard({
     }
   })
 
-  // Polling fallback — refresh judge statuses immediately + every 8s when a heat is active
-  // Catches any updates missed by SSE (connection drops, reconnects, etc.)
+  // Polling fallback — refresh judge statuses + online every 8s when a round is active
   useEffect(() => {
-    if (!selectedHeatId) return;
-    const realHeatId = heatIdMap[selectedHeatId];
-    if (!realHeatId) return;
-    const poll = () => {
-      liveApi.getJudgeStatuses(realHeatId)
+    if (!activeRoundId) return;
+    const poll = async () => {
+      const realHeatId = await resolveRealHeatId()
+      if (!realHeatId) return
+      liveApi.getJudgeStatuses(realHeatId, selectedDanceName ?? undefined, competitionId)
         .then((statuses) => {
+          const current = useLiveStore.getState().judgeStatuses;
           for (const s of statuses) {
-            updateJudgeStatus(s.judgeId, s.status);
+            if (current[s.judgeId] !== 'submitted' || s.status === 'submitted') {
+              updateJudgeStatus(s.judgeId, s.status);
+            }
+            if (s.online !== undefined) {
+              updateJudgeOnline(s.judgeId, s.online);
+            }
           }
         })
         .catch(() => {});
     };
-    poll(); // immediate fetch on mount / heat change
+    poll();
     const id = setInterval(poll, 8_000);
     return () => clearInterval(id);
-  }, [selectedHeatId, heatIdMap, updateJudgeStatus])
+  }, [activeRoundId, selectedDanceName, resolveRealHeatId, updateJudgeStatus, updateJudgeOnline])
 
   // SSE — results published (all judges done) → load results (legacy fallback)
   useSSE(competitionId, 'results-published', async () => {
@@ -120,12 +211,19 @@ export function LiveControlDashboard({
     }
   })
 
-  // SSE — all judges submitted → auto-show results panel (payload contains real heatId)
+  // SSE — all judges submitted → load results + update judge statuses + online (payload contains real heatId)
   useSSE(competitionId, 'heat:all-submitted', async (data: { heatId: string; roundId: string }) => {
     if (!data.heatId) return
     try {
-      const results = await liveApi.getHeatResults(data.heatId)
+      const [results, statuses] = await Promise.all([
+        liveApi.getHeatResults(data.heatId),
+        liveApi.getJudgeStatuses(data.heatId, undefined, competitionId),
+      ])
       setHeatResults(results)
+      for (const s of statuses) {
+        updateJudgeStatus(s.judgeId, s.status)
+        if (s.online !== undefined) updateJudgeOnline(s.judgeId, s.online)
+      }
     } catch {
       // silently ignore
     }
@@ -189,6 +287,13 @@ export function LiveControlDashboard({
       await liveApi.sendHeat(realHeatId)
       setLastSentAt(new Date().toISOString())
       toast({ title: 'Skupina odeslána porotcům' })
+      // Refresh judge statuses + online immediately after sending
+      liveApi.getJudgeStatuses(realHeatId, selectedDanceName ?? undefined, competitionId).then((statuses) => {
+        for (const s of statuses) {
+          updateJudgeStatus(s.judgeId, s.status)
+          if (s.online !== undefined) updateJudgeOnline(s.judgeId, s.online)
+        }
+      }).catch(() => {})
     } catch {
       toast({ title: 'Nepodařilo se odeslat skupinu', variant: 'destructive' })
     } finally {
@@ -294,6 +399,8 @@ export function LiveControlDashboard({
                 judgeDetails={judgeDetails}
                 competitionId={competitionId}
                 heatId={(selectedHeatId ? heatIdMap[selectedHeatId] : undefined) ?? ''}
+                activeRoundId={activeRoundId}
+                heatResults={heatResults}
               />
             )}
 
@@ -336,7 +443,7 @@ export function LiveControlDashboard({
           backdropFilter: 'blur(16px)',
         }}
       >
-        <div className="min-w-0 flex-1 pr-4">
+        <div className="min-w-0 flex-1 pr-4 pl-10">
           <div
             className="truncate text-xs"
             style={{ color: 'var(--text-secondary)' }}
@@ -346,27 +453,55 @@ export function LiveControlDashboard({
           {lastSentAt && (
             <div className="mt-0.5 text-[10px]" style={{ color: 'var(--success)' }}>
               Odesláno{' '}
-              {new Date(lastSentAt).toLocaleTimeString('cs-CZ', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })}
+              {(() => { const d = new Date(lastSentAt); return isFinite(d.getTime()) ? d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null; })()}
             </div>
           )}
         </div>
 
-        <button
-          onClick={handleSend}
-          disabled={!selectedHeatId || sending}
-          className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
-          style={{
-            background: 'linear-gradient(135deg, #0a84ff, #0066cc)',
-            boxShadow: '0 4px 16px rgba(10,132,255,.3)',
-          }}
-        >
-          <Send className="h-4 w-4" />
-          {sending ? 'Odesílám…' : 'Odeslat porotcům'}
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Close round button — visible when round selected, hidden when already closed */}
+          {selectedRoundId && !roundClosed && (
+            <button
+              onClick={() => setShowCloseConfirm(true)}
+              disabled={!allDancesConfirmed || closing}
+              title={!allDancesConfirmed ? 'Nejprve musí všichni porotci potvrdit všechny tance' : 'Uzavřít kolo a vyhodnotit'}
+              className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                background: allDancesConfirmed
+                  ? 'linear-gradient(135deg, #30d158, #28a745)'
+                  : 'rgba(142,142,147,0.3)',
+                boxShadow: allDancesConfirmed ? '0 4px 16px rgba(48,209,88,.3)' : 'none',
+              }}
+            >
+              {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+              {closing ? 'Vyhodnocuji…' : 'Uzavřít kolo'}
+            </button>
+          )}
+
+          {/* Round closed badge */}
+          {selectedRoundId && roundClosed && (
+            <div
+              className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold"
+              style={{ background: 'rgba(48,209,88,0.15)', color: '#30d158' }}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Kolo uzavřeno
+            </div>
+          )}
+
+          <button
+            onClick={handleSend}
+            disabled={!selectedHeatId || sending}
+            className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
+            style={{
+              background: 'linear-gradient(135deg, #0a84ff, #0066cc)',
+              boxShadow: '0 4px 16px rgba(10,132,255,.3)',
+            }}
+          >
+            <Send className="h-4 w-4" />
+            {sending ? 'Odesílám…' : 'Odeslat porotcům'}
+          </button>
+        </div>
       </div>
 
       {/* Help modal */}
@@ -443,6 +578,172 @@ export function LiveControlDashboard({
               modal
               onClose={() => setShowIncidentModal(false)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Close round confirm dialog */}
+      {showCloseConfirm && (
+        <div
+          className="fixed inset-0 z-[900] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,.72)', backdropFilter: 'blur(6px)' }}
+          onClick={() => !closing && setShowCloseConfirm(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-6"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Uzavřít kolo a vyhodnotit?
+            </div>
+            <p className="mb-5 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Po uzavření bude kolo vyhodnoceno dle pravidel Skating System.
+              Postupující páry budou přiřazeny do dalšího kola.
+              Tuto akci lze vzít zpět.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowCloseConfirm(false)}
+                disabled={closing}
+                className="rounded-lg px-4 py-2 text-sm"
+                style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
+              >
+                Zrušit
+              </button>
+              <button
+                onClick={handleCloseRound}
+                disabled={closing}
+                className="flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-white"
+                style={{ background: 'linear-gradient(135deg, #30d158, #28a745)' }}
+              >
+                {closing && <Loader2 className="h-4 w-4 animate-spin" />}
+                Uzavřít a vyhodnotit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collision resolution dialog (tie at boundary) */}
+      {showCollisionDialog && closeResult && (
+        <div
+          className="fixed inset-0 z-[900] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,.72)', backdropFilter: 'blur(6px)' }}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl p-6"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          >
+            <div className="mb-1 flex items-center gap-2 text-base font-semibold" style={{ color: '#ff9f0a' }}>
+              <AlertTriangle className="h-5 w-5" />
+              Remíza na hranici postupu
+            </div>
+            <p className="mb-4 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Na hranici postupu se umístilo více párů se stejným počtem bodů.
+              Dle pravidel WDSF (Rule E.8.1) postupují všechny páry na sdíleném místě.
+            </p>
+
+            {/* Show tied pairs */}
+            {closeResult.tiedPairsAtBoundary.length > 0 && (
+              <div
+                className="mb-4 rounded-lg p-3 text-sm"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+              >
+                <div className="mb-1 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                  Páry na hranici:
+                </div>
+                <div style={{ color: 'var(--text-primary)' }}>
+                  {closeResult.pairs
+                    .filter((p) => closeResult.tiedPairsAtBoundary.includes(p.pairId))
+                    .map((p) => `#${p.startNumber}`)
+                    .join(', ')}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => handleResolveTie('less')}
+                disabled={closing}
+                className="rounded-lg px-4 py-2 text-sm"
+                style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
+              >
+                Méně (nepostoupí)
+              </button>
+              <button
+                onClick={() => handleResolveTie('more')}
+                disabled={closing}
+                className="flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-white"
+                style={{ background: 'linear-gradient(135deg, #30d158, #28a745)' }}
+              >
+                {closing && <Loader2 className="h-4 w-4 animate-spin" />}
+                Více — postupují všichni (WDSF)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Round results inline (after close) */}
+      {roundClosed && closeResult && (
+        <div
+          className="fixed inset-0 z-[800] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setCloseResult(null)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl p-6"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Výsledky kola — {closeResult.pairsToAdvance} párů postupuje
+            </div>
+            <div className="space-y-2">
+              {closeResult.pairs
+                .sort((a, b) => b.voteCount - a.voteCount)
+                .map((pair) => (
+                  <div
+                    key={pair.pairId}
+                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm"
+                    style={{
+                      background: pair.advances ? 'rgba(48,209,88,0.08)' : 'rgba(255,69,58,0.06)',
+                      border: `1px solid ${pair.advances ? 'rgba(48,209,88,0.2)' : 'rgba(255,69,58,0.15)'}`,
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold" style={{ color: 'var(--text-primary)' }}>
+                        #{pair.startNumber}
+                      </span>
+                      {pair.dancer1Name && (
+                        <span style={{ color: 'var(--text-secondary)' }}>{pair.dancer1Name}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        {pair.voteCount} X
+                      </span>
+                      <span
+                        className="rounded px-2 py-0.5 text-xs font-semibold"
+                        style={{
+                          background: pair.advances ? 'rgba(48,209,88,0.15)' : 'rgba(255,69,58,0.12)',
+                          color: pair.advances ? '#30d158' : '#ff453a',
+                        }}
+                      >
+                        {pair.advances ? 'POSTUPUJE' : 'VYŘAZEN'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+            <button
+              onClick={() => setCloseResult(null)}
+              className="mt-4 w-full rounded-lg py-2 text-xs"
+              style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
+            >
+              Zavřít
+            </button>
           </div>
         </div>
       )}

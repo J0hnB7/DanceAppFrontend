@@ -4,6 +4,7 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { sseClient } from "@/lib/sse-client";
 import apiClient from "@/lib/api-client";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/auth-store";
 
 export function useSSE<T>(
   competitionId: string | null | undefined,
@@ -15,11 +16,15 @@ export function useSSE<T>(
 
   const stableHandler = useCallback((data: T) => handlerRef.current(data), []);
 
+  // Wait for auth store to be hydrated and user authenticated before subscribing.
+  // This prevents SSE connecting without a token and getting 401 on first attempt.
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   useEffect(() => {
-    if (!competitionId) return;
+    if (!competitionId || !isAuthenticated) return;
     const sub = sseClient.subscribe(competitionId, event, stableHandler as (data: unknown) => void);
     return () => sub.unsubscribe();
-  }, [competitionId, event, stableHandler]);
+  }, [competitionId, event, stableHandler, isAuthenticated]);
 }
 
 /**

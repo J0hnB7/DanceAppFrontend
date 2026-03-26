@@ -11,16 +11,17 @@ interface Props {
   submittedAt?: string
   canPing: boolean
   onPing: (judgeId: string) => void
+  onClick?: (judgeId: string) => void
 }
 
 const STATUS_LABELS: Record<JudgeStatus, string> = {
   pending: 'Čeká',
   scoring: 'Zadává',
-  submitted: 'Zadáno',
+  submitted: 'Potvrzeno',
   offline: 'Offline',
 }
 
-export function JudgeCard({ judgeId, letter, name, status, online, canPing, onPing }: Props) {
+export function JudgeCard({ judgeId, letter, name, status, online, canPing, onPing, onClick }: Props) {
   const isSubmitted = status === 'submitted'
   const isScoring = status === 'scoring'
   const isOffline = status === 'offline'
@@ -39,7 +40,9 @@ export function JudgeCard({ judgeId, letter, name, status, online, canPing, onPi
           : isScoring
           ? 'rgba(10,132,255,.28)'
           : 'var(--border)',
+        cursor: onClick ? 'pointer' : undefined,
       }}
+      onClick={onClick ? () => onClick(judgeId) : undefined}
     >
       {/* Letter */}
       <span

@@ -5,6 +5,10 @@ export interface HeatItem {
   number: number
   pairNumbers: number[]
   status: 'pending' | 'active' | 'done' | 'skipped'
+  /** Number of judges who submitted for this heat (confirmed, even with 0 X marks) */
+  submittedJudges?: number
+  /** Total number of judges */
+  totalJudges?: number
 }
 
 interface Props {
@@ -33,7 +37,7 @@ export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props)
           className="text-[12px] font-bold uppercase tracking-[.8px]"
           style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
         >
-          Skupina na parketu
+          {selectedId ? 'Skupina na parketu' : 'Vybrat skupinu'}
         </span>
         {danceLabel && (
           <span className="ml-auto text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -79,7 +83,7 @@ export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props)
               >
                 Skupina {heat.number}
               </span>
-              {active && (
+              {active ? (
                 <span
                   className="rounded-[7px] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[.4px]"
                   style={{
@@ -90,7 +94,17 @@ export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props)
                 >
                   NA PARKETU
                 </span>
-              )}
+              ) : heat.submittedJudges !== undefined && heat.totalJudges !== undefined && heat.totalJudges > 0 ? (
+                <span
+                  className="text-[9px] font-bold"
+                  style={{
+                    fontFamily: 'var(--font-sora)',
+                    color: heat.submittedJudges === heat.totalJudges ? 'var(--success)' : 'var(--text-tertiary)',
+                  }}
+                >
+                  {heat.submittedJudges === heat.totalJudges ? '✓ Hotovo' : `${heat.submittedJudges}/${heat.totalJudges}`}
+                </span>
+              ) : null}
             </button>
           )
         })}

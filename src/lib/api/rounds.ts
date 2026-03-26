@@ -34,6 +34,23 @@ export interface JudgeSubmissionStatus {
   submittedAt?: string;
 }
 
+export interface PairCallbackResult {
+  pairId: string;
+  startNumber: number;
+  dancer1Name?: string;
+  voteCount: number;
+  advances: boolean;
+}
+
+export interface PreliminaryResultResponse {
+  pairsToAdvance: number;
+  pairs: PairCallbackResult[];
+  tieAtBoundary: boolean;
+  tiedPairsAtBoundary: string[];
+  nextRoundId?: string;
+  advancedPairIds: string[];
+}
+
 export const roundsApi = {
   /** Backend: GET /competitions/{cId}/sections/{sId}/rounds */
   list: (competitionId: string, sectionId: string) =>
@@ -59,6 +76,14 @@ export const roundsApi = {
 
   getResults: (roundId: string) =>
     apiClient.get(`/rounds/${roundId}/results`).then((r) => r.data),
+
+  /** Backend: GET /rounds/{roundId}/preliminary — calculate preliminary results */
+  getPreliminaryResults: (roundId: string) =>
+    apiClient.get<PreliminaryResultResponse>(`/rounds/${roundId}/preliminary`).then((r) => r.data),
+
+  /** Backend: POST /rounds/{roundId}/preliminary/chairman-resolve — resolve boundary tie */
+  resolveChairmanTie: (roundId: string, approvedPairIds: string[]) =>
+    apiClient.post(`/rounds/${roundId}/preliminary/chairman-resolve`, { approvedPairIds }).then((r) => r.data),
 
   // Legacy/mock-only endpoints kept for backward compat with mock layer
   get: (roundId: string) =>
