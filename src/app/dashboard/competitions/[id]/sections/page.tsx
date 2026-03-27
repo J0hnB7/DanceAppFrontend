@@ -68,7 +68,7 @@ export default function SectionsPage({
     let skipped = 0;
     const errors: string[] = [];
     try {
-      const { default: readXlsxFile } = await import("read-excel-file");
+      const { default: readXlsxFile } = await import("read-excel-file/browser");
       // Columns: Název(0), Styl(1), Věková kategorie(2), Úroveň(3), Typ soutěžícího(4), Typ soutěže(5), Počet rozhodčích(6), Max párů finále(7), Startovné(8), Měna(9)
       const rows = await readXlsxFile(file);
       const dataRows = rows.slice(1).filter((r) => r[0]);
@@ -120,7 +120,7 @@ export default function SectionsPage({
   };
 
   const handleExport = async () => {
-    const { default: writeXlsxFile } = await import("write-excel-file");
+    const { default: writeXlsxFile } = await import("write-excel-file/browser");
     const HEADERS = [
       t("competitionDetail.exportName"), t("competitionDetail.exportStyle"),
       t("competitionDetail.exportAgeCategory"), t("competitionDetail.exportLevel"),

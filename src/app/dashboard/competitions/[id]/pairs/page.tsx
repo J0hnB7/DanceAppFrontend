@@ -273,7 +273,7 @@ function ContactModal({ pair, onClose }: { pair: PairDto; onClose: () => void })
 
 // ── Excel export ──────────────────────────────────────────────────────────────
 async function exportToExcel(pairs: PairDto[], sections: { id: string; name: string }[], competitionName?: string) {
-  const { default: writeXlsxFile } = await import("write-excel-file");
+  const { default: writeXlsxFile } = await import("write-excel-file/browser");
 
   const getSectionName = (p: PairDto) => {
     const sectionId = p.sectionId ?? p.sections?.[0]?.sectionId;
@@ -504,7 +504,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
     setXlsxImporting(true);
     let skipped = 0;
     try {
-      const { default: readXlsxFile } = await import("read-excel-file");
+      const { default: readXlsxFile } = await import("read-excel-file/browser");
       const rows = await readXlsxFile(file);
       const dataRows = rows.slice(1).filter((r) => r[4]);
 

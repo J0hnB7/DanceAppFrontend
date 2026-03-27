@@ -434,7 +434,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     setXlsxImporting(true);
     let skipped = 0;
     try {
-      const { default: readXlsxFile } = await import("read-excel-file");
+      const { default: readXlsxFile } = await import("read-excel-file/browser");
       const rows = await readXlsxFile(file);
       const dataRows = rows.slice(1).filter((r) => r[4]);
 
@@ -503,7 +503,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     let skipped = 0;
     const errors: string[] = [];
     try {
-      const { default: readXlsxFile } = await import("read-excel-file");
+      const { default: readXlsxFile } = await import("read-excel-file/browser");
       // Columns: Název(0), Styl(1), Věková kategorie(2), Úroveň(3), Typ soutěžícího(4), Typ soutěže(5), Počet rozhodčích(6), Max párů finále(7), Startovné(8), Měna(9)
       const rows = await readXlsxFile(file);
       const dataRows = rows.slice(1).filter((r) => r[0]);
@@ -555,7 +555,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
   };
 
   const handleSectionsExport = async () => {
-    const { default: writeXlsxFile } = await import("write-excel-file");
+    const { default: writeXlsxFile } = await import("write-excel-file/browser");
     const HEADERS = [
       t("competitionDetail.exportName"), t("competitionDetail.exportStyle"),
       t("competitionDetail.exportAgeCategory"), t("competitionDetail.exportLevel"),
@@ -587,7 +587,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
   };
 
   const handlePairsExport = async () => {
-    const { default: writeXlsxFile } = await import("write-excel-file");
+    const { default: writeXlsxFile } = await import("write-excel-file/browser");
     // Format matches handleXlsxImport expectations:
     // r[0]=externalSectionId, r[1]=externalCompetitorId, r[2]=startNumber,
     // r[3]=sectionName, r[4]=firstName1, r[5]=lastName1, r[6]=firstName2, r[7]=lastName2,

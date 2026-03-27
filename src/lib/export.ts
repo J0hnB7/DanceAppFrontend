@@ -6,7 +6,7 @@ export async function exportResultsToExcel(
   sectionName: string,
   competitionName: string
 ) {
-  const { default: writeXlsxFile } = await import("write-excel-file");
+  const { default: writeXlsxFile } = await import("write-excel-file/browser");
 
   const danceKeys = Object.keys(summary.rankings[0]?.perDance ?? {});
   const headers = [

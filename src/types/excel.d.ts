@@ -1,4 +1,4 @@
-declare module "write-excel-file" {
+declare module "write-excel-file/browser" {
   type CellValue = string | number | boolean | Date | null | undefined;
 
   interface Cell {
@@ -33,7 +33,7 @@ declare module "write-excel-file" {
   export default writeXlsxFile;
 }
 
-declare module "read-excel-file" {
+declare module "read-excel-file/browser" {
   type CellValue = string | number | boolean | Date | null;
 
   function readXlsxFile(
