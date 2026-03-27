@@ -48,9 +48,10 @@
     "react-dom": "19.2.3",
     "react-error-boundary": "^6.1.1",
     "react-hook-form": "^7.71.2",
+    "read-excel-file": "^7.0.3",
     "recharts": "^3.7.0",
     "tailwind-merge": "^3.5.0",
-    "xlsx": "^0.18.5",
+    "write-excel-file": "^3.0.6",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },

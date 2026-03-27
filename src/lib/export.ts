@@ -6,31 +6,28 @@ export async function exportResultsToExcel(
   sectionName: string,
   competitionName: string
 ) {
-  const XLSX = await import("xlsx");
+  const { default: writeXlsxFile } = await import("write-excel-file");
 
-  const rows = summary.rankings.map((row: PairFinalResultRow) => ({
-    Place: row.finalPlacement,
-    "Start #": row.startNumber,
-    "Total sum": row.totalSum,
-    "Tie resolution": row.tieResolution,
-    ...Object.fromEntries(
-      Object.entries(row.perDance).map(([dance, place]) => [`Dance: ${dance}`, place])
-    ),
-  }));
-
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sectionName.slice(0, 31));
-
-  // Competition metadata sheet
-  const meta = XLSX.utils.aoa_to_sheet([
-    ["Competition", competitionName],
-    ["Section", sectionName],
-    ["Exported", new Date().toLocaleString("sk-SK")],
+  const danceKeys = Object.keys(summary.rankings[0]?.perDance ?? {});
+  const headers = [
+    { value: "Place", fontWeight: "bold" as const },
+    { value: "Start #", fontWeight: "bold" as const },
+    { value: "Total sum", fontWeight: "bold" as const },
+    { value: "Tie resolution", fontWeight: "bold" as const },
+    ...danceKeys.map((d) => ({ value: `Dance: ${d}`, fontWeight: "bold" as const })),
+  ];
+  const dataRows = summary.rankings.map((row: PairFinalResultRow) => [
+    { value: row.finalPlacement, type: Number },
+    { value: row.startNumber, type: Number },
+    { value: row.totalSum, type: Number },
+    { value: row.tieResolution !== "NONE" ? row.tieResolution : "" },
+    ...danceKeys.map((d) => ({ value: row.perDance[d] ?? 0, type: Number })),
   ]);
-  XLSX.utils.book_append_sheet(wb, meta, "Info");
 
-  XLSX.writeFile(wb, `${competitionName}_${sectionName}_results.xlsx`);
+  await writeXlsxFile([headers, ...dataRows], {
+    fileName: `${competitionName}_${sectionName}_results.xlsx`,
+    sheet: sectionName.slice(0, 31),
+  });
 }
 
 // ── PDF export via browser print ──────────────────────────────────────────────

@@ -11,6 +11,7 @@ import {
   AlertCircle, Sheet,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -272,16 +273,12 @@ function ContactModal({ pair, onClose }: { pair: PairDto; onClose: () => void })
 
 // ── Excel export ──────────────────────────────────────────────────────────────
 async function exportToExcel(pairs: PairDto[], sections: { id: string; name: string }[], competitionName?: string) {
-  const XLSX = await import("xlsx");
+  const { default: writeXlsxFile } = await import("write-excel-file");
 
   const getSectionName = (p: PairDto) => {
     const sectionId = p.sectionId ?? p.sections?.[0]?.sectionId;
     return sections.find((s) => s.id === sectionId)?.name ?? p.sections?.[0]?.sectionName ?? "";
   };
-  const getName1 = (p: PairDto) =>
-    p.dancer1FirstName && p.dancer1LastName ? `${p.dancer1FirstName} ${p.dancer1LastName}` : (p.dancer1Name ?? "");
-  const getName2 = (p: PairDto) =>
-    p.dancer2FirstName && p.dancer2LastName ? `${p.dancer2FirstName} ${p.dancer2LastName}` : (p.dancer2Name ?? "");
 
   const fmt = (d?: string | null) => d ? new Date(d).toLocaleDateString("cs-CZ") : "";
   const HEADERS = [
@@ -291,44 +288,44 @@ async function exportToExcel(pairs: PairDto[], sections: { id: string; name: str
     "Konec prezence", "Typ startu", "Od kola", "Třída",
     "Finale count", "Points", "Ranklist", "Email", "Platba",
   ];
-  const rows = pairs.map((p) => [
-    String(p.startNumber).padStart(3, "0"),
-    getSectionName(p),
-    p.dancer1FirstName ?? (p.dancer1Name?.split(" ")[0] ?? ""),
-    p.dancer1LastName ?? (p.dancer1Name?.split(" ").slice(1).join(" ") ?? ""),
-    p.dancer2FirstName ?? (p.dancer2Name?.split(" ")[0] ?? ""),
-    p.dancer2LastName ?? (p.dancer2Name?.split(" ").slice(1).join(" ") ?? ""),
-    p.country ?? "",
-    p.dancer1Club ?? p.club ?? "",
-    p.athlete1Id ?? "",
-    fmt(p.registeredAt),
-    p.feePerPerson ?? "",
-    p.feeTotal ?? "",
-    p.starts === false ? 0 : 1,
-    fmt(p.withdrawalDate),
-    fmt(p.presenceDeadline),
-    p.startType ?? "",
-    p.startsFromRound ?? "",
-    p.classValue ?? "",
-    p.finaleCount ?? "",
-    p.points ?? "",
-    p.ranklistPosition ?? "",
-    p.email ?? "",
-    p.paymentStatus ?? "",
-  ]);
-  const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...rows]);
-  ws["!cols"] = [
-    { wch: 5 },  { wch: 24 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
-    { wch: 6 },  { wch: 22 }, { wch: 12 }, { wch: 14 },
-    { wch: 12 }, { wch: 14 }, { wch: 8 },  { wch: 14 }, { wch: 14 },
-    { wch: 12 }, { wch: 8 },  { wch: 8 },
-    { wch: 10 }, { wch: 8 },  { wch: 8 },
-    { wch: 28 }, { wch: 10 },
+  const COLUMNS = [
+    { width: 5 },  { width: 24 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 14 },
+    { width: 6 },  { width: 22 }, { width: 12 }, { width: 14 },
+    { width: 12 }, { width: 14 }, { width: 8 },  { width: 14 }, { width: 14 },
+    { width: 12 }, { width: 8 },  { width: 8 },
+    { width: 10 }, { width: 8 },  { width: 8 },
+    { width: 28 }, { width: 10 },
   ];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Páry");
+  const data = [
+    HEADERS.map((h) => ({ value: h, fontWeight: "bold" as const })),
+    ...pairs.map((p) => [
+      { value: String(p.startNumber).padStart(3, "0") },
+      { value: getSectionName(p) },
+      { value: p.dancer1FirstName ?? (p.dancer1Name?.split(" ")[0] ?? "") },
+      { value: p.dancer1LastName ?? (p.dancer1Name?.split(" ").slice(1).join(" ") ?? "") },
+      { value: p.dancer2FirstName ?? (p.dancer2Name?.split(" ")[0] ?? "") },
+      { value: p.dancer2LastName ?? (p.dancer2Name?.split(" ").slice(1).join(" ") ?? "") },
+      { value: p.country ?? "" },
+      { value: p.dancer1Club ?? p.club ?? "" },
+      { value: p.athlete1Id ?? "" },
+      { value: fmt(p.registeredAt) },
+      { value: p.feePerPerson ?? "" },
+      { value: p.feeTotal ?? "" },
+      { value: p.starts === false ? 0 : 1, type: Number },
+      { value: fmt(p.withdrawalDate) },
+      { value: fmt(p.presenceDeadline) },
+      { value: p.startType ?? "" },
+      { value: p.startsFromRound ?? "" },
+      { value: p.classValue ?? "" },
+      { value: p.finaleCount ?? "" },
+      { value: p.points ?? "" },
+      { value: p.ranklistPosition ?? "" },
+      { value: p.email ?? "" },
+      { value: p.paymentStatus ?? "" },
+    ]),
+  ];
   const filename = `${(competitionName ?? "registrace").replace(/[^a-z0-9]/gi, "_")}_pary.xlsx`;
-  XLSX.writeFile(wb, filename);
+  await writeXlsxFile(data, { columns: COLUMNS, fileName: filename, sheet: "Páry" });
 }
 
 // ── PDF start numbers ─────────────────────────────────────────────────────────
@@ -507,12 +504,9 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
     setXlsxImporting(true);
     let skipped = 0;
     try {
-      const XLSX = await import("xlsx");
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 }) as unknown[][];
-      const dataRows = rows.slice(1).filter((r) => (r as unknown[])[4]);
+      const { default: readXlsxFile } = await import("read-excel-file");
+      const rows = await readXlsxFile(file);
+      const dataRows = rows.slice(1).filter((r) => r[4]);
 
       const batch: Record<string, unknown>[] = [];
       for (const row of dataRows) {
@@ -573,6 +567,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <AppShell
+      sidebar={<CompetitionSidebar competitionId={id} />}
       headerActions={
         <div className="flex items-center gap-2 flex-wrap">
           <Button
