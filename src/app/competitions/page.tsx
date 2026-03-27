@@ -186,8 +186,8 @@ export default function PublicCompetitionsPage() {
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px 16px" }} className="filter-grid">
               <div>
-                <label className={labelCls}>Seriál</label>
-                <select className={selectCls} value={series} onChange={(e) => setSeries(e.target.value)}>
+                <label htmlFor="filter-series" className={labelCls}>Seriál</label>
+                <select id="filter-series" className={selectCls} value={series} onChange={(e) => setSeries(e.target.value)}>
                   <option value="all">- všechny -</option>
                   <option value="CZECH_CHAMPIONSHIP">Mistrovství ČR</option>
                   <option value="CZECH_CUP">Český pohár</option>
@@ -199,16 +199,16 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Soutěžící</label>
-                <select className={selectCls} value={competitorType} onChange={(e) => setCompetitorType(e.target.value)}>
+                <label htmlFor="filter-competitor-type" className={labelCls}>Soutěžící</label>
+                <select id="filter-competitor-type" className={selectCls} value={competitorType} onChange={(e) => setCompetitorType(e.target.value)}>
                   <option value="all">- všechny -</option>
                   <option value="AMATEURS">Amatéři</option>
                   <option value="PROFESSIONALS">Profesionálové</option>
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Věková kategorie</label>
-                <select className={selectCls} value={ageCategory} onChange={(e) => setAgeCategory(e.target.value)}>
+                <label htmlFor="filter-age-category" className={labelCls}>Věková kategorie</label>
+                <select id="filter-age-category" className={selectCls} value={ageCategory} onChange={(e) => setAgeCategory(e.target.value)}>
                   <option value="all">- všechny -</option>
                   <option value="CHILDREN_I">Děti I</option>
                   <option value="CHILDREN_II">Děti II</option>
@@ -221,8 +221,8 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Výkonnostní třída</label>
-                <select className={selectCls} value={level} onChange={(e) => setLevel(e.target.value)}>
+                <label htmlFor="filter-level" className={labelCls}>Výkonnostní třída</label>
+                <select id="filter-level" className={selectCls} value={level} onChange={(e) => setLevel(e.target.value)}>
                   <option value="all">- všechny -</option>
                   <option value="D">D</option>
                   <option value="C">C</option>
@@ -235,8 +235,8 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Disciplína</label>
-                <select className={selectCls} value={danceStyle} onChange={(e) => setDanceStyle(e.target.value)}>
+                <label htmlFor="filter-dance-style" className={labelCls}>Disciplína</label>
+                <select id="filter-dance-style" className={selectCls} value={danceStyle} onChange={(e) => setDanceStyle(e.target.value)}>
                   <option value="all">- všechny -</option>
                   <option value="STANDARD">Standardní tance</option>
                   <option value="LATIN">Latinsko-americké tance</option>
@@ -245,8 +245,8 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Typ soutěží</label>
-                <select className={selectCls} value={competitionType} onChange={(e) => setCompetitionType(e.target.value)}>
+                <label htmlFor="filter-competition-type" className={labelCls}>Typ soutěží</label>
+                <select id="filter-competition-type" className={selectCls} value={competitionType} onChange={(e) => setCompetitionType(e.target.value)}>
                   <option value="all">- všechny -</option>
                   <option value="COUPLE">Párové</option>
                   <option value="SOLO_STANDARD">Sólo standard</option>
@@ -257,8 +257,9 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Název akce</label>
+                <label htmlFor="filter-search" className={labelCls}>Název akce</label>
                 <input
+                  id="filter-search"
                   className={selectCls}
                   placeholder="- všechny -"
                   value={search}
@@ -267,8 +268,9 @@ export default function PublicCompetitionsPage() {
                 />
               </div>
               <div>
-                <label className={labelCls}>Období od</label>
+                <label htmlFor="filter-date-from" className={labelCls}>Období od</label>
                 <input
+                  id="filter-date-from"
                   type="date"
                   className={selectCls}
                   value={dateFrom || today}
@@ -276,8 +278,9 @@ export default function PublicCompetitionsPage() {
                 />
               </div>
               <div>
-                <label className={labelCls}>Období do</label>
+                <label htmlFor="filter-date-to" className={labelCls}>Období do</label>
                 <input
+                  id="filter-date-to"
                   type="date"
                   className={selectCls}
                   value={dateTo || inThreeMonths}
