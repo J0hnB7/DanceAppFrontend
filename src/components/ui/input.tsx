@@ -12,6 +12,9 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, label, error, hint, leftIcon, rightIcon, id, ...props }, ref) => {
     const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
+    const errorId = error ? `${inputId}-error` : undefined;
+    const hintId = hint && !error ? `${inputId}-hint` : undefined;
+    const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined;
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -33,6 +36,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             type={type}
             ref={ref}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={describedBy}
             className={cn(
               "flex h-10 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors",
               "focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20",
@@ -50,8 +55,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
-        {error && <p className="text-xs text-[var(--destructive)]">{error}</p>}
-        {hint && !error && <p className="text-xs text-[var(--text-tertiary)]">{hint}</p>}
+        {error && <p id={errorId} role="alert" className="text-xs text-[var(--destructive)]">{error}</p>}
+        {hint && !error && <p id={hintId} className="text-xs text-[var(--text-tertiary)]">{hint}</p>}
       </div>
     );
   }
