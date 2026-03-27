@@ -14,6 +14,7 @@ const ToastViewport = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitive.Viewport
     ref={ref}
+    aria-label="Notifications"
     className={cn(
       "fixed bottom-4 right-4 z-[100] flex max-h-screen w-full max-w-[380px] flex-col gap-2",
       className
@@ -45,6 +46,7 @@ const Toast = React.forwardRef<
 >(({ className, variant, ...props }, ref) => (
   <ToastPrimitive.Root
     ref={ref}
+    role={variant === "destructive" ? "alert" : "status"}
     className={cn(toastVariants({ variant }), className)}
     {...props}
   />
