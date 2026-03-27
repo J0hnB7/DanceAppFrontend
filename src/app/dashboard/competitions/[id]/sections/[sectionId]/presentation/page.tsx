@@ -10,6 +10,20 @@ import { pairsApi } from "@/lib/api/pairs";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/locale-context";
 
+function placementColor(placement: number) {
+  if (placement === 1) return "text-yellow-400";
+  if (placement === 2) return "text-slate-300";
+  if (placement === 3) return "text-amber-600";
+  return "text-white/60";
+}
+
+function PlacementIcon({ placement }: { placement: number }) {
+  if (placement === 1) return <Trophy className="h-10 w-10 text-yellow-400" />;
+  if (placement === 2) return <Medal className="h-8 w-8 text-slate-300" />;
+  if (placement === 3) return <Medal className="h-8 w-8 text-amber-600" />;
+  return null;
+}
+
 // Fullscreen dramatic result reveal — no AppShell, standalone dark mode page
 export default function PresentationPage({
   params,
@@ -82,20 +96,6 @@ export default function PresentationPage({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [advance, back, router]);
-
-  const placementColor = (placement: number) => {
-    if (placement === 1) return "text-yellow-400";
-    if (placement === 2) return "text-slate-300";
-    if (placement === 3) return "text-amber-600";
-    return "text-white/60";
-  };
-
-  const PlacementIcon = ({ placement }: { placement: number }) => {
-    if (placement === 1) return <Trophy className="h-10 w-10 text-yellow-400" />;
-    if (placement === 2) return <Medal className="h-8 w-8 text-slate-300" />;
-    if (placement === 3) return <Medal className="h-8 w-8 text-amber-600" />;
-    return null;
-  };
 
   return (
     <div

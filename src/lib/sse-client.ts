@@ -1,3 +1,5 @@
+import { getAccessToken } from './api-client';
+
 type SSEEventHandler = (data: unknown) => void;
 
 interface SSESubscription {
@@ -79,9 +81,6 @@ class SSEClient {
   private connect(competitionId: string) {
     const lastEventId = this.lastEventIds.get(competitionId);
     // EventSource can't send Authorization headers — pass JWT as query param instead
-    // Import is deferred to avoid potential circular import at module init time
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { getAccessToken } = require('./api-client') as { getAccessToken: () => string | null };
     const token = getAccessToken();
     const params = new URLSearchParams();
     if (lastEventId) params.set('lastEventId', lastEventId);
