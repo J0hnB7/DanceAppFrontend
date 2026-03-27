@@ -23,20 +23,24 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const setStoreLocale = useAuthStore((s) => s.setLocale);
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
 
-  // On mount: prefer user.locale from backend, then localStorage, then browser
+  // Manual locale selection (fallback when user has no preference stored on backend)
+  const [manualLocale, setManualLocale] = useState<Locale>(() => {
+    if (typeof window === "undefined") return DEFAULT_LOCALE;
+    return (localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null) ?? detectLocale();
+  });
+
+  // Derived: user's backend preference always wins over manual selection
+  const locale = (user?.locale as Locale | undefined) ?? manualLocale;
+
+  // Persist user.locale to localStorage when it changes — pure side-effect, no setState
   useEffect(() => {
-    if (user?.locale) {
-      setLocaleState(user.locale);
-      try { localStorage.setItem(LOCALE_STORAGE_KEY, user.locale); } catch (e) { console.error("[i18n] Failed to persist locale", e); }
-    } else {
-      setLocaleState(detectLocale());
-    }
+    if (!user?.locale) return;
+    try { localStorage.setItem(LOCALE_STORAGE_KEY, user.locale); } catch (e) { console.error("[i18n] Failed to persist locale", e); }
   }, [user?.locale]);
 
   const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
+    setManualLocale(next);
     try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch (e) { console.error("[i18n] Failed to persist locale", e); }
     // Sync to auth-store so locale is available via useAuthStore
     setStoreLocale(next);
