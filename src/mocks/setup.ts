@@ -1024,6 +1024,19 @@ export function setupMockApi() {
   mock.onPut(/\/competitions\/[^/]+\/payments\/[^/]+\/waive/).reply(200, { status: "WAIVED" });
   mock.onPut(/\/competitions\/[^/]+\/payments\/bulk-mark-paid/).reply(200, {});
 
+  // ── Activity feed ────────────────────────────────────────────────────────────
+  mock.onGet(/\/competitions\/[^/]+\/activity$/).reply(() => {
+    const now = new Date();
+    const events = [
+      { id: "act-1", eventType: "ROUND_STARTED", metadata: JSON.stringify({ roundNumber: 3, roundType: "FINAL", danceStyle: "STANDARD", ageCategory: "ADULT" }), createdAt: new Date(now.getTime() - 5 * 60000).toISOString() },
+      { id: "act-2", eventType: "RESULTS_PUBLISHED", metadata: JSON.stringify({ roundNumber: 2, roundType: "SEMIFINAL", danceStyle: "LATIN", ageCategory: "YOUTH" }), createdAt: new Date(now.getTime() - 15 * 60000).toISOString() },
+      { id: "act-3", eventType: "JUDGE_CONNECTED", metadata: JSON.stringify({ judgeTokenId: "judge-uuid-1" }), createdAt: new Date(now.getTime() - 25 * 60000).toISOString() },
+      { id: "act-4", eventType: "PAIR_PUBLIC_REGISTERED", metadata: JSON.stringify({ startNumber: 42, dancer1Name: "Jana Nováková", sectionName: "LATIN YOUTH" }), createdAt: new Date(now.getTime() - 40 * 60000).toISOString() },
+      { id: "act-5", eventType: "CHECKIN_CLOSED", metadata: null, createdAt: new Date(now.getTime() - 60 * 60000).toISOString() },
+    ];
+    return [200, events];
+  });
+
   // ── Me ───────────────────────────────────────────────────────────────────────
   mock.onGet("/me/registrations").reply(200, [
     { id: "reg-001", competitionId: "comp-001", competitionName: "Slovak Dance Cup 2026", competitionLocation: "Bratislava", competitionStartDate: "2026-04-15", competitionStatus: "PUBLISHED", sectionId: "sec-001", sectionName: "Adult Standard A", startNumber: 1, dancer1FirstName: "Martin", dancer1LastName: "Novák", dancer2FirstName: "Eva", dancer2LastName: "Nováková", paymentStatus: "PAID", amountDue: 40, currency: "EUR", registeredAt: "2026-02-01T10:00:00" },
