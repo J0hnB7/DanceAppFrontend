@@ -1,19 +1,18 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { competitionsApi } from "@/lib/api/competitions";
 import { scheduleApi, type ScheduleSlot } from "@/lib/api/schedule";
-import { liveApi, type JudgeStatusDto } from "@/lib/api/live";
-import { judgeTokensApi } from "@/lib/api/judge-tokens";
-import { useSSE } from "@/hooks/use-sse";
-import apiClient from "@/lib/api-client";
+import { liveApi } from "@/lib/api/live";
 import { useScheduleStore } from "@/store/schedule-store";
 import { useLiveStore } from "@/store/live-store";
+import { useJudgeConnectivity } from "@/hooks/use-judge-connectivity";
 import { LiveControlDashboard } from "@/components/live/LiveControlDashboard";
 import type { RoundItem } from "@/components/live/RoundSelector";
 import type { DanceItem } from "@/components/live/DanceSelector";
 import type { HeatItem } from "@/components/live/HeatSelector";
+import apiClient from "@/lib/api-client";
 
 // ── Dance lists by discipline ─────────────────────────────────────────────────
 const STANDARD_5: string[] = ["Waltz", "Tango", "Vídeňský valčík", "Slowfoxtrot", "Quickstep"];
@@ -47,14 +46,10 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
 
   const [dances, setDances] = useState<DanceItem[]>([]);
   const [heats, setHeats] = useState<HeatItem[]>([]);
-  // Per-heat submission counts — fetched when dance changes
   const [heatSubmissions, setHeatSubmissions] = useState<Record<string, { submitted: number; total: number }>>({});
-  const [baseJudges, setBaseJudges] = useState<JudgeStatusDto[]>([]);
-  const [judgeDetails, setJudgeDetails] = useState<JudgeStatusDto[]>([]);
-  // Real backend round UUID (needed to start round before scoring)
   const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
-  // Maps synthetic heat IDs (${slotId}-h${heatNumber}) → real backend UUID heat IDs
   const [heatIdMap, setHeatIdMap] = useState<Record<string, string>>({});
+  const [sectionId, setSectionId] = useState<string | null>(null);
 
   const { data: competition } = useQuery({
     queryKey: ["competition", competitionId],
@@ -62,131 +57,27 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
   });
 
   // Load schedule on mount
+  useEffect(() => { loadSchedule(competitionId); }, [competitionId, loadSchedule]);
+
+  const { setDanceConfirmation, setRoundClosed, selectDance, selectHeat } = useLiveStore();
+
+  // Judge connectivity (load + SSE + 30s poll)
+  const { judgeDetails, updateJudgeDetails } = useJudgeConnectivity(competitionId);
+
+  // Overlay judge statuses when heat/dance selection changes
   useEffect(() => {
-    loadSchedule(competitionId);
-  }, [competitionId, loadSchedule]);
+    updateJudgeDetails(selectedHeatId, selectedDanceId, heatIdMap, dances, competitionId);
+  }, [selectedHeatId, selectedDanceId, dances, heatIdMap, updateJudgeDetails, competitionId]);
 
-  const { updateJudgeOnline, setDanceConfirmation, setRoundClosed, selectDance, selectHeat } = useLiveStore();
-  // sectionId from the selected slot — needed for round close/complete API
-  const [sectionId, setSectionId] = useState<string | null>(null);
-
-  const markJudgeOnline = useCallback((judgeTokenId: string) => {
-    setBaseJudges((prev) =>
-      prev.map((j) => j.judgeId === judgeTokenId ? { ...j, online: true } : j)
-    );
-    updateJudgeOnline(judgeTokenId, true);
-  }, [updateJudgeOnline]);
-
-  // Load judges from Porota section on mount
+  // Fetch per-dance heat submission counts
   useEffect(() => {
-    judgeTokensApi.list(competitionId)
-      .then((tokens) => {
-        const mapped: JudgeStatusDto[] = tokens
-          .filter((t) => t.active !== false)
-          .sort((a, b) => (a.judgeNumber ?? 99) - (b.judgeNumber ?? 99))
-          .map((t, i) => ({
-            judgeId: t.id,
-            letter: String.fromCharCode(65 + i),
-            name: t.name ?? `Porotce ${i + 1}`,
-            status: "pending" as const,
-            online: false, // default offline — real status comes from connectivity poll + SSE
-          }));
-        setBaseJudges(mapped);
-        setJudgeDetails(mapped);
-
-        // Immediately fetch real connectivity status
-        apiClient.get<{ judges: Array<{ judgeTokenId: string; status: string }> }>(
-          `/competitions/${competitionId}/connectivity`
-        ).then((res) => {
-          const connectivity = res.data.judges ?? [];
-          setBaseJudges((prev) =>
-            prev.map((j) => {
-              const conn = connectivity.find((c) => c.judgeTokenId === j.judgeId);
-              if (!conn) return j;
-              return { ...j, online: conn.status === 'ONLINE' };
-            })
-          );
-          connectivity.forEach((c) => updateJudgeOnline(c.judgeTokenId, c.status === 'ONLINE'));
-        }).catch(() => {});
-      })
-      .catch(() => {});
-  }, [competitionId]);
-
-  // SSE — judge connected (online status)
-  useSSE(competitionId, 'judge-connected', (data: { judgeTokenId: string }) => {
-    if (data.judgeTokenId) markJudgeOnline(data.judgeTokenId);
-  });
-
-  // SSE — judge disconnected (offline status)
-  useSSE(competitionId, 'judge-disconnected', (data: { judgeTokenId: string }) => {
-    if (data.judgeTokenId) {
-      setBaseJudges((prev) =>
-        prev.map((j) => j.judgeId === data.judgeTokenId ? { ...j, online: false } : j)
-      );
-      updateJudgeOnline(data.judgeTokenId, false);
-    }
-  });
-
-  // Poll connectivity every 30s — refreshes online/offline based on heartbeats
-  useEffect(() => {
-    if (!competitionId) return;
-    const refresh = () =>
-      apiClient.get<{ judges: Array<{ judgeTokenId: string; status: string }> }>(
-        `/competitions/${competitionId}/connectivity`
-      ).then((res) => {
-        const onlineMap = new Map(res.data.judges?.map((c) => [c.judgeTokenId, c.status === 'ONLINE']));
-        setBaseJudges((prev) =>
-          prev.map((j) => {
-            const isOnline = onlineMap.get(j.judgeId);
-            if (isOnline === undefined) return j;
-            return { ...j, online: isOnline };
-          })
-        );
-        res.data.judges?.forEach((c) => updateJudgeOnline(c.judgeTokenId, c.status === 'ONLINE'));
-      }).catch(() => {});
-    const id = setInterval(refresh, 30_000);
-    return () => clearInterval(id);
-  }, [competitionId, updateJudgeOnline]);
-
-  // When heat or dance changes: overlay statuses from heat endpoint (use real UUID)
-  useEffect(() => {
-    if (!selectedHeatId || baseJudges.length === 0) {
-      setJudgeDetails(baseJudges);
-      return;
-    }
-    const realHeatId = heatIdMap[selectedHeatId];
-    if (!realHeatId) {
-      setJudgeDetails(baseJudges);
-      return;
-    }
-    const danceName = dances.find((d) => d.id === selectedDanceId)?.name;
-    liveApi.getJudgeStatuses(realHeatId, danceName, competitionId)
-      .then((heatStatuses) => {
-        setJudgeDetails(
-          baseJudges.map((judge) => {
-            const hs = heatStatuses.find((s) => s.judgeId === judge.judgeId);
-            return hs ? { ...judge, status: hs.status, online: hs.online, submittedAt: hs.submittedAt } : judge;
-          })
-        );
-      })
-      .catch(() => setJudgeDetails(baseJudges));
-  }, [selectedHeatId, selectedDanceId, dances, heatIdMap, baseJudges]);
-
-  // Fetch dance-level submission counts — judge confirms once per dance (roundId:dance),
-  // so all heats in the same dance share the same submission status.
-  // Only need to query ONE heat — the result applies to all heats in the dance.
-  useEffect(() => {
-    if (heats.length === 0 || Object.keys(heatIdMap).length === 0) {
-      setHeatSubmissions({});
-      return;
-    }
+    if (heats.length === 0 || Object.keys(heatIdMap).length === 0) { setHeatSubmissions({}); return; }
     const danceName = dances.find((d) => d.id === selectedDanceId)?.name;
     const firstRealId = heatIdMap[heats[0].id];
     if (!firstRealId) return;
     liveApi.getJudgeStatuses(firstRealId, danceName, competitionId).then((statuses) => {
       const submitted = statuses.filter((j) => j.status === 'submitted').length;
       const total = statuses.length;
-      // Apply same counts to ALL heats — submission is per-dance, not per-group
       const map: Record<string, { submitted: number; total: number }> = {};
       for (const h of heats) {
         const realId = heatIdMap[h.id];
@@ -194,42 +85,32 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
       }
       setHeatSubmissions(map);
     }).catch(() => {});
-  }, [heats, heatIdMap, selectedDanceId, dances]);
+  }, [heats, heatIdMap, selectedDanceId, dances, competitionId]);
 
   // When round selected → derive dances + fetch heat assignments + find real roundId
   useEffect(() => {
     if (!selectedRoundId || slots.length === 0) {
-      setDances([]);
-      setHeats([]);
-      setActiveRoundId(null);
-      return;
+      setDances([]); setHeats([]); setActiveRoundId(null); return;
     }
     const slot = slots.find((s) => s.id === selectedRoundId);
     if (!slot) return;
 
     // Fetch real dances from backend section; fall back to hardcoded if fetch fails
     if (slot.sectionId) {
-      apiClient
-        .get<{ dances?: Array<{ id: string; danceName: string; danceOrder: number }> }>(
-          `/competitions/${competitionId}/sections/${slot.sectionId}`
-        )
-        .then((res) => {
-          const sectionDances = res.data.dances;
-          if (sectionDances && sectionDances.length > 0) {
-            const sorted = [...sectionDances].sort((a, b) => a.danceOrder - b.danceOrder);
-            setDances(sorted.map((d) => ({ id: d.id, name: d.danceName })));
-          } else {
-            const names = getDanceNames(slot.label);
-            setDances(names.map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
-          }
-        })
-        .catch(() => {
-          const names = getDanceNames(slot.label);
-          setDances(names.map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
-        });
+      apiClient.get<{ dances?: Array<{ id: string; danceName: string; danceOrder: number }> }>(
+        `/competitions/${competitionId}/sections/${slot.sectionId}`
+      ).then((res) => {
+        const sectionDances = res.data.dances;
+        if (sectionDances && sectionDances.length > 0) {
+          setDances([...sectionDances].sort((a, b) => a.danceOrder - b.danceOrder).map((d) => ({ id: d.id, name: d.danceName })));
+        } else {
+          setDances(getDanceNames(slot.label).map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
+        }
+      }).catch(() => {
+        setDances(getDanceNames(slot.label).map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
+      });
     } else {
-      const names = getDanceNames(slot.label);
-      setDances(names.map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
+      setDances(getDanceNames(slot.label).map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
     }
 
     const mapGroups = (groups: { heatNumber: number; pairs: { startNumber: number }[] }[]) =>
@@ -240,90 +121,62 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
         status: "pending" as const,
       }));
 
-    scheduleApi
-      .getHeatAssignments(competitionId, selectedRoundId)
+    scheduleApi.getHeatAssignments(competitionId, selectedRoundId)
       .then(async (groups) => {
-        if (groups.length > 0) {
-          setHeats(mapGroups(groups));
-        } else {
-          const drawn = await scheduleApi.drawHeats(competitionId, selectedRoundId);
-          setHeats(mapGroups(drawn));
-        }
+        setHeats(groups.length > 0 ? mapGroups(groups) : mapGroups(await scheduleApi.drawHeats(competitionId, selectedRoundId)));
       })
       .catch(() => setHeats([]));
 
-    // Store sectionId for round close/complete API
     setSectionId(slot.sectionId ?? null);
 
-    // Fetch the real backend Round entity UUID for this slot
     if (slot.sectionId && slot.roundNumber) {
-      apiClient
-        .get<{ id: string; roundNumber: number; status: string }[]>(
-          `/competitions/${competitionId}/sections/${slot.sectionId}/rounds`
-        )
-        .then((res) => {
-          const match = res.data.find((r) => r.roundNumber === slot.roundNumber);
-          setActiveRoundId(match?.id ?? null);
-        })
-        .catch(() => setActiveRoundId(null));
+      apiClient.get<{ id: string; roundNumber: number; status: string }[]>(
+        `/competitions/${competitionId}/sections/${slot.sectionId}/rounds`
+      ).then((res) => {
+        setActiveRoundId(res.data.find((r) => r.roundNumber === slot.roundNumber)?.id ?? null);
+      }).catch(() => setActiveRoundId(null));
     }
   }, [selectedRoundId, slots, competitionId]);
 
-  // When activeRoundId resolves, fetch real heat UUIDs and build synthetic→real map
+  // Build synthetic→real heat UUID map
   useEffect(() => {
-    if (!activeRoundId || !selectedRoundId) {
-      setHeatIdMap({});
-      return;
-    }
-    apiClient
-      .get<{ id: string; heatNumber: number; status: string }[]>(`/rounds/${activeRoundId}/heats`)
+    if (!activeRoundId || !selectedRoundId) { setHeatIdMap({}); return; }
+    apiClient.get<{ id: string; heatNumber: number; status: string }[]>(`/rounds/${activeRoundId}/heats`)
       .then((res) => {
         const map: Record<string, string> = {};
-        res.data.forEach((h) => {
-          const syntheticId = `${selectedRoundId}-h${h.heatNumber}`;
-          map[syntheticId] = h.id;
-        });
+        res.data.forEach((h) => { map[`${selectedRoundId}-h${h.heatNumber}`] = h.id; });
         setHeatIdMap(map);
       })
       .catch(() => setHeatIdMap({}));
   }, [activeRoundId, selectedRoundId]);
 
-  // Fetch per-dance confirmation status for ALL dances in the round.
-  // This determines whether the "Close round" button is enabled.
+  // Fetch per-dance confirmation status (determines "Close round" enabled state)
   useEffect(() => {
     if (dances.length === 0 || heats.length === 0 || Object.keys(heatIdMap).length === 0) return;
     const firstRealHeatId = heatIdMap[heats[0].id];
     if (!firstRealHeatId) return;
-
     for (const dance of dances) {
       liveApi.getJudgeStatuses(firstRealHeatId, dance.name, competitionId).then((statuses) => {
-        const submitted = statuses.filter((j) => j.status === 'submitted').length;
-        const total = statuses.length;
-        setDanceConfirmation(dance.id, submitted, total);
+        setDanceConfirmation(dance.id, statuses.filter((j) => j.status === 'submitted').length, statuses.length);
       }).catch(() => {});
     }
   }, [dances, heats, heatIdMap, competitionId, setDanceConfirmation]);
 
-  // Auto-advance: when current dance has all judges confirmed, switch to next unconfirmed dance + first heat
+  // Auto-advance to next unconfirmed dance when current dance fully confirmed
   const danceConfirmations = useLiveStore((s) => s.danceConfirmations);
   useEffect(() => {
     if (!selectedDanceId || dances.length === 0) return;
     const currentConf = danceConfirmations[selectedDanceId];
     if (!currentConf || currentConf.total === 0 || currentConf.submitted < currentConf.total) return;
-    // Current dance is fully confirmed — find next unconfirmed dance
     const currentIdx = dances.findIndex((d) => d.id === selectedDanceId);
     for (let i = currentIdx + 1; i < dances.length; i++) {
       const conf = danceConfirmations[dances[i].id];
       if (!conf || conf.total === 0 || conf.submitted < conf.total) {
         selectDance(dances[i].id);
-        // Auto-select first heat
-        if (heats.length > 0) {
-          setTimeout(() => selectHeat(heats[0].id), 100);
-        }
+        if (heats.length > 0) setTimeout(() => selectHeat(heats[0].id), 100);
         return;
       }
     }
-    // All dances confirmed — don't auto-advance, stay on current
   }, [danceConfirmations, selectedDanceId, dances, heats, selectDance, selectHeat]);
 
   // Check if current round is already closed/calculated
@@ -331,7 +184,7 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
     if (!activeRoundId) { setRoundClosed(false); return; }
     apiClient.get<{ id: string; status: string }>(`/rounds/${activeRoundId}`)
       .then((res) => {
-        setRoundClosed(res.data.status === 'CLOSED' || res.data.status === 'CALCULATED' || res.data.status === 'COMPLETED');
+        setRoundClosed(['CLOSED', 'CALCULATED', 'COMPLETED'].includes(res.data.status));
       })
       .catch(() => setRoundClosed(false));
   }, [activeRoundId, setRoundClosed]);
@@ -339,8 +192,6 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
   const rounds: RoundItem[] = slots.filter((s) => s.type === "ROUND").map(slotToRound);
   const totalPairs = competition?.registeredPairsCount ?? 0;
   const selectedDanceName = dances.find((d) => d.id === selectedDanceId)?.name ?? null;
-
-  // Enrich heats with per-heat submission counts (X marks are per-dance, so status is per heat+dance)
   const enrichedHeats: HeatItem[] = heats.map((h) => {
     const realId = heatIdMap[h.id];
     const sub = realId ? heatSubmissions[realId] : undefined;
