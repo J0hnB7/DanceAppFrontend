@@ -1327,5 +1327,20 @@ export function setupMockApi() {
 
   mock.onPut(/\/rounds\/.*\/heats\/auto-assign/).reply(200, { assigned: true });
 
+  // Registration activity — last N days
+  mock.onGet("/organizer/analytics/registration-activity").reply((config) => {
+    const days = parseInt((config.params?.days as string) ?? "14", 10);
+    const result = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      result.push({
+        date: d.toISOString().slice(0, 10),
+        count: Math.floor(Math.random() * 6),
+      });
+    }
+    return [200, result];
+  });
+
   return mock;
 }
