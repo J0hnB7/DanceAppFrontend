@@ -83,8 +83,10 @@ function PlacementRow({
               key={p}
               onClick={() => onSet(pair.id, p)}
               disabled={isUsed}
+              aria-label={`Place ${p}${isSelected ? " (selected)" : isUsed ? " (taken)" : ""}`}
+              aria-pressed={isSelected}
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold transition-all active:scale-95",
+                "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-sm font-bold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
                 isSelected
                   ? "bg-[var(--accent)] text-white shadow-md"
                   : isUsed
@@ -236,14 +238,15 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
             </div>
             <div className="flex items-center gap-2">
               {isOnline ? (
-                <Wifi className="h-4 w-4 text-[var(--success)]" />
+                <Wifi className="h-4 w-4 text-[var(--success)]" aria-hidden="true" />
               ) : (
-                <WifiOff className="h-4 w-4 text-[var(--warning)]" />
+                <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />
               )}
               {/* Theme toggle */}
               <button
                 onClick={toggleTheme}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--border)]"
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
               >
                 {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
               </button>
@@ -255,8 +258,10 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
                     <button
                       key={d.id}
                       onClick={() => setActiveDanceIdx(i)}
+                      aria-label={`${d.name}${done ? " (submitted)" : i === activeDanceIdx ? " (active)" : ""}`}
+                      aria-pressed={i === activeDanceIdx}
                       className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-all",
+                        "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[10px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
                         done
                           ? "bg-green-600 text-white"
                           : i === activeDanceIdx

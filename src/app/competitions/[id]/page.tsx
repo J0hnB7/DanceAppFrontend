@@ -252,26 +252,26 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
             {/* meta row */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
               {competition.eventDate && (
-                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(255,255,255,.65)" }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity=".7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(255,255,255,.85)" }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                   {formatDate(competition.eventDate)}
                 </div>
               )}
               {competition.venue && (
-                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(255,255,255,.65)" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity=".7"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(255,255,255,.85)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   {competition.venue}
                 </div>
               )}
               {competition.registrationDeadline && (
-                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(253,211,77,.85)" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity=".8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(253,211,77,.95)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   {t("publicCompetition.registrationDeadline")}: {formatDate(competition.registrationDeadline)}
                 </div>
               )}
               {competition.contactEmail && (
-                <a href={`mailto:${competition.contactEmail}`} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(255,255,255,.65)", textDecoration: "none" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity=".7"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <a href={`mailto:${competition.contactEmail}`} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".875rem", color: "rgba(255,255,255,.85)", textDecoration: "none" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                   {competition.contactEmail}
                 </a>
               )}
@@ -280,21 +280,21 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
             {/* stats chips */}
             <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
               <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px" }}>
-                <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Přihlášených soutěžících</div>
+                <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Přihlášených soutěžících</div>
                 <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.25rem", color: "#fff" }}>
                   {competition.registeredPairsCount ?? 0}
-                  {competition.maxPairs && <span style={{ fontSize: ".75rem", fontWeight: 400, color: "rgba(255,255,255,.4)" }}> / {competition.maxPairs}</span>}
+                  {competition.maxPairs && <span style={{ fontSize: ".75rem", fontWeight: 400, color: "rgba(255,255,255,.65)" }}> / {competition.maxPairs}</span>}
                 </div>
               </div>
               {sections.length > 0 && (
                 <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px" }}>
-                  <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Kategorie</div>
+                  <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Kategorie</div>
                   <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.25rem", color: "#fff" }}>{sections.length}</div>
                 </div>
               )}
               {capacityPct !== null && (
                 <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px", minWidth: 160 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".65rem", color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".65rem", color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>
                     <span>Kapacita</span><span style={{ color: "#a5b4fc" }}>{capacityPct}%</span>
                   </div>
                   <div style={{ background: "rgba(255,255,255,.12)", borderRadius: 100, height: 5 }}>
@@ -409,7 +409,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                                 {isFull && <span style={{ fontSize: ".65rem", fontWeight: 700, color: "#DC2626", background: "#FEF2F2", padding: "1px 7px", borderRadius: 100 }}>{t("publicCompetition.full")}</span>}
                                 {almostFull && <span style={{ fontSize: ".65rem", fontWeight: 700, color: "#D97706", background: "#FFFBEB", padding: "1px 7px", borderRadius: 100 }}>{t("publicCompetition.almostFull")}</span>}
                               </div>
-                              <p style={{ fontSize: ".78rem", color: "#9CA3AF" }}>
+                              <p style={{ fontSize: ".78rem", color: "#6B7280" }}>
                                 {section.ageCategory} · {section.level} · {section.dances.map((d) => d.name).join(", ")}
                               </p>
                             </div>
@@ -527,13 +527,13 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                 <p style={{ marginTop: -8, fontSize: ".78rem", color: "#DC2626" }}>{t("publicRegister.validation.gdprRequired")}</p>
               )}
 
-              <button type="submit" disabled={submitting} style={{
+              <button type="submit" disabled={submitting} aria-label={submitting ? "Odesílám registraci…" : t("publicCompetition.submitRegistration")} style={{
                 padding: "14px 28px", borderRadius: 10, fontSize: "1rem", fontWeight: 700,
                 background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "#fff",
-                border: "none", cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? .7 : 1,
+                border: "2px solid transparent", cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? .7 : 1,
                 boxShadow: "0 4px 14px rgba(79,70,229,.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                transition: "opacity .2s",
-              }}>
+                transition: "opacity .2s", outline: "none",
+              }} onFocus={(e) => { e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79,70,229,.4)"; }} onBlur={(e) => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(79,70,229,.4)"; }}>
                 {submitting ? "Odesílám…" : t("publicCompetition.submitRegistration")}
                 {!submitting && (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>

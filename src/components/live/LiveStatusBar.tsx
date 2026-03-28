@@ -57,11 +57,12 @@ export function LiveStatusBar({
       <div className="flex min-w-0 items-center gap-3">
         <button
           onClick={() => router.push(`/dashboard/competitions/${competitionId}`)}
-          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] shrink-0"
+          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           style={{ color: 'var(--text-secondary)' }}
           title={t("common.back")}
+          aria-label={t("common.back")}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </button>
         <span
           className="truncate text-sm font-semibold transition-opacity duration-300"
@@ -117,8 +118,9 @@ export function LiveStatusBar({
         <button
           onClick={onIncident}
           title="Incident (I)"
+          aria-label={incidentCount > 0 ? `Incidents — ${incidentCount} active (I)` : "Report incident (I)"}
           className={cn(
-            'cursor-pointer rounded p-1.5 transition-colors',
+            'cursor-pointer rounded p-1.5 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]',
             incidentCount > 0
               ? 'bg-[rgba(255,69,58,.07)] hover:bg-[rgba(255,69,58,.14)]'
               : 'hover:bg-[var(--surface-2)]'
@@ -129,9 +131,9 @@ export function LiveStatusBar({
           }}
         >
           <div className="flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
             {incidentCount > 0 && (
-              <span className="text-[10px] font-bold">{incidentCount}</span>
+              <span className="text-[10px] font-bold" aria-hidden="true">{incidentCount}</span>
             )}
           </div>
         </button>
@@ -139,37 +141,41 @@ export function LiveStatusBar({
         <button
           onClick={onPresentationMode}
           title="Prezentační mód (P)"
-          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)]"
+          aria-label="Presentation mode (P)"
+          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           style={{ color: 'var(--text-secondary)' }}
         >
-          <MonitorPlay className="h-4 w-4" />
+          <MonitorPlay className="h-4 w-4" aria-hidden="true" />
         </button>
 
         <button
           title="Tisk"
+          aria-label="Print"
           onClick={() => window.print()}
-          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)]"
+          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           style={{ color: 'var(--text-secondary)' }}
         >
-          <Printer className="h-4 w-4" />
+          <Printer className="h-4 w-4" aria-hidden="true" />
         </button>
 
         <button
           onClick={toggleTheme}
           title={isDark ? 'Light mode' : 'Dark mode'}
-          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)]"
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           style={{ color: 'var(--text-secondary)' }}
         >
-          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {isDark ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
         </button>
 
         <button
           onClick={onShowHelp}
           title="Klávesové zkratky (?)"
-          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)]"
+          aria-label="Keyboard shortcuts (?)"
+          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           style={{ color: 'var(--text-secondary)' }}
         >
-          <Keyboard className="h-4 w-4" />
+          <Keyboard className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
     </div>

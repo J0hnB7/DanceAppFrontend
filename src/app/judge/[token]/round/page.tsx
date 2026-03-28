@@ -76,8 +76,10 @@ function CoupleTile({ pair, state, isDisabled, onTap, onLongPress }: {
       onPointerLeave={handlePointerLeave}
       onContextMenu={(e) => e.preventDefault()}
       disabled={isDisabled && state === "none"}
+      aria-label={`Pair ${pair.startNumber}${pair.dancer1LastName ? ` — ${[pair.dancer1LastName, pair.dancer2LastName].filter(Boolean).join(" / ")}` : ""}, ${state === "selected" ? "selected" : state === "tentative" ? "tentative" : "not selected"}`}
+      aria-pressed={state === "selected"}
       className={cn(
-        "relative flex flex-col items-center justify-center rounded-xl border-2 p-2 transition-all active:scale-95 select-none min-h-[76px]",
+        "relative flex flex-col items-center justify-center rounded-xl border-2 p-2 transition-all active:scale-95 select-none min-h-[76px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1",
         state === "selected"
           ? "border-[var(--accent)] bg-[var(--accent)] shadow-lg"
           : state === "tentative"
@@ -463,8 +465,10 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
                 <button
                   key={d.id}
                   onClick={() => { setActiveDanceIdx(i); if (!isDone) { setPairStates({}); setSubmitted(false); } }}
+                  aria-label={`${d.name}${isDone ? " (submitted)" : ""}`}
+                  aria-pressed={isActive}
                   className={cn(
-                    "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors",
+                    "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors min-h-[44px] flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
                     isActive ? "bg-[var(--accent)] text-white" : isDone ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
                   )}
                 >
@@ -477,14 +481,16 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
           {/* Right controls */}
           <div className="flex shrink-0 items-center gap-2">
             <button onClick={toggleLocale}
-              className="flex h-7 items-center justify-center rounded-full bg-[var(--surface-secondary)] px-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:bg-[var(--border)]">
+              aria-label={locale === "cs" ? "Switch to English" : "Přepnout do češtiny"}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] px-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
               {locale === "cs" ? "EN" : "CZ"}
             </button>
             <button onClick={toggleTheme}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)]">
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
               {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </button>
-            {isOnline ? <Wifi className="h-4 w-4 text-[var(--success)]" /> : <WifiOff className="h-4 w-4 text-[var(--warning)]" />}
+            {isOnline ? <Wifi className="h-4 w-4 text-[var(--success)]" aria-hidden="true" /> : <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
           </div>
         </div>
       </div>
@@ -555,8 +561,9 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
                   <button
                     key={heat.heatNumber}
                     onClick={() => setActiveHeatIdx(i)}
+                    aria-pressed={i === activeHeatIdx}
                     className={cn(
-                      "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors border",
+                      "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors border min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
                       i === activeHeatIdx
                         ? "bg-[var(--accent)] border-[var(--accent)] text-white"
                         : "bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]"

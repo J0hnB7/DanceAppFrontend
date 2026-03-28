@@ -124,9 +124,10 @@ export default function PublicCompetitionsPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <button
                 onClick={() => router.back()}
-                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".85rem", color: "#6B7280", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                aria-label={t("publicCompetitions.back")}
+                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".85rem", color: "#6B7280", background: "none", border: "none", cursor: "pointer", padding: "10px 8px", minHeight: 44, minWidth: 44 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
                 {t("publicCompetitions.back")}
               </button>
               <span style={{ color: "#E5E7EB" }}>|</span>
@@ -162,7 +163,7 @@ export default function PublicCompetitionsPage() {
             }}>
               {t("publicCompetitions.title")}
             </h1>
-            <p style={{ fontSize: "1rem", color: "rgba(255,255,255,.5)", lineHeight: 1.7, marginBottom: 0 }}>
+            <p style={{ fontSize: "1rem", color: "rgba(255,255,255,.75)", lineHeight: 1.7, marginBottom: 0 }}>
               {t("publicCompetitions.subtitle")}
             </p>
           </div>

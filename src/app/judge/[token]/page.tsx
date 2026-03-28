@@ -117,7 +117,7 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
           onKeyDown={(e) => e.key === "Enter" && handlePinSubmit()}
           placeholder="• • • •"
-          className="w-full rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 text-center text-2xl font-bold tracking-[0.4em] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-colors"
+          className="w-full rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 text-center text-2xl font-bold tracking-[0.4em] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]/30 transition-colors"
         />
 
         {pinError && (

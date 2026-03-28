@@ -66,7 +66,8 @@ export function LiveBottomBar({
             onClick={onCloseRound}
             disabled={!allDancesConfirmed || closing}
             title={!allDancesConfirmed ? t('live.allConfirmedRequired') : t('live.closeConfirmTitle')}
-            className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label={!allDancesConfirmed ? t('live.allConfirmedRequired') : t('live.closeConfirmTitle')}
+            className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
             style={{
               background: allDancesConfirmed
                 ? 'linear-gradient(135deg, #30d158, #28a745)'
@@ -93,7 +94,8 @@ export function LiveBottomBar({
         <button
           onClick={onSend}
           disabled={!selectedHeatId || sending}
-          className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
+          aria-label={sending ? t('live.sending') : t('live.sendHeat')}
+          className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           style={{
             background: 'linear-gradient(135deg, #0a84ff, #0066cc)',
             boxShadow: '0 4px 16px rgba(10,132,255,.3)',
