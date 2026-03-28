@@ -27,7 +27,13 @@ const levelBg: Record<AlertLevel, string> = {
   error: "bg-red-50 border-red-100",
 };
 
-export function NotificationCenter() {
+interface NotificationCenterProps {
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  sideOffset?: number;
+}
+
+export function NotificationCenter({ side, align = "end", sideOffset = 8 }: NotificationCenterProps) {
   const { alerts, markRead, markAllRead, removeAlert, unreadCount } = useAlertsStore();
   const { t } = useLocale();
   const count = unreadCount();
@@ -48,7 +54,7 @@ export function NotificationCenter() {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-96 p-0 shadow-xl" sideOffset={8}>
+      <DropdownMenuContent side={side} align={align} className="w-96 p-0 shadow-xl" sideOffset={sideOffset}>
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <h3 className="font-semibold text-sm text-[var(--text-primary)]">

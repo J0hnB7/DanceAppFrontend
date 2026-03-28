@@ -736,6 +736,56 @@ export function setupMockApi() {
 
   mock.onDelete(/\/competitions\/[^/]+\/fees\/[^/]+$/).reply(204);
 
+  // ── Budget & Expenses ─────────────────────────────────────────────────────
+  const mockExpenses: { id: string; competitionId: string; name: string; category: string; amount: number; currency: string; note?: string }[] = [
+    { id: "exp-1", competitionId: "comp-1", name: "Pronájem sálu", category: "VENUE", amount: 5000, currency: "CZK", note: "Sokolovna Praha 6" },
+    { id: "exp-2", competitionId: "comp-1", name: "DJ Marek", category: "DJ", amount: 2500, currency: "CZK" },
+    { id: "exp-3", competitionId: "comp-1", name: "Sčitatelé (3×)", category: "SCORER", amount: 1200, currency: "CZK" },
+    { id: "exp-4", competitionId: "comp-1", name: "Tisk startovních čísel", category: "PRINTING", amount: 500, currency: "CZK" },
+  ];
+
+  mock.onGet(/\/competitions\/[^/]+\/budget$/).reply((config) => {
+    const compId = config.url!.match(/\/competitions\/([^/]+)\/budget/)?.[1];
+    const expenses = mockExpenses.filter((e) => e.competitionId === compId);
+    const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+    const paidRevenue = 12500;
+    const pendingRevenue = 4800;
+    return [200, {
+      paidRevenue,
+      pendingRevenue,
+      totalExpenses,
+      netProfit: paidRevenue - totalExpenses,
+      projectedProfit: paidRevenue + pendingRevenue - totalExpenses,
+      currency: "CZK",
+      expenses,
+    }];
+  });
+
+  mock.onPost(/\/competitions\/[^/]+\/expenses$/).reply((config) => {
+    const compId = config.url!.match(/\/competitions\/([^/]+)\/expenses/)?.[1];
+    const data = JSON.parse(config.data);
+    const expense = { id: `exp-${Date.now()}`, competitionId: compId, ...data };
+    mockExpenses.push(expense);
+    return [201, expense];
+  });
+
+  mock.onPut(/\/competitions\/[^/]+\/expenses\/[^/]+$/).reply((config) => {
+    const match = config.url!.match(/\/competitions\/([^/]+)\/expenses\/([^/]+)/);
+    const expenseId = match?.[2];
+    const data = JSON.parse(config.data);
+    const idx = mockExpenses.findIndex((e) => e.id === expenseId);
+    if (idx !== -1) Object.assign(mockExpenses[idx], data);
+    return [200, mockExpenses[idx] ?? data];
+  });
+
+  mock.onDelete(/\/competitions\/[^/]+\/expenses\/[^/]+$/).reply((config) => {
+    const match = config.url!.match(/\/competitions\/([^/]+)\/expenses\/([^/]+)/);
+    const expenseId = match?.[2];
+    const idx = mockExpenses.findIndex((e) => e.id === expenseId);
+    if (idx !== -1) mockExpenses.splice(idx, 1);
+    return [204];
+  });
+
   mock.onGet(/\/competitions\/[^/]+\/discounts$/).reply((config) => {
     const compId = config.url!.split("/")[2];
     return [200, discounts.filter((d) => d.competitionId === compId)];
@@ -755,7 +805,27 @@ export function setupMockApi() {
     return [200, notifications.filter((n) => n.competitionId === compId)];
   });
 
-  mock.onPost(/\/competitions\/[^/]+\/notifications\/send/).reply(200, { sent: true, recipientCount: 47 });
+  mock.onPost(/\/competitions\/[^/]+\/notifications$/).reply((config) => {
+    const compId = config.url!.match(/\/competitions\/([^/]+)/)?.[1];
+    const data = JSON.parse(config.data);
+    const recipientCount = data.recipientType === "ALL_PAIRS"
+      ? pairs.filter((p) => p.competitionId === compId && p.email).length
+      : data.recipientType === "INDIVIDUAL" ? 1 : pairs.filter((p) => p.competitionId === compId && p.sectionId === data.sectionId && p.email).length;
+    const notif = {
+      id: `notif-${Date.now()}`,
+      competitionId: compId,
+      subject: data.subject,
+      body: data.body,
+      recipientType: data.recipientType,
+      sectionId: data.sectionId,
+      recipientEmail: data.recipientEmail,
+      status: "SENT" as const,
+      sentAt: new Date().toISOString(),
+      recipientCount,
+    };
+    notifications.push(notif as unknown as typeof notifications[number]);
+    return [200, notif];
+  });
 
   // ── News (Aktuality) ─────────────────────────────────────────────────────────
   mock.onGet(/\/competitions\/[^/]+\/news$/).reply((config) => {

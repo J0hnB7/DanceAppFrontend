@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Users, CalendarDays, ArrowLeft, Radio, Pencil } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { competitionsApi } from "@/lib/api/competitions";
 import { ScheduleSettings } from "@/components/schedule/schedule-settings";
 import { SectionManager } from "@/components/schedule/section-manager";
@@ -173,7 +174,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
     : undefined;
 
   return (
-    <AppShell>
+    <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">

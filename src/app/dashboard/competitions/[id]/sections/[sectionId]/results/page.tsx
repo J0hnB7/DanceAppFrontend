@@ -16,6 +16,7 @@ import {
   Swords,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -310,7 +311,7 @@ export default function SectionResultsPage({
 
   if (sectionLoading) {
     return (
-      <AppShell>
+      <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
         <Skeleton className="h-8 w-64" />
         <Skeleton className="mt-4 h-96 w-full" />
       </AppShell>
@@ -319,6 +320,7 @@ export default function SectionResultsPage({
 
   return (
     <AppShell
+      sidebar={<CompetitionSidebar competitionId={competitionId} />}
       headerActions={
         <div className="flex items-center gap-2">
           {!summary && (

@@ -9,11 +9,15 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[var(--accent)] text-white font-semibold shadow-[0_1px_4px_rgba(10,132,255,0.35)] hover:bg-[var(--accent-hover)] hover:-translate-y-px active:scale-[0.98]",
+          "bg-[var(--accent)] text-white font-semibold shadow-[0_1px_4px_rgba(59,130,246,0.35)] hover:bg-[var(--accent-hover)] hover:-translate-y-px active:scale-[0.98]",
         accent:
-          "bg-gradient-to-r from-[#3395ff] to-[#0a84ff] text-white font-semibold shadow-[0_1px_4px_rgba(10,132,255,0.35)] hover:opacity-90 hover:-translate-y-px active:scale-[0.98]",
+          "bg-gradient-to-r from-[#3B82F6] to-[#06B6D4] text-white font-semibold shadow-[0_1px_4px_rgba(59,130,246,0.35)] hover:opacity-90 hover:-translate-y-px active:scale-[0.98]",
         destructive:
           "bg-[var(--destructive)] text-white font-semibold hover:opacity-90 hover:-translate-y-px active:scale-[0.98]",
+        "destructive-outline":
+          "bg-transparent text-[var(--destructive-text)] border border-[var(--destructive-border)] hover:bg-[var(--destructive-subtle)] active:scale-[0.98]",
+        muted:
+          "bg-transparent text-[var(--muted-text)] border border-[var(--muted-border)] hover:bg-[var(--muted-hover)] hover:text-[var(--text-primary)] active:scale-[0.98]",
         outline:
           "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-secondary)] hover:border-[var(--accent)]/40 active:scale-[0.98]",
         secondary:

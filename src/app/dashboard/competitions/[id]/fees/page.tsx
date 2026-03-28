@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Plus, Tag, Pencil } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,6 +127,7 @@ export default function FeesPage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <AppShell
+      sidebar={<CompetitionSidebar competitionId={id} />}
       headerActions={
         <Button size="sm" variant="outline" onClick={() => setDiscountDialog(true)}>
           <Tag className="h-4 w-4" />

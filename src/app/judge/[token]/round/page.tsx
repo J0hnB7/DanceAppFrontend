@@ -42,30 +42,68 @@ interface ActiveRoundResponse {
 
 // ── Couple tile ───────────────────────────────────────────────────────────────
 
-function CoupleTile({ pair, isSelected, isDisabled, onToggle }: {
-  pair: PairDto; isSelected: boolean; isDisabled: boolean; onToggle: () => void;
+type PairState = "none" | "tentative" | "selected";
+
+function CoupleTile({ pair, state, isDisabled, onTap, onLongPress }: {
+  pair: PairDto; state: PairState; isDisabled: boolean; onTap: () => void; onLongPress: () => void;
 }) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress = useRef(false);
+
+  const handlePointerDown = () => {
+    didLongPress.current = false;
+    timerRef.current = setTimeout(() => {
+      didLongPress.current = true;
+      onLongPress();
+      // Haptic feedback if available
+      if (navigator.vibrate) navigator.vibrate(30);
+    }, 1000);
+  };
+
+  const handlePointerUp = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (!didLongPress.current) onTap();
+  };
+
+  const handlePointerLeave = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  };
+
   return (
     <button
-      onClick={onToggle}
-      disabled={isDisabled && !isSelected}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerLeave}
+      onContextMenu={(e) => e.preventDefault()}
+      disabled={isDisabled && state === "none"}
       className={cn(
         "relative flex flex-col items-center justify-center rounded-xl border-2 p-2 transition-all active:scale-95 select-none min-h-[76px]",
-        isSelected
+        state === "selected"
           ? "border-[var(--accent)] bg-[var(--accent)] shadow-lg"
+          : state === "tentative"
+          ? "border-amber-400 bg-amber-500/20 shadow-md animate-pulse"
           : isDisabled
           ? "border-[var(--border)] bg-[var(--surface)] opacity-35 cursor-not-allowed"
           : "border-[var(--border)] bg-[var(--surface)] active:bg-[var(--surface-secondary)]"
       )}
     >
-      {isSelected && (
+      {state === "selected" && (
         <span className="absolute right-1.5 top-1.5 flex h-[14px] w-[14px] items-center justify-center rounded-full bg-white/25 text-[8px] font-bold text-white">✓</span>
       )}
-      <span className={cn("text-[22px] font-black leading-none tabular-nums", isSelected ? "text-white" : "text-[var(--text-primary)]")}>
+      {state === "tentative" && (
+        <span className="absolute right-1.5 top-1.5 flex h-[14px] w-[14px] items-center justify-center rounded-full bg-amber-400/40 text-[8px] font-bold text-amber-900">?</span>
+      )}
+      <span className={cn(
+        "text-[22px] font-black leading-none tabular-nums",
+        state === "selected" ? "text-white" : state === "tentative" ? "text-amber-400" : "text-[var(--text-primary)]"
+      )}>
         {pair.startNumber}
       </span>
       {(pair.dancer1LastName || pair.dancer2LastName) && (
-        <span className={cn("mt-1 w-full truncate text-center text-[8px] font-medium leading-tight", isSelected ? "text-white/70" : "text-[var(--text-tertiary)]")}>
+        <span className={cn(
+          "mt-1 w-full truncate text-center text-[8px] font-medium leading-tight",
+          state === "selected" ? "text-white/70" : state === "tentative" ? "text-amber-400/70" : "text-[var(--text-tertiary)]"
+        )}>
           {[pair.dancer1LastName, pair.dancer2LastName].filter(Boolean).join(" / ")}
         </span>
       )}
@@ -128,8 +166,8 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   // Dance names this judge has already submitted — prevent re-scoring
   const [submittedDanceNames, setSubmittedDanceNames] = useState<Set<string>>(new Set());
 
-  // Global recalled set — one cross per pair across the whole round
-  const [recalled, setRecalled] = useState<Set<string>>(new Set());
+  // Pair states: "selected" (blue, counts as X), "tentative" (yellow, doesn't count)
+  const [pairStates, setPairStates] = useState<Record<string, PairState>>({});
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -149,6 +187,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   const competitionId = typeof window !== "undefined" ? localStorage.getItem("judge_competition_id") : null;
   const adjudicatorId = typeof window !== "undefined" ? localStorage.getItem("judge_adjudicator_id") : null;
   const deviceToken   = typeof window !== "undefined" ? localStorage.getItem("judge_device_token")   : null;
+
 
   useEffect(() => {
     if (!competitionId) { router.push(`/judge/${token}`); return; }
@@ -226,6 +265,45 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
 
   const activeDance = dances[activeDanceIdx];
   const activeHeat  = heats.length > 0 ? heats[activeHeatIdx] : null;
+
+  // localStorage key for tentative marks — scoped to judge + round + dance
+  const tentativeStorageKey = round && activeDance
+    ? `tentative_${adjudicatorId}_${round.id}_${activeDance.name}`
+    : null;
+
+  // Persist tentative marks to localStorage on change
+  useEffect(() => {
+    if (!tentativeStorageKey) return;
+    const tentativePairs = Object.entries(pairStates)
+      .filter(([, s]) => s === "tentative")
+      .map(([id]) => id);
+    if (tentativePairs.length > 0) {
+      localStorage.setItem(tentativeStorageKey, JSON.stringify(tentativePairs));
+    } else {
+      localStorage.removeItem(tentativeStorageKey);
+    }
+  }, [pairStates, tentativeStorageKey]);
+
+  // Restore tentative marks from localStorage when dance changes
+  useEffect(() => {
+    if (!tentativeStorageKey) return;
+    try {
+      const saved = localStorage.getItem(tentativeStorageKey);
+      if (saved) {
+        const ids: string[] = JSON.parse(saved);
+        setPairStates((prev) => {
+          const next = { ...prev };
+          for (const [k, v] of Object.entries(next)) {
+            if (v === "tentative") delete next[k];
+          }
+          for (const id of ids) {
+            if (!next[id] || next[id] === "none") next[id] = "tentative";
+          }
+          return next;
+        });
+      }
+    } catch { /* ignore */ }
+  }, [tentativeStorageKey]);
   const currentDanceAlreadySubmitted = activeDance ? submittedDanceNames.has(activeDance.name) : false;
   const allDancesSubmitted = dances.length > 0 && dances.every((d) => submittedDanceNames.has(d.name));
 
@@ -235,21 +313,34 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     : pairs;
 
   const allowedCrosses = round?.pairsToAdvance ?? 0;
-  const givenCrosses   = recalled.size;
+  const givenCrosses   = Object.values(pairStates).filter((s) => s === "selected").length;
+  const tentativeCount = Object.values(pairStates).filter((s) => s === "tentative").length;
   const remaining      = Math.max(0, allowedCrosses - givenCrosses);
   const atLimit        = allowedCrosses > 0 && givenCrosses >= allowedCrosses;
   const isExact        = allowedCrosses > 0 && givenCrosses === allowedCrosses;
 
-  const togglePair = (pairId: string) => {
-    setRecalled((prev) => {
-      const next = new Set(prev);
-      if (next.has(pairId)) {
-        next.delete(pairId);
-      } else {
-        if (allowedCrosses > 0 && next.size >= allowedCrosses) return prev;
-        next.add(pairId);
+  // Tap: none→selected, tentative→selected, selected→none
+  const handleTap = (pairId: string) => {
+    setPairStates((prev) => {
+      const current = prev[pairId] ?? "none";
+      if (current === "selected") return { ...prev, [pairId]: "none" };
+      // none or tentative → selected
+      if (current === "none" && allowedCrosses > 0) {
+        const selectedCount = Object.values(prev).filter((s) => s === "selected").length;
+        if (selectedCount >= allowedCrosses) return prev;
       }
-      return next;
+      return { ...prev, [pairId]: "selected" };
+    });
+  };
+
+  // Long-press: none→tentative, tentative→none, selected→tentative
+  const handleLongPress = (pairId: string) => {
+    setPairStates((prev) => {
+      const current = prev[pairId] ?? "none";
+      if (current === "none") return { ...prev, [pairId]: "tentative" };
+      if (current === "tentative") return { ...prev, [pairId]: "none" };
+      if (current === "selected") return { ...prev, [pairId]: "tentative" };
+      return prev;
     });
   };
 
@@ -258,7 +349,9 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     setSubmitting(true);
     setShowConfirm(false);
 
-    const selectedPairIds = pairs.filter((p) => recalled.has(p.id)).map((p) => p.id);
+    // Only selected (blue) pairs count — tentative (yellow) are ignored
+    const selectedPairIds = pairs.filter((p) => pairStates[p.id] === "selected").map((p) => p.id);
+    const selectedSet = new Set(selectedPairIds);
 
     try {
       await Promise.all(pairs.map((p) =>
@@ -266,7 +359,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
           key: `${adjudicatorId}-${round.id}-${p.id}`,
           judgeTokenId: adjudicatorId, roundId: round.id,
           dance: "", danceId: "",
-          pairId: p.id, recalled: recalled.has(p.id),
+          pairId: p.id, recalled: selectedSet.has(p.id),
           deviceToken: deviceToken ?? "", createdAt: new Date().toISOString(), synced: false,
         })
       ));
@@ -274,7 +367,6 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
 
     if (isOnline) {
       try {
-        // Judge confirms once per dance (roundId:dance) — covers all groups/heats
         await apiClient.post(
           `/rounds/${round.id}/callbacks`,
           { selectedPairIds, dance: activeDance?.name ?? 'UNKNOWN' },
@@ -284,7 +376,9 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       } catch { /* saved offline */ }
     }
 
-    // Mark this dance as submitted and auto-advance to next unsubmitted dance
+    // Clean up tentative localStorage for this dance
+    if (tentativeStorageKey) localStorage.removeItem(tentativeStorageKey);
+
     const danceName = activeDance?.name ?? 'UNKNOWN';
     setSubmittedDanceNames((prev) => {
       const next = new Set(prev);
@@ -292,22 +386,33 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       return next;
     });
 
-    // Find next unsubmitted dance
     const nextIdx = dances.findIndex((d, i) => i > activeDanceIdx && !submittedDanceNames.has(d.name) && d.name !== danceName);
     if (nextIdx >= 0) {
-      // Auto-advance to next dance after a brief delay
       setTimeout(() => {
         setActiveDanceIdx(nextIdx);
-        setRecalled(new Set());
+        setPairStates({});
         setSubmitted(false);
       }, 2000);
     } else {
       setSubmitted(true);
     }
     setSubmitting(false);
-  }, [round, adjudicatorId, pairs, recalled, deviceToken, isOnline, router, token, activeDance, dances, activeDanceIdx, submittedDanceNames]);
+  }, [round, adjudicatorId, pairs, pairStates, deviceToken, isOnline, activeDance, dances, activeDanceIdx, submittedDanceNames, tentativeStorageKey]);
+
+  const [showTentativeWarn, setShowTentativeWarn] = useState(false);
 
   const handleSubmit = () => {
+    if (tentativeCount > 0) {
+      setShowTentativeWarn(true);
+    } else if (allowedCrosses > 0 && givenCrosses !== allowedCrosses) {
+      setShowConfirm(true);
+    } else {
+      doSubmit();
+    }
+  };
+
+  const confirmTentativeAndSubmit = () => {
+    setShowTentativeWarn(false);
     if (allowedCrosses > 0 && givenCrosses !== allowedCrosses) {
       setShowConfirm(true);
     } else {
@@ -351,7 +456,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
               return (
                 <button
                   key={d.id}
-                  onClick={() => { setActiveDanceIdx(i); if (!isDone) { setRecalled(new Set()); setSubmitted(false); } }}
+                  onClick={() => { setActiveDanceIdx(i); if (!isDone) { setPairStates({}); setSubmitted(false); } }}
                   className={cn(
                     "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors",
                     isActive ? "bg-[var(--accent)] text-white" : isDone ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
@@ -423,6 +528,9 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
                   isExact ? "text-green-500" : "text-[var(--text-primary)]"
                 )}>
                   {givenCrosses} <span className="text-[var(--text-tertiary)] font-light">/</span> {allowedCrosses}
+                  {tentativeCount > 0 && (
+                    <span className="ml-2 text-lg font-semibold text-amber-400">(+{tentativeCount}?)</span>
+                  )}
                 </p>
                 {remaining > 0 && (
                   <p className="mt-1 text-sm text-[var(--text-tertiary)]">{remaining} zbývá</p>
@@ -456,9 +564,10 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
                 <CoupleTile
                   key={pair.id}
                   pair={pair}
-                  isSelected={recalled.has(pair.id)}
+                  state={pairStates[pair.id] ?? "none"}
                   isDisabled={atLimit}
-                  onToggle={() => togglePair(pair.id)}
+                  onTap={() => handleTap(pair.id)}
+                  onLongPress={() => handleLongPress(pair.id)}
                 />
               ))}
             </div>
@@ -473,7 +582,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             <div className="flex gap-2">
               <Button
                 variant="outline" size="lg" className="shrink-0 px-5 font-semibold"
-                onClick={() => setRecalled(new Set())}
+                onClick={() => setPairStates({})}
               >
                 {t("judge.clear", locale)}
               </Button>
@@ -494,6 +603,31 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
               {heats.length > 1 && ` · Skupina ${heats[activeHeatIdx]?.heatNumber ?? 1}`}
               {` · ${pairs.length} párů · postupuje ${allowedCrosses}`}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Tentative warning dialog */}
+      {showTentativeWarn && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-t-2xl bg-[var(--surface)] p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-[var(--text-primary)]">
+                  Nerozhodnuté páry
+                </h2>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Máte <strong>{tentativeCount}</strong> {tentativeCount === 1 ? "nerozhodnutý pár" : tentativeCount < 5 ? "nerozhodnuté páry" : "nerozhodnutých párů"} (žluté). Nebudou započítány.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowTentativeWarn(false)}>Zpět</Button>
+              <Button className="flex-1 bg-amber-500 hover:bg-amber-600" onClick={confirmTentativeAndSubmit}>Odeslat přesto</Button>
+            </div>
           </div>
         </div>
       )}

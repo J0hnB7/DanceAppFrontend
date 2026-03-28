@@ -7,7 +7,8 @@ import { roundsApi, type RoundDto } from "@/lib/api/rounds";
 import { type SectionDto } from "@/lib/api/sections";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, Download, Clock } from "lucide-react";
+import { CheckCircle2, Download, Clock, Award, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api-client";
 
 interface PairInfo {
@@ -510,6 +511,7 @@ function SectionResults({
 // ── Main tab component ─────────────────────────────────────────────────────────
 export function VyhodnoceniTab({ competitionId, sections, pairs }: Props) {
   const [selectedSection, setSelectedSection] = useState<string>(sections[0]?.id ?? "");
+  const router = useRouter();
 
   if (!sections.length) {
     return (
@@ -523,6 +525,21 @@ export function VyhodnoceniTab({ competitionId, sections, pairs }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Diplomy banner */}
+      <button
+        onClick={() => router.push(`/dashboard/competitions/${competitionId}/diplomas`)}
+        className="group flex w-full items-center gap-4 rounded-2xl border border-[var(--accent)]/20 bg-gradient-to-r from-[var(--accent)]/10 via-[var(--accent)]/5 to-transparent p-4 transition-all hover:border-[var(--accent)]/40 hover:shadow-lg hover:shadow-[var(--accent)]/10"
+      >
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] shadow-md shadow-[var(--accent)]/25">
+          <Award className="h-6 w-6 text-white" />
+        </div>
+        <div className="flex-1 text-left">
+          <p className="text-sm font-bold text-[var(--text-primary)]">Diplomy</p>
+          <p className="text-xs text-[var(--text-secondary)]">Generování a tisk diplomů pro všechny kategorie</p>
+        </div>
+        <ChevronRight className="h-5 w-5 text-[var(--text-tertiary)] transition-transform group-hover:translate-x-1" />
+      </button>
+
       {/* Section selector */}
       {sections.length > 1 && (
         <div className="flex flex-wrap gap-2">

@@ -1,26 +1,372 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useRef, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Award, Printer } from "lucide-react";
+import { Award, Printer, Upload, Trash2, Plus, GripVertical, ArrowLeft, Eye } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { competitionsApi } from "@/lib/api/competitions";
 import { sectionsApi } from "@/lib/api/sections";
 import { scoringApi } from "@/lib/api/scoring";
-import { printDiploma, printAllDiplomas } from "@/lib/diploma";
-import { formatDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { usePairs } from "@/hooks/queries/use-pairs";
+import {
+  printDiploma,
+  printAllDiplomas,
+  loadTemplate,
+  saveTemplate,
+  resolveVariable,
+  DEFAULT_FIELDS,
+  VARIABLE_LABELS,
+  type DiplomaTemplate,
+  type DiplomaTextField,
+  type DiplomaVariable,
+  type DiplomaData,
+} from "@/lib/diploma";
+import { formatDate, cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/locale-context";
+import { useRouter } from "next/navigation";
 
-const MEDAL_COLORS: Record<number, string> = {
-  1: "text-yellow-500",
-  2: "text-gray-400",
-  3: "text-amber-600",
-};
+// ── Template Editor ─────────────────────────────────────────────────────────
+
+function TemplateEditor({
+  competitionId,
+  competitionName,
+  competitionDate,
+  competitionLocation,
+  onSave,
+  initial,
+}: {
+  competitionId: string;
+  competitionName: string;
+  competitionDate: string;
+  competitionLocation: string;
+  onSave: (t: DiplomaTemplate) => void;
+  initial: DiplomaTemplate | null;
+}) {
+  const [bgImage, setBgImage] = useState(initial?.backgroundImage ?? "");
+  const [fields, setFields] = useState<DiplomaTextField[]>(initial?.fields ?? DEFAULT_FIELDS);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  const selectedField = fields.find((f) => f.id === selectedFieldId) ?? null;
+
+  const previewData: DiplomaData = {
+    competitionName: competitionName || "Soutěž Ostrava 2026",
+    competitionDate: competitionDate || "15. března 2026",
+    competitionLocation: competitionLocation || "Ostrava",
+    sectionName: "Standard Junioři II B",
+    placement: 1,
+    dancer1Name: "Jan Novák",
+    dancer2Name: "Jana Nováková",
+    club: "TK Praha",
+  };
+
+  const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setBgImage(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const updateField = (id: string, patch: Partial<DiplomaTextField>) => {
+    setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  };
+
+  const addField = () => {
+    const id = `f${Date.now()}`;
+    const newField: DiplomaTextField = {
+      id,
+      variable: "competitionName",
+      label: "Nové pole",
+      x: 50,
+      y: 50,
+      fontSize: 14,
+      fontWeight: "normal",
+      color: "#333333",
+      textAlign: "center",
+      fontFamily: "sans-serif",
+    };
+    setFields((prev) => [...prev, newField]);
+    setSelectedFieldId(id);
+  };
+
+  const removeField = (id: string) => {
+    setFields((prev) => prev.filter((f) => f.id !== id));
+    if (selectedFieldId === id) setSelectedFieldId(null);
+  };
+
+  const handlePointerDown = (fieldId: string, e: React.PointerEvent) => {
+    e.preventDefault();
+    setDragging(fieldId);
+    setSelectedFieldId(fieldId);
+  };
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragging || !canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+      const y = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
+      updateField(dragging, { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 });
+    },
+    [dragging]
+  );
+
+  const handlePointerUp = useCallback(() => setDragging(null), []);
+
+  const handleSave = () => {
+    const template: DiplomaTemplate = { backgroundImage: bgImage, fields };
+    saveTemplate(competitionId, template);
+    onSave(template);
+  };
+
+  // A4 portrait ratio: 210/297 = 0.707
+  const A4_RATIO = 210 / 297;
+
+  return (
+    <div className="space-y-4">
+      {/* Background upload */}
+      {!bgImage ? (
+        <label className="flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-secondary)] p-12 text-center transition-colors hover:border-[var(--accent)]">
+          <Upload className="h-10 w-10 text-[var(--text-tertiary)]" />
+          <div>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Nahrát šablonu diplomu</p>
+            <p className="text-xs text-[var(--text-tertiary)]">PNG nebo JPG, doporučeno A4 na výšku (2480 × 3508 px)</p>
+          </div>
+          <input type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
+        </label>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+          {/* Canvas — A4 preview with draggable fields */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium text-[var(--text-secondary)]">Náhled — přetáhněte textová pole na požadované pozice</p>
+              <button
+                onClick={() => setBgImage("")}
+                className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+              >
+                <Trash2 className="h-3 w-3" /> Změnit pozadí
+              </button>
+            </div>
+            <div
+              ref={canvasRef}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              className="relative mx-auto overflow-hidden rounded-xl border border-[var(--border)] shadow-lg select-none"
+              style={{ width: "100%", maxWidth: 500, aspectRatio: `${A4_RATIO}` }}
+            >
+              <img
+                src={bgImage}
+                alt="Šablona"
+                className="absolute inset-0 h-full w-full object-cover pointer-events-none"
+                draggable={false}
+              />
+              {fields.map((f) => {
+                const text = resolveVariable(f.variable, previewData);
+                if (!text) return null;
+                // Scale font size relative to canvas width (500px maps to 210mm)
+                const scaledFontSize = (f.fontSize / 210) * 100;
+                return (
+                  <div
+                    key={f.id}
+                    onPointerDown={(e) => handlePointerDown(f.id, e)}
+                    onClick={() => setSelectedFieldId(f.id)}
+                    className={cn(
+                      "absolute cursor-move whitespace-nowrap transition-shadow",
+                      selectedFieldId === f.id && "ring-2 ring-[var(--accent)] ring-offset-1 rounded"
+                    )}
+                    style={{
+                      top: `${f.y}%`,
+                      ...(f.textAlign === "center"
+                        ? { left: `${f.x}%`, transform: "translateX(-50%)" }
+                        : f.textAlign === "right"
+                        ? { right: `${100 - f.x}%` }
+                        : { left: `${f.x}%` }),
+                      fontSize: `${scaledFontSize}vw`,
+                      fontWeight: f.fontWeight,
+                      color: f.color,
+                      fontFamily: f.fontFamily === "serif" ? "'Georgia', serif" : "'Arial', sans-serif",
+                    }}
+                  >
+                    {text}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Field panel */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">Textová pole</p>
+              <button onClick={addField} className="flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white">
+                <Plus className="h-3 w-3" /> Přidat
+              </button>
+            </div>
+
+            <div className="space-y-1.5 max-h-[360px] overflow-y-auto">
+              {fields.map((f) => (
+                <div
+                  key={f.id}
+                  onClick={() => setSelectedFieldId(f.id)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs cursor-pointer transition-colors",
+                    selectedFieldId === f.id
+                      ? "border-[var(--accent)] bg-[var(--accent)]/5"
+                      : "border-[var(--border)] hover:bg-[var(--surface-secondary)]"
+                  )}
+                >
+                  <GripVertical className="h-3 w-3 text-[var(--text-tertiary)] shrink-0" />
+                  <span className="flex-1 truncate font-medium text-[var(--text-primary)]">{VARIABLE_LABELS[f.variable]}</span>
+                  <button onClick={(e) => { e.stopPropagation(); removeField(f.id); }} className="text-[var(--text-tertiary)] hover:text-red-500">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Field settings */}
+            {selectedField && (
+              <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="text-xs font-semibold text-[var(--text-primary)]">Nastavení pole</p>
+
+                <div>
+                  <label className="text-[10px] font-medium text-[var(--text-tertiary)]">Proměnná</label>
+                  <select
+                    value={selectedField.variable}
+                    onChange={(e) => updateField(selectedField.id, { variable: e.target.value as DiplomaVariable })}
+                    className="mt-0.5 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-xs text-[var(--text-primary)]"
+                  >
+                    {Object.entries(VARIABLE_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-medium text-[var(--text-tertiary)]">Velikost (pt)</label>
+                    <Input
+                      type="number"
+                      min={6}
+                      max={72}
+                      value={selectedField.fontSize}
+                      onChange={(e) => updateField(selectedField.id, { fontSize: Number(e.target.value) })}
+                      className="mt-0.5 h-7 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-medium text-[var(--text-tertiary)]">Barva</label>
+                    <div className="mt-0.5 flex gap-1.5 items-center">
+                      <input
+                        type="color"
+                        value={selectedField.color}
+                        onChange={(e) => updateField(selectedField.id, { color: e.target.value })}
+                        className="h-7 w-7 cursor-pointer rounded border-0"
+                      />
+                      <Input
+                        value={selectedField.color}
+                        onChange={(e) => updateField(selectedField.id, { color: e.target.value })}
+                        className="h-7 text-xs flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["left", "center", "right"] as const).map((a) => (
+                    <button
+                      key={a}
+                      onClick={() => updateField(selectedField.id, { textAlign: a })}
+                      className={cn(
+                        "rounded-lg py-1 text-[10px] font-semibold transition-colors",
+                        selectedField.textAlign === a
+                          ? "bg-[var(--accent)] text-white"
+                          : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
+                      )}
+                    >
+                      {a === "left" ? "Vlevo" : a === "center" ? "Střed" : "Vpravo"}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(["normal", "bold"] as const).map((w) => (
+                    <button
+                      key={w}
+                      onClick={() => updateField(selectedField.id, { fontWeight: w })}
+                      className={cn(
+                        "rounded-lg py-1 text-[10px] font-semibold transition-colors",
+                        selectedField.fontWeight === w
+                          ? "bg-[var(--accent)] text-white"
+                          : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
+                      )}
+                    >
+                      {w === "normal" ? "Normální" : "Tučné"}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(["serif", "sans-serif"] as const).map((ff) => (
+                    <button
+                      key={ff}
+                      onClick={() => updateField(selectedField.id, { fontFamily: ff })}
+                      className={cn(
+                        "rounded-lg py-1 text-[10px] transition-colors",
+                        selectedField.fontFamily === ff
+                          ? "bg-[var(--accent)] text-white font-semibold"
+                          : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
+                      )}
+                      style={{ fontFamily: ff === "serif" ? "Georgia, serif" : "Arial, sans-serif" }}
+                    >
+                      {ff === "serif" ? "Serif" : "Sans-serif"}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-medium text-[var(--text-tertiary)]">X (%)</label>
+                    <Input
+                      type="number" min={0} max={100} step={0.5}
+                      value={selectedField.x}
+                      onChange={(e) => updateField(selectedField.id, { x: Number(e.target.value) })}
+                      className="mt-0.5 h-7 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-medium text-[var(--text-tertiary)]">Y (%)</label>
+                    <Input
+                      type="number" min={0} max={100} step={0.5}
+                      value={selectedField.y}
+                      onChange={(e) => updateField(selectedField.id, { y: Number(e.target.value) })}
+                      className="mt-0.5 h-7 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Button onClick={handleSave} className="w-full gap-2 font-semibold">
+              Uložit šablonu
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Section diplomas (generation) ───────────────────────────────────────────
 
 const MEDAL_BG: Record<number, string> = {
   1: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800",
@@ -28,132 +374,121 @@ const MEDAL_BG: Record<number, string> = {
   3: "bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800",
 };
 
-function PlacementBadge({ place }: { place: number }) {
-  const medals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
-  return (
-    <span className={cn("text-2xl font-bold", MEDAL_COLORS[place] ?? "text-[var(--text-primary)]")}>
-      {medals[place] ?? `${place}.`}
-    </span>
-  );
-}
-
-interface SectionDiplomasProps {
+function SectionDiplomas({
+  sectionId,
+  sectionName,
+  competitionName,
+  competitionDate,
+  competitionLocation,
+  competitionId,
+  template,
+}: {
   sectionId: string;
   sectionName: string;
   competitionName: string;
   competitionDate: string;
   competitionLocation: string;
-}
-
-function SectionDiplomas({ sectionId, sectionName, competitionName, competitionDate, competitionLocation }: SectionDiplomasProps) {
-  const { t } = useLocale();
+  competitionId: string;
+  template: DiplomaTemplate | null;
+}) {
   const { data: summary, isLoading } = useQuery({
     queryKey: ["section-summary", sectionId],
     queryFn: () => scoringApi.getSectionSummary(sectionId),
   });
 
+  const { data: pairs = [] } = usePairs(competitionId);
+
   if (isLoading) return <Skeleton className="h-40 rounded-xl" />;
   if (!summary || summary.rankings.length === 0) {
     return (
       <Card className="p-4 text-center text-sm text-[var(--text-secondary)]">
-        {t("diplomas.noResultsYet", { section: sectionName })}
+        {sectionName} — zatím žádné výsledky
       </Card>
     );
   }
 
   const top3 = summary.rankings.filter((r) => r.finalPlacement <= 3);
-  const rest = summary.rankings.filter((r) => r.finalPlacement > 3);
+  const medals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+  const pairLookup = new Map<number, { dancer1Name: string; dancer2Name?: string; club?: string }>();
+  for (const p of pairs) {
+    const name1 = [p.dancer1FirstName, p.dancer1LastName].filter(Boolean).join(" ");
+    const name2 = [p.dancer2FirstName, p.dancer2LastName].filter(Boolean).join(" ");
+    pairLookup.set(p.startNumber, { dancer1Name: name1 || `Pár #${p.startNumber}`, dancer2Name: name2 || undefined, club: p.club });
+  }
 
   return (
-    <Card className="p-5 space-y-4">
+    <Card className="p-5 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-[var(--text-primary)]">{sectionName}</h3>
         <Button
           variant="outline"
           size="sm"
           className="gap-2"
-          onClick={() => printAllDiplomas(summary.rankings, competitionName, competitionDate, competitionLocation, sectionName)}
+          onClick={() => printAllDiplomas(summary.rankings, competitionName, competitionDate, competitionLocation, sectionName, pairLookup, template)}
         >
           <Printer className="h-3.5 w-3.5" />
-          {t("diplomas.printTop3")}
+          Tisknout top 3
         </Button>
       </div>
 
-      {/* Podium */}
       <div className="grid grid-cols-3 gap-2">
-        {top3.map((r) => (
-          <div
-            key={r.pairId}
-            className={cn(
-              "flex flex-col items-center gap-2 rounded-xl border p-3 text-center",
-              MEDAL_BG[r.finalPlacement] ?? "border-[var(--border)]"
-            )}
-          >
-            <PlacementBadge place={r.finalPlacement} />
-            <p className="text-sm font-medium text-[var(--text-primary)]">{t("diplomas.startNumber", { number: r.startNumber })}</p>
-            <p className="text-xs text-[var(--text-secondary)]">{t("diplomas.sumLabel", { value: r.totalSum })}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1 text-xs"
-              onClick={() =>
-                printDiploma({
-                  competitionName,
-                  competitionDate,
-                  competitionLocation,
-                  sectionName,
-                  placement: r.finalPlacement,
-                  dancer1Name: `Start #${r.startNumber}`,
-                })
-              }
-            >
-              <Printer className="h-3 w-3" />
-              {t("diplomas.print")}
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      {/* Remaining placements */}
-      {rest.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">{t("diplomas.otherPlacements")}</p>
-          {rest.map((r) => (
+        {top3.map((r) => {
+          const pair = pairLookup.get(r.startNumber);
+          const dancer1 = pair?.dancer1Name ?? `Pár #${r.startNumber}`;
+          const dancer2 = pair?.dancer2Name;
+          return (
             <div
               key={r.pairId}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-[var(--surface-secondary)]"
+              className={cn(
+                "flex flex-col items-center gap-2 rounded-xl border p-3 text-center",
+                MEDAL_BG[r.finalPlacement] ?? "border-[var(--border)]"
+              )}
             >
-              <span className="w-6 text-center font-semibold text-[var(--text-secondary)]">{r.finalPlacement}.</span>
-              <span className="flex-1 text-[var(--text-primary)]">{t("diplomas.startNumber", { number: r.startNumber })}</span>
-              <span className="text-xs text-[var(--text-tertiary)]">{t("diplomas.sumLabel", { value: r.totalSum })}</span>
+              <span className="text-2xl">{medals[r.finalPlacement]}</span>
+              <div>
+                <p className="text-sm font-semibold text-[var(--text-primary)]">{r.startNumber}</p>
+                <p className="text-xs text-[var(--text-secondary)] truncate max-w-[140px]">
+                  {dancer1}{dancer2 ? ` & ${dancer2}` : ""}
+                </p>
+                {pair?.club && <p className="text-[10px] text-[var(--text-tertiary)]">{pair.club}</p>}
+              </div>
               <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-[var(--text-tertiary)]"
+                variant="outline"
+                size="sm"
+                className="gap-1 text-xs"
                 onClick={() =>
                   printDiploma({
-                    competitionName,
-                    competitionDate,
-                    competitionLocation,
-                    sectionName,
+                    competitionName, competitionDate, competitionLocation, sectionName,
                     placement: r.finalPlacement,
-                    dancer1Name: `Start #${r.startNumber}`,
-                  })
+                    dancer1Name: dancer1,
+                    dancer2Name: dancer2,
+                    club: pair?.club,
+                  }, template)
                 }
               >
-                <Printer className="h-3.5 w-3.5" />
+                <Printer className="h-3 w-3" />
+                Tisk
               </Button>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </Card>
   );
 }
 
+// ── Main page ───────────────────────────────────────────────────────────────
+
 export default function DiplomasPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: competitionId } = use(params);
-  const { t } = useLocale();
+  const router = useRouter();
+  const [tab, setTab] = useState<"generate" | "editor">("generate");
+  const [template, setTemplate] = useState<DiplomaTemplate | null>(null);
+
+  useEffect(() => {
+    setTemplate(loadTemplate(competitionId));
+  }, [competitionId]);
 
   const { data: competition, isLoading: loadingComp } = useQuery({
     queryKey: ["competition", competitionId],
@@ -165,46 +500,91 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
     queryFn: () => sectionsApi.list(competitionId),
   });
 
-  const completedSections = sections.filter((s) => s.status === "COMPLETED");
-
   return (
-    <AppShell>
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("diplomas.title")}</h1>
+    <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
+      <div className="mx-auto max-w-5xl space-y-5">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.back()} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-secondary)]">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-xl font-semibold text-[var(--text-primary)]">Diplomy</h1>
             {competition && (
               <p className="text-sm text-[var(--text-secondary)]">
                 {competition.name} · {formatDate(competition.eventDate)} · {competition.venue}
               </p>
             )}
           </div>
-          <Badge variant="default">
-            {t("diplomas.sectionsCompleted", { completed: completedSections.length, total: sections.length })}
+          <Badge variant={template ? "default" : "secondary"}>
+            {template ? "Šablona nahrána" : "Bez šablony"}
           </Badge>
         </div>
 
-        {loadingComp || loadingSections ? (
+        {/* Tab bar */}
+        <div className="flex gap-1 rounded-xl bg-[var(--surface-secondary)] p-1">
+          <button
+            onClick={() => setTab("generate")}
+            className={cn(
+              "flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
+              tab === "generate" ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
+            )}
+          >
+            <Printer className="mr-1.5 inline-block h-4 w-4" />
+            Generovat diplomy
+          </button>
+          <button
+            onClick={() => setTab("editor")}
+            className={cn(
+              "flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
+              tab === "editor" ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
+            )}
+          >
+            <Eye className="mr-1.5 inline-block h-4 w-4" />
+            Editor šablony
+          </button>
+        </div>
+
+        {tab === "editor" ? (
+          <TemplateEditor
+            competitionId={competitionId}
+            competitionName={competition?.name ?? ""}
+            competitionDate={competition ? formatDate(competition.eventDate) : ""}
+            competitionLocation={competition?.venue ?? ""}
+            onSave={(t) => { setTemplate(t); setTab("generate"); }}
+            initial={template}
+          />
+        ) : loadingComp || loadingSections ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
           </div>
-        ) : completedSections.length === 0 ? (
+        ) : sections.length === 0 ? (
           <Card className="flex flex-col items-center gap-3 py-20 text-center">
             <Award className="h-12 w-12 text-[var(--text-tertiary)]" />
-            <p className="text-sm text-[var(--text-secondary)]">
-              {t("diplomas.noCompleted")}
-            </p>
+            <p className="text-sm text-[var(--text-secondary)]">Žádné kategorie k zobrazení.</p>
           </Card>
         ) : (
           <div className="space-y-4">
-            {completedSections.map((section) => (
+            {!template && (
+              <div className="flex items-center gap-3 rounded-xl border border-amber-300/30 bg-amber-50 dark:bg-amber-950/20 px-4 py-3">
+                <Upload className="h-5 w-5 text-amber-600 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">Šablona není nahrána</p>
+                  <p className="text-xs text-[var(--text-secondary)]">Diplomy budou vytištěny s výchozím designem. Pro vlastní pozadí přejděte do editoru.</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setTab("editor")}>Nahrát šablonu</Button>
+              </div>
+            )}
+            {sections.map((section) => (
               <SectionDiplomas
                 key={section.id}
                 sectionId={section.id}
                 sectionName={section.name}
+                competitionId={competitionId}
                 competitionName={competition?.name ?? ""}
                 competitionDate={competition ? formatDate(competition.eventDate) : ""}
                 competitionLocation={competition?.venue ?? ""}
+                template={template}
               />
             ))}
           </div>

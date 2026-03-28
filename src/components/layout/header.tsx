@@ -54,11 +54,11 @@ export function Header({ title, actions }: HeaderProps) {
               </Avatar>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 rounded-[var(--radius-xl)] border-[var(--border)] bg-[var(--surface)] backdrop-blur-lg shadow-[0_8px_32px_rgba(91,141,238,0.12)]">
+          <DropdownMenuContent align="end" className="w-56 rounded-[var(--radius-xl)] border-[var(--border)] bg-[var(--surface)] backdrop-blur-lg shadow-[0_8px_32px_rgba(91,141,238,0.12)]">
             <DropdownMenuLabel>
-              <div>
-                <p className="font-medium text-[var(--text-primary)]">{user?.name}</p>
-                <p className="text-xs text-[var(--text-tertiary)]">{user?.email}</p>
+              <div className="min-w-0">
+                <p className="font-medium text-[var(--text-primary)] truncate">{user?.name}</p>
+                <p className="text-xs text-[var(--text-tertiary)] truncate" title={user?.email}>{user?.email}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Send, Mail, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,7 +91,7 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
   const recipientType = watch("recipientType");
 
   return (
-    <AppShell>
+    <AppShell sidebar={<CompetitionSidebar competitionId={id} />}>
       <PageHeader title={t("notifications.title")} description={t("notifications.description")} backHref={`/dashboard/competitions/${id}`} />
 
       <div className="grid gap-6 lg:grid-cols-2">

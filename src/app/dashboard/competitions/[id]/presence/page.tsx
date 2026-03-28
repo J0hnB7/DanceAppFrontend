@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Search, Users, CheckCircle2, CreditCard, UserCheck, XCircle, Lock, Eye, EyeOff, RotateCcw, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -248,7 +249,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
   );
 
   return (
-    <AppShell>
+    <AppShell sidebar={<CompetitionSidebar competitionId={id} />}>
       {/* Back */}
       <button
         onClick={() => router.push(`/dashboard/competitions/${id}`)}

@@ -280,7 +280,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
             {/* stats chips */}
             <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
               <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px" }}>
-                <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Přihlášených párů</div>
+                <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Přihlášených soutěžících</div>
                 <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.25rem", color: "#fff" }}>
                   {competition.registeredPairsCount ?? 0}
                   {competition.maxPairs && <span style={{ fontSize: ".75rem", fontWeight: 400, color: "rgba(255,255,255,.4)" }}> / {competition.maxPairs}</span>}
@@ -453,17 +453,29 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
               {competition.paymentConfig && (competition.paymentConfig as Record<string, string>).iban && (
                 <div style={cardStyle}>
                   {sectionLabel("💳", "Platební údaje")}
-                  <div style={{ padding: "0 20px 16px" }}>
-                    {[
-                      (competition.paymentConfig as Record<string, string>).holder && ["Majitel účtu", (competition.paymentConfig as Record<string, string>).holder],
-                      ["IBAN", (competition.paymentConfig as Record<string, string>).iban],
-                      (competition.paymentConfig as Record<string, string>).bic && ["BIC/SWIFT", (competition.paymentConfig as Record<string, string>).bic],
-                    ].filter(Boolean).map((row) => (
-                      <div key={row![0]} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #F3F4F6" }}>
-                        <span style={{ fontSize: ".85rem", color: "#6B7280" }}>{row![0]}</span>
-                        <span style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827", fontFamily: row![0] === "IBAN" || row![0] === "BIC/SWIFT" ? "monospace" : undefined }}>{row![1]}</span>
+                  <div style={{ padding: "0 20px 16px", display: "flex", gap: 20, alignItems: "flex-start" }}>
+                    <div style={{ flex: 1 }}>
+                      {[
+                        (competition.paymentConfig as Record<string, string>).holder && ["Majitel účtu", (competition.paymentConfig as Record<string, string>).holder],
+                        ["IBAN", (competition.paymentConfig as Record<string, string>).iban],
+                        (competition.paymentConfig as Record<string, string>).bic && ["BIC/SWIFT", (competition.paymentConfig as Record<string, string>).bic],
+                      ].filter(Boolean).map((row) => (
+                        <div key={row![0]} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #F3F4F6" }}>
+                          <span style={{ fontSize: ".85rem", color: "#6B7280" }}>{row![0]}</span>
+                          <span style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827", fontFamily: row![0] === "IBAN" || row![0] === "BIC/SWIFT" ? "monospace" : undefined }}>{row![1]}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {(competition.paymentConfig as Record<string, string>).qrCode && (
+                      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                        <img
+                          src={(competition.paymentConfig as Record<string, string>).qrCode}
+                          alt="QR kód pro platbu"
+                          style={{ width: 120, height: 120, borderRadius: 10, border: "1px solid #E5E7EB", objectFit: "contain", background: "#fff", padding: 4 }}
+                        />
+                        <span style={{ fontSize: ".7rem", color: "#9CA3AF", fontWeight: 500 }}>Naskenujte QR kód</span>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}

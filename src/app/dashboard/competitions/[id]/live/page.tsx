@@ -66,7 +66,7 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
     loadSchedule(competitionId);
   }, [competitionId, loadSchedule]);
 
-  const { updateJudgeOnline, setDanceConfirmation, setRoundClosed } = useLiveStore();
+  const { updateJudgeOnline, setDanceConfirmation, setRoundClosed, selectDance, selectHeat } = useLiveStore();
   // sectionId from the selected slot — needed for round close/complete API
   const [sectionId, setSectionId] = useState<string | null>(null);
 
@@ -207,8 +207,30 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
     const slot = slots.find((s) => s.id === selectedRoundId);
     if (!slot) return;
 
-    const names = getDanceNames(slot.label);
-    setDances(names.map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
+    // Fetch real dances from backend section; fall back to hardcoded if fetch fails
+    if (slot.sectionId) {
+      apiClient
+        .get<{ dances?: Array<{ id: string; danceName: string; danceOrder: number }> }>(
+          `/competitions/${competitionId}/sections/${slot.sectionId}`
+        )
+        .then((res) => {
+          const sectionDances = res.data.dances;
+          if (sectionDances && sectionDances.length > 0) {
+            const sorted = [...sectionDances].sort((a, b) => a.danceOrder - b.danceOrder);
+            setDances(sorted.map((d) => ({ id: d.id, name: d.danceName })));
+          } else {
+            const names = getDanceNames(slot.label);
+            setDances(names.map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
+          }
+        })
+        .catch(() => {
+          const names = getDanceNames(slot.label);
+          setDances(names.map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
+        });
+    } else {
+      const names = getDanceNames(slot.label);
+      setDances(names.map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
+    }
 
     const mapGroups = (groups: { heatNumber: number; pairs: { startNumber: number }[] }[]) =>
       groups.map((g) => ({
@@ -281,6 +303,28 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
       }).catch(() => {});
     }
   }, [dances, heats, heatIdMap, competitionId, setDanceConfirmation]);
+
+  // Auto-advance: when current dance has all judges confirmed, switch to next unconfirmed dance + first heat
+  const danceConfirmations = useLiveStore((s) => s.danceConfirmations);
+  useEffect(() => {
+    if (!selectedDanceId || dances.length === 0) return;
+    const currentConf = danceConfirmations[selectedDanceId];
+    if (!currentConf || currentConf.total === 0 || currentConf.submitted < currentConf.total) return;
+    // Current dance is fully confirmed — find next unconfirmed dance
+    const currentIdx = dances.findIndex((d) => d.id === selectedDanceId);
+    for (let i = currentIdx + 1; i < dances.length; i++) {
+      const conf = danceConfirmations[dances[i].id];
+      if (!conf || conf.total === 0 || conf.submitted < conf.total) {
+        selectDance(dances[i].id);
+        // Auto-select first heat
+        if (heats.length > 0) {
+          setTimeout(() => selectHeat(heats[0].id), 100);
+        }
+        return;
+      }
+    }
+    // All dances confirmed — don't auto-advance, stay on current
+  }, [danceConfirmations, selectedDanceId, dances, heats, selectDance, selectHeat]);
 
   // Check if current round is already closed/calculated
   useEffect(() => {

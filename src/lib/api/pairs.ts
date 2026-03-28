@@ -75,7 +75,7 @@ export const pairsApi = {
   list: (competitionId: string, sectionId?: string) =>
     apiClient
       .get<{ content: PairDto[] } | PairDto[]>(`/competitions/${competitionId}/pairs`, {
-        params: sectionId ? { sectionId } : undefined,
+        params: { ...(sectionId ? { sectionId } : {}), size: 10000 },
       })
       .then((r) => (Array.isArray(r.data) ? r.data : (r.data as { content: PairDto[] }).content)),
 

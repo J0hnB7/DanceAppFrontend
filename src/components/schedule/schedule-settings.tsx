@@ -183,7 +183,7 @@ export function ScheduleSettings({
 
         {/* Max pairs */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[var(--text-secondary)]">Max párů na parketu</label>
+          <label className="text-xs font-medium text-[var(--text-secondary)]">Max soutěžících na parketu</label>
           <select
             value={config.maxPairsOnFloor}
             onChange={(e) => setConfig((c) => ({ ...c, maxPairsOnFloor: Number(e.target.value) }))}

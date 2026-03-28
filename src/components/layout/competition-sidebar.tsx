@@ -10,6 +10,9 @@ import { useLocale } from "@/contexts/locale-context";
 import { getInitials, getAvatarColor } from "@/lib/utils";
 import { useSections } from "@/hooks/queries/use-sections";
 import { usePairs } from "@/hooks/queries/use-pairs";
+import { useAlertsStore } from "@/store/alerts-store";
+import { formatTime } from "@/lib/utils";
+import { Bell, CheckCheck, X, AlertCircle, CheckCircle2, Info, AlertTriangle } from "lucide-react";
 
 /* ── SVG Icons (inline, 24x24 viewBox) ────────────────── */
 const icons = {
@@ -99,10 +102,14 @@ export function CompetitionSidebar({
   competitionName,
 }: CompetitionSidebarProps) {
   const pathname = usePathname();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
   const { locale, setLocale } = useLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const { alerts, markRead, markAllRead, removeAlert, unreadCount } = useAlertsStore();
+  const notifCount = unreadCount();
 
   /* Self-fetch counts */
   const { data: sections } = useSections(competitionId);
@@ -180,7 +187,141 @@ export function CompetitionSidebar({
           <span className="h-3.5 w-3.5 shrink-0">{icons.back}</span>
           Zpět na dashboard
         </Link>
+
+        {/* Utility icons row */}
+        <div className="flex items-center gap-0.5 px-1">
+          <button
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#4E5F72] transition-all duration-150 hover:bg-[rgba(255,255,255,0.06)] hover:text-[#94A3B8]"
+          >
+            <span className="h-[16px] w-[16px]">{theme === "dark" ? icons.moon : icons.sun}</span>
+          </button>
+
+          <button
+            onClick={() => setLocale(locale === "en" ? "cs" : "en")}
+            aria-label={locale === "en" ? "Přepnout na češtinu" : "Switch to English"}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#4E5F72] text-[10px] font-bold transition-all duration-150 hover:bg-[rgba(255,255,255,0.06)] hover:text-[#94A3B8]"
+          >
+            {locale === "en" ? "EN" : "CZ"}
+          </button>
+
+          {/* Bell */}
+          <button
+            aria-label="Upozornění"
+            onClick={() => { setNotifOpen((v) => !v); setUserMenuOpen(false); }}
+            className="relative flex h-8 w-8 items-center justify-center rounded-lg text-[#4E5F72] transition-all duration-150 hover:bg-[rgba(255,255,255,0.06)] hover:text-[#94A3B8]"
+          >
+            <span className="h-[16px] w-[16px]"><Bell className="h-4 w-4" /></span>
+            {notifCount > 0 && (
+              <span className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                {notifCount > 9 ? "9+" : notifCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            aria-label="Účet"
+            onClick={() => { setUserMenuOpen((v) => !v); setNotifOpen(false); }}
+            className="flex h-7 w-7 ml-0.5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+            style={{ backgroundColor: avatarColor }}
+          >
+            {user ? getInitials(fullName) : "?"}
+          </button>
+        </div>
+
+        {/* Notifications — inline expand below icons row */}
+        {notifOpen && (
+          <>
+            <div className="fixed inset-0 z-[110]" onClick={() => setNotifOpen(false)} />
+            <div className="relative z-[120] mx-1 mb-1 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#0F1624] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-[rgba(255,255,255,0.07)]">
+                <span className="text-[12px] font-semibold text-[#94A3B8] uppercase tracking-wide">
+                  Upozornění{notifCount > 0 && <span className="ml-1.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-bold text-white">{notifCount}</span>}
+                </span>
+                {notifCount > 0 && (
+                  <button onClick={markAllRead} className="flex items-center gap-1 text-[11px] text-[#4E5F72] hover:text-[#94A3B8] transition-colors">
+                    <CheckCheck className="h-3 w-3" /> vše přečteno
+                  </button>
+                )}
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {alerts.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 py-6 text-center">
+                    <Bell className="h-6 w-6 text-[#374151]" />
+                    <p className="text-[12px] text-[#4E5F72]">Žádná upozornění</p>
+                  </div>
+                ) : (
+                  alerts.map((alert) => {
+                    const levelIcon = {
+                      info: <Info className="h-3.5 w-3.5 text-blue-400" />,
+                      success: <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />,
+                      warning: <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />,
+                      error: <AlertCircle className="h-3.5 w-3.5 text-red-400" />,
+                    }[alert.level];
+                    return (
+                      <div
+                        key={alert.id}
+                        onClick={() => markRead(alert.id)}
+                        className="group relative flex gap-2.5 border-b border-[rgba(255,255,255,0.05)] p-3 last:border-0 cursor-pointer hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+                      >
+                        <div className="mt-0.5 shrink-0">{levelIcon}</div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-[12px] leading-snug ${alert.read ? "text-[#64748B]" : "font-medium text-[#C4CDD8]"}`}>
+                            {alert.title}
+                          </p>
+                          {alert.description && (
+                            <p className="mt-0.5 text-[11px] text-[#4E5F72]">{alert.description}</p>
+                          )}
+                          <p className="mt-1 text-[10px] text-[#374151]">{formatTime(alert.createdAt.toISOString())}</p>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeAlert(alert.id); }}
+                          className="hidden group-hover:flex h-5 w-5 items-center justify-center rounded text-[#374151] hover:text-[#94A3B8] transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                        {!alert.read && (
+                          <div className="absolute right-3 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-blue-400" />
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* User menu — inline expand below icons row */}
+        {userMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-[110]" onClick={() => setUserMenuOpen(false)} />
+            <div className="relative z-[120] mx-1 mb-1 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#0F1624] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+              <div className="px-3 py-2 border-b border-[rgba(255,255,255,0.07)]">
+                <p className="text-[13px] font-semibold text-[#F1F5F9] truncate">{user?.name}</p>
+                <p className="text-[11px] text-[#64748B] truncate">{user?.email}</p>
+              </div>
+              <Link
+                href="/dashboard/settings"
+                onClick={() => setUserMenuOpen(false)}
+                className="flex w-full items-center px-3 py-2 text-[13px] text-[#94A3B8] hover:bg-[rgba(255,255,255,0.05)] hover:text-white transition-colors"
+              >
+                Nastavení
+              </Link>
+              <div className="h-px bg-[rgba(255,255,255,0.07)]" />
+              <button
+                onClick={() => { setUserMenuOpen(false); logout(); }}
+                className="flex w-full items-center px-3 py-2 text-[13px] text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+              >
+                Odhlásit
+              </button>
+            </div>
+          </>
+        )}
       </div>
+
+      <div className="mx-4 h-px bg-[rgba(255,255,255,0.07)]" />
 
       {/* Nav — scrollable */}
       <nav
@@ -246,58 +387,6 @@ export function CompetitionSidebar({
         ))}
       </nav>
 
-      {/* Bottom controls */}
-      <div className="shrink-0 border-t border-[rgba(255,255,255,0.07)] px-3 py-3 flex flex-col gap-0.5">
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme}
-          aria-label={theme === "dark" ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-[9px] text-[13px] font-medium text-[#8896A8] transition-all duration-150 hover:bg-[rgba(255,255,255,0.04)] hover:text-[#C4CDD8]"
-        >
-          <span className="h-[18px] w-[18px] shrink-0 text-[#4E5F72]">
-            {theme === "dark" ? icons.moon : icons.sun}
-          </span>
-          {theme === "dark" ? "Dark mode" : "Light mode"}
-        </button>
-
-        {/* Language toggle */}
-        <button
-          onClick={() => setLocale(locale === "en" ? "cs" : "en")}
-          aria-label={locale === "en" ? "Přepnout na češtinu" : "Switch to English"}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-[9px] text-[13px] font-medium text-[#8896A8] transition-all duration-150 hover:bg-[rgba(255,255,255,0.04)] hover:text-[#C4CDD8]"
-        >
-          <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-[11px] font-bold text-[#4E5F72]">
-            {locale === "en" ? "EN" : "CZ"}
-          </span>
-          {locale === "en" ? "English" : "Čeština"}
-        </button>
-
-        {/* Notifications */}
-        <button
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-[9px] text-[13px] font-medium text-[#8896A8] transition-all duration-150 hover:bg-[rgba(255,255,255,0.04)] hover:text-[#C4CDD8]"
-          aria-label="Upozornění"
-        >
-          <span className="h-[18px] w-[18px] shrink-0 text-[#4E5F72]">{icons.bell}</span>
-          <span className="flex-1 text-left">Upozornění</span>
-          <span
-            className="flex min-w-[20px] items-center justify-center rounded-[10px] bg-[#EF4444] px-1.5 text-[10px] font-bold text-white"
-            style={{ height: 20 }}
-          >
-            3
-          </span>
-        </button>
-
-        {/* Profile */}
-        <div className="flex w-full items-center gap-3 rounded-xl px-3 py-[9px] text-[13px] font-medium text-[#8896A8] transition-all duration-150 hover:bg-[rgba(255,255,255,0.04)] hover:text-[#C4CDD8] cursor-default">
-          <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-            style={{ backgroundColor: avatarColor }}
-          >
-            {user ? getInitials(fullName) : "?"}
-          </div>
-          <span className="truncate text-[#94A3B8]">{user?.name ?? "Uživatel"}</span>
-        </div>
-      </div>
     </>
   );
 

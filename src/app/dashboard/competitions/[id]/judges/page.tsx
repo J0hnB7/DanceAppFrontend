@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useState, useEffect, useRef } from "react";
+import { use, useState, useEffect, useRef, useCallback } from "react";
 import { Copy, Plus, Trash2, Download, Printer, QrCode, X, ClipboardList, Eye, EyeOff, UserX } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -247,6 +248,65 @@ function FallbackScoringModal({
   );
 }
 
+// ── Inline editable cell with debounced auto-save ────────────────────────────
+function AutoSaveCell({
+  initialValue,
+  onSave,
+  placeholder,
+}: {
+  initialValue?: string;
+  onSave: (value: string) => Promise<void>;
+  placeholder?: string;
+}) {
+  const [value, setValue] = useState(initialValue ?? "");
+  const [saving, setSaving] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const save = useCallback(
+    async (val: string) => {
+      setSaving(true);
+      try {
+        await onSave(val);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [onSave]
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setValue(val);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => save(val), 800);
+  };
+
+  const handleBlur = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    save(value);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] hover:border-[var(--border)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/30"
+        value={value}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+      />
+      {saving && (
+        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-tertiary)]">
+          ···
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── PinCell — show/hide PIN ───────────────────────────────────────────────────
 function PinCell({ pin }: { pin?: string }) {
   const { t } = useLocale();
@@ -374,6 +434,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <AppShell
+      sidebar={<CompetitionSidebar competitionId={id} />}
       headerActions={
         <div className="flex items-center gap-2">
           {activeTokens.length > 0 && (
@@ -406,18 +467,20 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-20">{t("judges.table.judge")}</TableHead>
+              <TableHead className="w-16">{t("judges.table.judge")}</TableHead>
+              <TableHead className="w-40">{t("judges.table.name") || "Jméno"}</TableHead>
+              <TableHead className="w-28">{t("judges.table.country") || "Národnost"}</TableHead>
               <TableHead>{t("judges.table.token")}</TableHead>
               <TableHead>{t("judges.table.pin")}</TableHead>
               <TableHead>{t("judges.table.status")}</TableHead>
-              <TableHead className="w-36">{t("judges.table.actions")}</TableHead>
+              <TableHead className="w-28">{t("judges.table.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 5 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -427,6 +490,28 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
             {tokens?.map((tk) => (
               <TableRow key={tk.id}>
                 <TableCell className="font-bold">#{tk.judgeNumber}</TableCell>
+                <TableCell>
+                  <AutoSaveCell
+                    initialValue={tk.name}
+                    placeholder="Jméno porotce"
+                    onSave={(name) =>
+                      judgeTokensApi.update(id, tk.id, { name, country: tk.country }).then(() => {
+                        qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
+                      })
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <AutoSaveCell
+                    initialValue={tk.country}
+                    placeholder="CZE"
+                    onSave={(country) =>
+                      judgeTokensApi.update(id, tk.id, { name: tk.name, country }).then(() => {
+                        qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
+                      })
+                    }
+                  />
+                </TableCell>
                 <TableCell>
                   <code className="rounded bg-[var(--surface-secondary)] px-2 py-0.5 text-xs">
                     {getTokenRaw(tk)?.slice(0, 16) ?? "—"}…
@@ -479,7 +564,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
             ))}
             {!isLoading && !tokens?.length && (
               <TableRow>
-                <TableCell colSpan={5} className="py-12 text-center text-[var(--text-secondary)]">
+                <TableCell colSpan={7} className="py-12 text-center text-[var(--text-secondary)]">
                   {t("judges.noTokens")}
                 </TableCell>
               </TableRow>

@@ -1,6 +1,7 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
@@ -9,14 +10,33 @@ import {
   Clock,
   CreditCard,
   TrendingUp,
+  Download,
+  ArrowLeft,
+  Plus,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { invoicesApi, type InvoiceDto } from "@/lib/api/payments";
+import { usePairs } from "@/hooks/queries/use-pairs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/locale-context";
@@ -46,9 +66,34 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: s
 
 export default function PaymentsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: competitionId } = use(params);
+  const router = useRouter();
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useLocale();
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [selectedPairId, setSelectedPairId] = useState("");
+  const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [invoiceCurrency, setInvoiceCurrency] = useState("CZK");
+
+  const { data: pairs } = usePairs(competitionId);
+
+  const createInvoice = useMutation({
+    mutationFn: () =>
+      invoicesApi.create(competitionId, {
+        pairId: selectedPairId || undefined,
+        amount: parseFloat(invoiceAmount) || 0,
+        currency: invoiceCurrency,
+      }),
+    onSuccess: () => {
+      invalidate();
+      toast({ title: "Faktura vytvořena", variant: "success" });
+      setCreateOpen(false);
+      setSelectedPairId("");
+      setInvoiceAmount("");
+    },
+    onError: () => toast({ title: "Nepodařilo se vytvořit fakturu", variant: "destructive" }),
+  });
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices", competitionId],
@@ -76,10 +121,22 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
   const currency = invoices[0]?.currency ?? "EUR";
 
   return (
-    <AppShell>
+    <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("payments.title")}</h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push(`/dashboard/competitions/${competitionId}`)}
+              className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("payments.title")}</h1>
+          </div>
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Vytvořit fakturu
+          </Button>
         </div>
 
         {/* Stats */}
@@ -154,6 +211,17 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
                             {t("payments.markPaid")}
                           </Button>
                         )}
+                        {inv.status === "PAID" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 text-xs text-[var(--accent)]"
+                            onClick={() => invoicesApi.downloadPdf(competitionId, inv.id)}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            Faktura PDF
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -163,6 +231,68 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
           </div>
         )}
       </div>
+
+      {/* Create invoice dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Vytvořit fakturu</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Soutěžící</label>
+              <Select onValueChange={setSelectedPairId} value={selectedPairId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Vyberte soutěžícího..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {pairs?.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {String(p.startNumber).padStart(3, "0")} — {p.dancer1Name ?? `${p.dancer1FirstName} ${p.dancer1LastName}`}
+                      {(p.dancer2Name ?? p.dancer2FirstName) ? ` & ${p.dancer2Name ?? `${p.dancer2FirstName} ${p.dancer2LastName}`}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Částka</label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={invoiceAmount}
+                  onChange={(e) => setInvoiceAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Měna</label>
+                <Select onValueChange={setInvoiceCurrency} value={invoiceCurrency}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CZK">CZK</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>Zrušit</Button>
+              <Button
+                onClick={() => createInvoice.mutate()}
+                loading={createInvoice.isPending}
+                disabled={!selectedPairId || !invoiceAmount}
+              >
+                Vytvořit
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

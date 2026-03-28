@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Medal, BarChart3 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +53,7 @@ export default function RoundResultsPage({
 
   if (roundLoading) {
     return (
-      <AppShell>
+      <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
         <Skeleton className="h-8 w-64" />
         <Skeleton className="mt-4 h-96 w-full" />
       </AppShell>
@@ -63,7 +64,7 @@ export default function RoundResultsPage({
   const isPreliminary = round?.roundType === "PRELIMINARY";
 
   return (
-    <AppShell>
+    <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
       <PageHeader
         title={t("roundResults.title", { type: round?.roundType ?? "" })}
         description={t("roundResults.roundNumber", { number: round?.roundNumber ?? "" })}

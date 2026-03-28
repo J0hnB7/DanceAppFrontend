@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PlayCircle, Plus, Trophy, BarChart3, Presentation, XCircle, ShieldAlert, Swords, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,7 +63,7 @@ export default function SectionDetailPage({
 
   if (isLoading || !section) {
     return (
-      <AppShell>
+      <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
         <Skeleton className="h-8 w-48" />
         <Skeleton className="mt-4 h-64 w-full" />
       </AppShell>
@@ -74,6 +75,7 @@ export default function SectionDetailPage({
 
   return (
     <AppShell
+      sidebar={<CompetitionSidebar competitionId={competitionId} />}
       headerActions={
         <div className="flex items-center gap-2">
           {hasResults && (

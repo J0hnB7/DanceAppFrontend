@@ -907,73 +907,76 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
           </div>
 
           {/* ── Stats Grid ── */}
-          <div className="mb-5 grid gap-4 sm:grid-cols-3">
+          <div className="mb-5 grid gap-3 sm:grid-cols-3">
             {/* Registrace */}
-            <article className="flex flex-col rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
-              <div className="mb-2 flex items-center gap-1.5 text-[var(--text-secondary)]">
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.5px]">Registrace</span>
+            <article className="flex items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--surface)] px-4 py-3" style={{ boxShadow: "var(--shadow-sm)" }}>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="mb-1 flex items-center gap-1.5 text-[var(--text-secondary)]">
+                  <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.5px]">Registrace</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[22px] font-bold leading-none text-[#3B82F6]" style={{ fontFamily: "var(--font-sora)" }}>{competition.registeredPairsCount ?? 0}</span>
+                  <span className="text-[12px] text-[var(--text-secondary)]">Přihlášených</span>
+                  <span className="rounded-xl bg-[var(--accent-subtle)] px-2 py-px text-[10px] font-semibold text-[var(--accent)]">
+                    {competition.registrationOpen ? "Otevřena" : "Uzavřena"}
+                  </span>
+                </div>
               </div>
-              <span className="text-[36px] font-bold leading-tight text-[#3B82F6]" style={{ fontFamily: "var(--font-sora)" }}>{competition.registeredPairsCount ?? 0}</span>
-              <div className="mt-1 mb-3 flex items-center gap-2">
-                <span className="text-[13px] text-[var(--text-secondary)]">Přihlášených</span>
-                <span className="rounded-xl bg-[var(--accent-subtle)] px-2 py-px text-[11px] font-semibold text-[var(--accent)]">
-                  {competition.registrationOpen ? "Otevřena" : "Uzavřena"}
-                </span>
-              </div>
-              <div className="flex-1" />
               <button
                 onClick={() => router.push(`/dashboard/competitions/${id}/pairs`)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg p-2 text-xs font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
+                className="shrink-0 flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
-                Zobrazit soutěžící
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                Zobrazit
               </button>
             </article>
 
             {/* Kategorie */}
-            <article className="flex flex-col rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
-              <div className="mb-2 flex items-center gap-1.5 text-[var(--text-secondary)]">
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" /></svg>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.5px]">Kategorie</span>
+            <article className="flex items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--surface)] px-4 py-3" style={{ boxShadow: "var(--shadow-sm)" }}>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="mb-1 flex items-center gap-1.5 text-[var(--text-secondary)]">
+                  <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" /></svg>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.5px]">Kategorie</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[22px] font-bold leading-none text-[#06B6D4]" style={{ fontFamily: "var(--font-sora)" }}>{sections?.length ?? 0}</span>
+                  <span className="text-[12px] text-[var(--text-secondary)]">Aktivních</span>
+                  {categoriesReady && (
+                    <span className="rounded-xl bg-[var(--success-subtle)] px-2 py-px text-[10px] font-semibold text-[var(--success-text)]">Kompletní</span>
+                  )}
+                </div>
               </div>
-              <span className="text-[36px] font-bold leading-tight text-[#06B6D4]" style={{ fontFamily: "var(--font-sora)" }}>{sections?.length ?? 0}</span>
-              <div className="mt-1 mb-3 flex items-center gap-2">
-                <span className="text-[13px] text-[var(--text-secondary)]">Aktivních</span>
-                {categoriesReady && (
-                  <span className="rounded-xl bg-[var(--success-subtle)] px-2 py-px text-[11px] font-semibold text-[var(--success-text)]">Kompletní</span>
-                )}
-              </div>
-              <div className="flex-1" />
               <button
                 onClick={() => router.push(`/dashboard/competitions/${id}/sections/new`)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg p-2 text-xs font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
+                className="shrink-0 flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-                Přidat kategorii
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                Přidat
               </button>
             </article>
 
             {/* Porota */}
-            <article className="flex flex-col rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
-              <div className="mb-2 flex items-center gap-1.5 text-[var(--text-secondary)]">
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.5px]">Porota</span>
+            <article className="flex items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--surface)] px-4 py-3" style={{ boxShadow: "var(--shadow-sm)" }}>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="mb-1 flex items-center gap-1.5 text-[var(--text-secondary)]">
+                  <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.5px]">Porota</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[22px] font-bold leading-none text-[#F59E0B]" style={{ fontFamily: "var(--font-sora)" }}>{judgeTokens.length}</span>
+                  <span className="text-[12px] text-[var(--text-secondary)]">Rozhodčích</span>
+                  {judgesReady && (
+                    <span className="rounded-xl bg-[var(--success-subtle)] px-2 py-px text-[10px] font-semibold text-[var(--success-text)]">Kompletní</span>
+                  )}
+                </div>
               </div>
-              <span className="text-[36px] font-bold leading-tight text-[#F59E0B]" style={{ fontFamily: "var(--font-sora)" }}>{judgeTokens.length}</span>
-              <div className="mt-1 mb-3 flex items-center gap-2">
-                <span className="text-[13px] text-[var(--text-secondary)]">Rozhodčích</span>
-                {judgesReady && (
-                  <span className="rounded-xl bg-[var(--success-subtle)] px-2 py-px text-[11px] font-semibold text-[var(--success-text)]">Kompletní</span>
-                )}
-              </div>
-              <div className="flex-1" />
               <button
                 onClick={() => router.push(`/dashboard/competitions/${id}/judges`)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg p-2 text-xs font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
+                className="shrink-0 flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
-                Správa poroty
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+                Správa
               </button>
             </article>
           </div>
