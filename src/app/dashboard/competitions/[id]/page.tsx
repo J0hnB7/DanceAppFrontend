@@ -81,7 +81,38 @@ import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 import { LaunchCompetitionDialog } from "@/components/competition/launch-competition-dialog";
 import { notificationsApi } from "@/lib/api/notifications";
+import { fetchActivityFeed, type ActivityEvent } from "@/lib/api/activity";
 
+
+function renderActivityText(event: ActivityEvent, t: (key: string, params?: Record<string, string | number>) => string): React.ReactNode {
+  const meta: Record<string, unknown> = event.metadata ? JSON.parse(event.metadata) : {};
+  switch (event.eventType) {
+    case "ROUND_STARTED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">{t("competitionDetail.checklistCompetitionStarted").split(" ")[0]}</strong> {t("competitionDetail.activityRoundStarted", { roundType: String(meta.roundType ?? ""), danceStyle: String(meta.danceStyle ?? ""), ageCategory: String(meta.ageCategory ?? "") })}</>;
+    case "ROUND_CLOSED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">{t("competitionDetail.checklistCompetitionStarted").split(" ")[0]}</strong> {t("competitionDetail.activityRoundClosed", { roundType: String(meta.roundType ?? ""), danceStyle: String(meta.danceStyle ?? ""), ageCategory: String(meta.ageCategory ?? "") })}</>;
+    case "RESULTS_PUBLISHED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">{t("competitionDetail.checklistResultsPublished").split(" ")[0]}</strong> {t("competitionDetail.activityResultsPublished", { roundType: String(meta.roundType ?? ""), danceStyle: String(meta.danceStyle ?? "") })}</>;
+    case "JUDGE_CONNECTED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">{t("competitionDetail.judgesLabel")}</strong> {t("competitionDetail.activityJudgeConnected")}</>;
+    case "PAIR_REGISTERED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">{t("competitionDetail.registrationLabel")}</strong> {t("competitionDetail.activityPairRegistered", { startNumber: String(meta.startNumber ?? ""), dancer1Name: String(meta.dancer1Name ?? "") })}</>;
+    case "PAIR_PUBLIC_REGISTERED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">{t("competitionDetail.registrationLabel")}</strong> {t("competitionDetail.activityPairPublicRegistered", { startNumber: String(meta.startNumber ?? ""), dancer1Name: String(meta.dancer1Name ?? "") })}</>;
+    case "PAIR_WITHDRAWN":
+      return <><strong className="font-semibold text-[var(--text-primary)]">{t("competitionDetail.registrationLabel")}</strong> {t("competitionDetail.activityPairWithdrawn", { startNumber: String(meta.startNumber ?? "") })}</>;
+    case "CHECKIN_OPENED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">Check-in</strong> {t("competitionDetail.activityCheckinOpened")}</>;
+    case "CHECKIN_CLOSED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">Check-in</strong> {t("competitionDetail.activityCheckinClosed")}</>;
+    case "COMPETITION_STARTED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">{t("competitionDetail.checklistCompetitionStarted").split(" ")[0]}</strong> {t("competitionDetail.activityCompetitionStarted")}</>;
+    case "COMPETITION_COMPLETED":
+      return <><strong className="font-semibold text-[var(--text-primary)]">{t("competitionDetail.checklistCompetitionStarted").split(" ")[0]}</strong> {t("competitionDetail.activityCompetitionCompleted")}</>;
+    default:
+      return <span>{event.eventType}</span>;
+  }
+}
 
 const statusColors: Record<CompetitionStatus, "default" | "secondary" | "success" | "warning" | "destructive" | "outline"> = {
   DRAFT: "secondary",
@@ -90,6 +121,14 @@ const statusColors: Record<CompetitionStatus, "default" | "secondary" | "success
   COMPLETED: "secondary",
   CANCELLED: "destructive",
 };
+
+// Reads ?tab= from URL and sets initial tab state
+function TabInitializer({ onTab }: { onTab: (tab: string) => void }) {
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab");
+  if (tab) onTab(tab);
+  return null;
+}
 
 // Separate component to read searchParams (required by Next.js Suspense rule)
 function NewCompetitionModal({ id }: { id: string }) {
@@ -350,6 +389,12 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     queryFn: () => scheduleApi.getStatus(id),
     enabled: !!id,
     retry: false,
+  });
+
+  const { data: activityEvents = [] } = useQuery({
+    queryKey: ["activity", id],
+    queryFn: () => fetchActivityFeed(id),
+    refetchInterval: 30_000,
   });
 
   const addNews = useMutation({
@@ -706,20 +751,11 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
   ];
   const checklistDoneCount = checklistItems.filter((i) => i.done).length;
 
-  // Activity items (mock — will be replaced by real data from API)
-  const activityItems = [
-    { time: "14:32", text: <><strong className="font-semibold text-[var(--text-primary)]">Kolo 3</strong> zahájeno — Standardní tance, Dospělí</> },
-    { time: "14:28", text: <><strong className="font-semibold text-[var(--text-primary)]">Výsledky</strong> zveřejněny — Kolo 2, Latina</> },
-    { time: "14:15", text: <><strong className="font-semibold text-[var(--text-primary)]">Rozhodčí</strong> Novák potvrdil účast</> },
-    { time: "13:50", text: <><strong className="font-semibold text-[var(--text-primary)]">Registrace</strong> — 2 nové páry přihlášeny</> },
-    { time: "13:41", text: <><strong className="font-semibold text-[var(--text-primary)]">Check-in</strong> otevřen pro kategorii B</> },
-    { time: "13:20", text: <><strong className="font-semibold text-[var(--text-primary)]">Harmonogram</strong> aktualizován — posunutí o 15 min</> },
-  ];
-
   return (
     <AppShell sidebar={competitionSidebar} noPadding>
       <Suspense>
         <NewCompetitionModal id={id} />
+        <TabInitializer onTab={setTab} />
       </Suspense>
 
       <DeleteConfirmDialog
@@ -763,15 +799,15 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                   </span>
                   <span className="flex items-center gap-1">
                     <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                    {competition.registeredPairsCount ?? 0} párů
+                    {t("competition.pairsCount", { count: competition.registeredPairsCount ?? 0 })}
                   </span>
                   <span className="flex items-center gap-1">
                     <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" /></svg>
-                    {sections?.length ?? 0} kategorií
+                    {t("competition.categoriesCount", { count: sections?.length ?? 0 })}
                   </span>
                   <span className="flex items-center gap-1">
                     <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
-                    {judgeTokens.length} rozhodčích
+                    {t("competition.judgesCount", { count: judgeTokens.length })}
                   </span>
                 </div>
               </div>
@@ -779,7 +815,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
               {competition.registrationOpen && (
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[rgba(16,185,129,0.3)] bg-[rgba(16,185,129,0.1)] px-3.5 py-1.5 text-xs font-semibold text-[#6EE7B7]" role="status">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#34D399] animate-pulse" />
-                  Registrace otevřena
+                  {t("competitionDetail.registrationOpen")}
                 </span>
               )}
             </div>
@@ -840,7 +876,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
         <TabsContent value="overview">
           {/* ── Registration Card ── */}
           <div className="mb-5 rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
-            <div className="mb-3 text-[13px] text-[var(--text-secondary)]">Veřejný odkaz pro přihlašování</div>
+            <div className="mb-3 text-[13px] text-[var(--text-secondary)]">{t("competitionDetail.publicRegistrationLink")}</div>
             {/* URL row */}
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-2.5">
               <svg className="h-3.5 w-3.5 shrink-0 text-[var(--text-tertiary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
@@ -854,12 +890,12 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                 onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/competitions/${id}`); toast({ title: t("judges.linkCopied") }); }}
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                Kopírovat
+                {t("competitionDetail.copyLink")}
               </Button>
               <Button size="sm" variant="ghost" className="shrink-0 gap-1 px-2.5 text-[13px]" asChild>
                 <a href={`/competitions/${id}`} target="_blank" rel="noopener noreferrer">
                   <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
-                  Otevřít
+                  {t("competitionDetail.openLink")}
                 </a>
               </Button>
             </div>
@@ -870,7 +906,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                 onClick={() => router.push(`/dashboard/competitions/${id}/presence`)}
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-                Otevřít check-in
+                {t("competitionDetail.openCheckIn")}
               </Button>
               <Button
                 size="sm"
@@ -892,7 +928,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                   disabled={cancelStartMutation.isPending}
                 >
                   <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
-                  Zrušit start
+                  {t("competitionDetail.cancelStart")}
                 </Button>
               ) : (
                 <Button
@@ -900,7 +936,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                   onClick={() => setLaunchDialogOpen(true)}
                   disabled={competition.status !== "PUBLISHED"}
                 >
-                  <PlayCircle className="h-3.5 w-3.5" /> Spustit soutěž
+                  <PlayCircle className="h-3.5 w-3.5" /> {t("competitionDetail.startCompetition")}
                 </Button>
               )}
             </div>
@@ -913,13 +949,13 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="mb-1 flex items-center gap-1.5 text-[var(--text-secondary)]">
                   <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.5px]">Registrace</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.5px]">{t("competitionDetail.registrationLabel")}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-[22px] font-bold leading-none text-[#3B82F6]" style={{ fontFamily: "var(--font-sora)" }}>{competition.registeredPairsCount ?? 0}</span>
-                  <span className="text-[12px] text-[var(--text-secondary)]">Přihlášených</span>
+                  <span className="text-[12px] text-[var(--text-secondary)]">{t("competitionDetail.registeredLabel")}</span>
                   <span className="rounded-xl bg-[var(--accent-subtle)] px-2 py-px text-[10px] font-semibold text-[var(--accent)]">
-                    {competition.registrationOpen ? "Otevřena" : "Uzavřena"}
+                    {competition.registrationOpen ? t("competitionDetail.statusOpen") : t("competitionDetail.statusClosed")}
                   </span>
                 </div>
               </div>
@@ -928,7 +964,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                 className="shrink-0 flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
               >
                 <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
-                Zobrazit
+                {t("common.view")}
               </button>
             </article>
 
@@ -937,13 +973,13 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="mb-1 flex items-center gap-1.5 text-[var(--text-secondary)]">
                   <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" /></svg>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.5px]">Kategorie</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.5px]">{t("competitionDetail.sections")}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-[22px] font-bold leading-none text-[#06B6D4]" style={{ fontFamily: "var(--font-sora)" }}>{sections?.length ?? 0}</span>
-                  <span className="text-[12px] text-[var(--text-secondary)]">Aktivních</span>
+                  <span className="text-[12px] text-[var(--text-secondary)]">{t("competitionDetail.activeLabel")}</span>
                   {categoriesReady && (
-                    <span className="rounded-xl bg-[var(--success-subtle)] px-2 py-px text-[10px] font-semibold text-[var(--success-text)]">Kompletní</span>
+                    <span className="rounded-xl bg-[var(--success-subtle)] px-2 py-px text-[10px] font-semibold text-[var(--success-text)]">{t("competitionDetail.complete")}</span>
                   )}
                 </div>
               </div>
@@ -952,7 +988,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                 className="shrink-0 flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
               >
                 <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-                Přidat
+                {t("common.add")}
               </button>
             </article>
 
@@ -961,13 +997,13 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="mb-1 flex items-center gap-1.5 text-[var(--text-secondary)]">
                   <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.5px]">Porota</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.5px]">{t("competitionDetail.judgesLabel")}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-[22px] font-bold leading-none text-[#F59E0B]" style={{ fontFamily: "var(--font-sora)" }}>{judgeTokens.length}</span>
-                  <span className="text-[12px] text-[var(--text-secondary)]">Rozhodčích</span>
+                  <span className="text-[12px] text-[var(--text-secondary)]">{t("competitionDetail.judgesCountLabel")}</span>
                   {judgesReady && (
-                    <span className="rounded-xl bg-[var(--success-subtle)] px-2 py-px text-[10px] font-semibold text-[var(--success-text)]">Kompletní</span>
+                    <span className="rounded-xl bg-[var(--success-subtle)] px-2 py-px text-[10px] font-semibold text-[var(--success-text)]">{t("competitionDetail.complete")}</span>
                   )}
                 </div>
               </div>
@@ -976,7 +1012,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                 className="shrink-0 flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
               >
                 <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
-                Správa
+                {t("common.manage")}
               </button>
             </article>
           </div>
@@ -987,7 +1023,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
             <div className="rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
               <div className="mb-4 flex items-center gap-2">
                 <svg className="h-4 w-4 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-                <h3 className="text-sm font-semibold">Checklist přípravy</h3>
+                <h3 className="text-sm font-semibold">{t("competitionDetail.checklistTitle")}</h3>
               </div>
               {/* Progress bar */}
               <div className="mb-3.5 flex items-center gap-2.5 border-b border-[var(--border)] pb-3.5">
@@ -1026,18 +1062,23 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
             <div className="rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
               <div className="mb-4 flex items-center gap-2">
                 <svg className="h-4 w-4 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                <h3 className="text-sm font-semibold">Poslední aktivita</h3>
+                <h3 className="text-sm font-semibold">{t("competitionDetail.activityTitle")}</h3>
               </div>
               <div>
-                {activityItems.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex gap-2.5 border-b border-[var(--surface-secondary)] py-2 text-[13px] last:border-b-0"
-                  >
-                    <span className="min-w-[44px] pt-px text-[11px] text-[var(--text-tertiary)]">{item.time}</span>
-                    <span className="leading-relaxed text-[var(--text-secondary)]">{item.text}</span>
-                  </div>
-                ))}
+                {activityEvents.length === 0 ? (
+                  <p className="text-sm text-[var(--text-tertiary)] py-2">{t("common.noData")}</p>
+                ) : (
+                  activityEvents.map((event, i) => (
+                    <div key={event.id} className={`flex items-start gap-4 py-3 ${i < activityEvents.length - 1 ? "border-b border-[var(--border)]" : ""}`}>
+                      <span className="min-w-[40px] text-xs text-[var(--text-tertiary)] pt-0.5">
+                        {new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      <span className="text-sm text-[var(--text-secondary)]">
+                        {renderActivityText(event, t)}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
