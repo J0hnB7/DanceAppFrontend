@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Merge, Unlink, ChevronDown, ChevronUp, Users } from "lucide-react";
+import { Merge, Unlink, ChevronDown, ChevronUp, Users, GripVertical } from "lucide-react";
 import { sectionsApi, type SectionDto } from "@/lib/api/sections";
 import { sectionsApi2 } from "@/lib/api/schedule";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,28 @@ import { SimpleDialog } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { SectionProgressionPreview } from "./section-progression-preview";
 import { cn } from "@/lib/utils";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface SectionManagerProps {
   competitionId: string;
 }
 
 const FINAL_SIZE_OPTIONS = [4, 5, 6];
-
 
 function getFinalSize(section: SectionDto): number {
   return section.finalSize ?? recommendFinalSize(section.registeredPairsCount ?? 0);
@@ -40,6 +55,9 @@ function SectionCard({ section, allSections, competitionId, onMergeRequest }: Se
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
   const mergedIntoId: string | null = section.mergedIntoId ?? null;
   const isMergedAway = !!mergedIntoId;
   const pairCount = section.registeredPairsCount ?? 0;
@@ -59,7 +77,11 @@ function SectionCard({ section, allSections, competitionId, onMergeRequest }: Se
 
   if (isMergedAway) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3 opacity-50">
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3 opacity-50"
+      >
         <div className="flex items-center gap-2">
           <Merge className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
           <span className="text-sm text-[var(--text-tertiary)] line-through">{section.name}</span>
@@ -70,12 +92,26 @@ function SectionCard({ section, allSections, competitionId, onMergeRequest }: Se
   }
 
   return (
-    <div className={cn(
-      "rounded-xl border border-[var(--border)] bg-[var(--surface)] transition-shadow",
-      mergeLabel && "ring-1 ring-blue-300 dark:ring-blue-700"
-    )}>
-      <div className="flex items-center gap-3 px-4 py-3">
-        <div className="flex-1 min-w-0">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "rounded-xl border border-[var(--border)] bg-[var(--surface)] transition-shadow",
+        isDragging && "shadow-xl ring-2 ring-[var(--accent)] opacity-90 z-50",
+        mergeLabel && "ring-1 ring-blue-300 dark:ring-blue-700"
+      )}
+    >
+      <div className="flex items-center gap-1 px-2 py-3">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 text-transparent group-hover:text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] touch-none shrink-0"
+          tabIndex={-1}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+
+        <div className="flex-1 min-w-0 px-2">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-[var(--text-primary)]">
               {mergeLabel ?? section.name}
@@ -257,11 +293,48 @@ function MergeDialog({ competitionId, primarySection, allSections, onClose }: Me
 
 export function SectionManager({ competitionId }: SectionManagerProps) {
   const [mergeTarget, setMergeTarget] = useState<SectionDto | null>(null);
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+  const qc = useQueryClient();
+  const { toast } = useToast();
 
   const { data: sections = [], isLoading } = useQuery({
     queryKey: ["sections", competitionId],
     queryFn: () => sectionsApi.list(competitionId),
   });
+
+  const orderedSections = useMemo(() => {
+    if (!localOrder) return sections;
+    const map = new Map(sections.map((s) => [s.id, s]));
+    return localOrder.map((id) => map.get(id)).filter(Boolean) as SectionDto[];
+  }, [sections, localOrder]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const ids = orderedSections.map((s) => s.id);
+    const oldIndex = ids.indexOf(String(active.id));
+    const newIndex = ids.indexOf(String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const newOrder = [...ids];
+    newOrder.splice(oldIndex, 1);
+    newOrder.splice(newIndex, 0, String(active.id));
+    setLocalOrder(newOrder);
+
+    // Persist orderIndex for each section
+    newOrder.forEach((id, index) => {
+      sectionsApi.update(competitionId, id, { orderIndex: index }).catch(() => {
+        toast({ title: "Chyba při ukládání pořadí", variant: "destructive" });
+        qc.invalidateQueries({ queryKey: ["sections", competitionId] });
+      });
+    });
+  };
 
   if (isLoading) {
     return (
@@ -294,17 +367,21 @@ export function SectionManager({ competitionId }: SectionManagerProps) {
         </div>
       </div>
 
-      <div className="space-y-2">
-        {sections.map((section) => (
-          <SectionCard
-            key={section.id}
-            section={section}
-            allSections={sections}
-            competitionId={competitionId}
-            onMergeRequest={setMergeTarget}
-          />
-        ))}
-      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={orderedSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {orderedSections.map((section) => (
+              <SectionCard
+                key={section.id}
+                section={section}
+                allSections={sections}
+                competitionId={competitionId}
+                onMergeRequest={setMergeTarget}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <MergeDialog
         competitionId={competitionId}

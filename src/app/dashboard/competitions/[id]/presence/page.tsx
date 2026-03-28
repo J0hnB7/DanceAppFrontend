@@ -377,10 +377,10 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
       <div className="mb-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-3">
         <div className="mb-2 flex items-center gap-1.5">
           <RotateCcw className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
-          <p className="text-xs font-semibold text-[var(--text-secondary)]">Posledné akcie — klikni Zpět ak si urobil chybu</p>
+          <p className="text-xs font-semibold text-[var(--text-secondary)]">{t("presence.recentActions")}</p>
         </div>
         {recentActions.length === 0 ? (
-          <p className="text-xs text-[var(--text-tertiary)]">Zatiaľ žiadne akcie. Po prvom check-ine sa tu zobrazí história.</p>
+          <p className="text-xs text-[var(--text-tertiary)]">{t("presence.noRecentActions")}</p>
         ) : (
           <div className="flex flex-col gap-1">
             {recentActions.map((a, i) => (
@@ -397,7 +397,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                   onClick={() => setStatus.mutate({ pairId: a.pairId, status: a.action === "checkin" ? "ABSENT" : "CHECKED_IN" })}
                   className="shrink-0 rounded-md bg-[var(--surface-secondary)] px-2 py-0.5 text-[var(--accent)] hover:bg-[var(--border)]"
                 >
-                  Zpět
+                  {t("presence.undo")}
                 </button>
               </div>
             ))}

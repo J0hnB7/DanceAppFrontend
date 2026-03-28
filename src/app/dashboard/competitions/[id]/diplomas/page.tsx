@@ -31,6 +31,8 @@ import { formatDate, cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/locale-context";
 import { useRouter } from "next/navigation";
 
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
 // ── Template Editor ─────────────────────────────────────────────────────────
 
 function TemplateEditor({
@@ -40,13 +42,15 @@ function TemplateEditor({
   competitionLocation,
   onSave,
   initial,
+  t,
 }: {
   competitionId: string;
   competitionName: string;
   competitionDate: string;
   competitionLocation: string;
-  onSave: (t: DiplomaTemplate) => void;
+  onSave: (tmpl: DiplomaTemplate) => void;
   initial: DiplomaTemplate | null;
+  t: TFn;
 }) {
   const [bgImage, setBgImage] = useState(initial?.backgroundImage ?? "");
   const [fields, setFields] = useState<DiplomaTextField[]>(initial?.fields ?? DEFAULT_FIELDS);
@@ -84,7 +88,7 @@ function TemplateEditor({
     const newField: DiplomaTextField = {
       id,
       variable: "competitionName",
-      label: "Nové pole",
+      label: t("diplomas.newField"),
       x: 50,
       y: 50,
       fontSize: 14,
@@ -137,8 +141,8 @@ function TemplateEditor({
         <label className="flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-secondary)] p-12 text-center transition-colors hover:border-[var(--accent)]">
           <Upload className="h-10 w-10 text-[var(--text-tertiary)]" />
           <div>
-            <p className="text-sm font-semibold text-[var(--text-primary)]">Nahrát šablonu diplomu</p>
-            <p className="text-xs text-[var(--text-tertiary)]">PNG nebo JPG, doporučeno A4 na výšku (2480 × 3508 px)</p>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">{t("diplomas.uploadLabel")}</p>
+            <p className="text-xs text-[var(--text-tertiary)]">{t("diplomas.uploadHint")}</p>
           </div>
           <input type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
         </label>
@@ -147,12 +151,12 @@ function TemplateEditor({
           {/* Canvas — A4 preview with draggable fields */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <p className="text-xs font-medium text-[var(--text-secondary)]">Náhled — přetáhněte textová pole na požadované pozice</p>
+              <p className="text-xs font-medium text-[var(--text-secondary)]">{t("diplomas.previewLabel")}</p>
               <button
                 onClick={() => setBgImage("")}
                 className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
               >
-                <Trash2 className="h-3 w-3" /> Změnit pozadí
+                <Trash2 className="h-3 w-3" /> {t("diplomas.changeBg")}
               </button>
             </div>
             <div
@@ -206,9 +210,9 @@ function TemplateEditor({
           {/* Field panel */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">Textová pole</p>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">{t("diplomas.textFields")}</p>
               <button onClick={addField} className="flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white">
-                <Plus className="h-3 w-3" /> Přidat
+                <Plus className="h-3 w-3" /> {t("diplomas.addField")}
               </button>
             </div>
 
@@ -236,10 +240,10 @@ function TemplateEditor({
             {/* Field settings */}
             {selectedField && (
               <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
-                <p className="text-xs font-semibold text-[var(--text-primary)]">Nastavení pole</p>
+                <p className="text-xs font-semibold text-[var(--text-primary)]">{t("diplomas.fieldSettings")}</p>
 
                 <div>
-                  <label className="text-[10px] font-medium text-[var(--text-tertiary)]">Proměnná</label>
+                  <label className="text-[10px] font-medium text-[var(--text-tertiary)]">{t("diplomas.variable")}</label>
                   <select
                     value={selectedField.variable}
                     onChange={(e) => updateField(selectedField.id, { variable: e.target.value as DiplomaVariable })}
@@ -253,7 +257,7 @@ function TemplateEditor({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-medium text-[var(--text-tertiary)]">Velikost (pt)</label>
+                    <label className="text-[10px] font-medium text-[var(--text-tertiary)]">{t("diplomas.fontSize")}</label>
                     <Input
                       type="number"
                       min={6}
@@ -264,7 +268,7 @@ function TemplateEditor({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-medium text-[var(--text-tertiary)]">Barva</label>
+                    <label className="text-[10px] font-medium text-[var(--text-tertiary)]">{t("diplomas.color")}</label>
                     <div className="mt-0.5 flex gap-1.5 items-center">
                       <input
                         type="color"
@@ -293,7 +297,7 @@ function TemplateEditor({
                           : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
                       )}
                     >
-                      {a === "left" ? "Vlevo" : a === "center" ? "Střed" : "Vpravo"}
+                      {a === "left" ? t("diplomas.alignLeft") : a === "center" ? t("diplomas.alignCenter") : t("diplomas.alignRight")}
                     </button>
                   ))}
                 </div>
@@ -310,7 +314,7 @@ function TemplateEditor({
                           : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
                       )}
                     >
-                      {w === "normal" ? "Normální" : "Tučné"}
+                      {w === "normal" ? t("diplomas.weightNormal") : t("diplomas.weightBold")}
                     </button>
                   ))}
                 </div>
@@ -357,7 +361,7 @@ function TemplateEditor({
             )}
 
             <Button onClick={handleSave} className="w-full gap-2 font-semibold">
-              Uložit šablonu
+              {t("diplomas.saveTemplate")}
             </Button>
           </div>
         </div>
@@ -382,6 +386,7 @@ function SectionDiplomas({
   competitionLocation,
   competitionId,
   template,
+  t,
 }: {
   sectionId: string;
   sectionName: string;
@@ -390,6 +395,7 @@ function SectionDiplomas({
   competitionLocation: string;
   competitionId: string;
   template: DiplomaTemplate | null;
+  t: TFn;
 }) {
   const { data: summary, isLoading } = useQuery({
     queryKey: ["section-summary", sectionId],
@@ -402,7 +408,7 @@ function SectionDiplomas({
   if (!summary || summary.rankings.length === 0) {
     return (
       <Card className="p-4 text-center text-sm text-[var(--text-secondary)]">
-        {sectionName} — zatím žádné výsledky
+        {sectionName} — {t("diplomas.noResults")}
       </Card>
     );
   }
@@ -428,7 +434,7 @@ function SectionDiplomas({
           onClick={() => printAllDiplomas(summary.rankings, competitionName, competitionDate, competitionLocation, sectionName, pairLookup, template)}
         >
           <Printer className="h-3.5 w-3.5" />
-          Tisknout top 3
+          {t("diplomas.printTop3")}
         </Button>
       </div>
 
@@ -468,7 +474,7 @@ function SectionDiplomas({
                 }
               >
                 <Printer className="h-3 w-3" />
-                Tisk
+                {t("diplomas.print")}
               </Button>
             </div>
           );
@@ -483,6 +489,7 @@ function SectionDiplomas({
 export default function DiplomasPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: competitionId } = use(params);
   const router = useRouter();
+  const { t } = useLocale();
   const [tab, setTab] = useState<"generate" | "editor">("generate");
   const [template, setTemplate] = useState<DiplomaTemplate | null>(null);
 
@@ -509,7 +516,7 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex-1">
-            <h1 className="text-xl font-semibold text-[var(--text-primary)]">Diplomy</h1>
+            <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("diplomas.title")}</h1>
             {competition && (
               <p className="text-sm text-[var(--text-secondary)]">
                 {competition.name} · {formatDate(competition.eventDate)} · {competition.venue}
@@ -517,7 +524,7 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
             )}
           </div>
           <Badge variant={template ? "default" : "secondary"}>
-            {template ? "Šablona nahrána" : "Bez šablony"}
+            {template ? t("diplomas.templateLoaded") : t("diplomas.noTemplate")}
           </Badge>
         </div>
 
@@ -531,7 +538,7 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
             )}
           >
             <Printer className="mr-1.5 inline-block h-4 w-4" />
-            Generovat diplomy
+            {t("diplomas.generateTab")}
           </button>
           <button
             onClick={() => setTab("editor")}
@@ -541,7 +548,7 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
             )}
           >
             <Eye className="mr-1.5 inline-block h-4 w-4" />
-            Editor šablony
+            {t("diplomas.editorTab")}
           </button>
         </div>
 
@@ -551,8 +558,9 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
             competitionName={competition?.name ?? ""}
             competitionDate={competition ? formatDate(competition.eventDate) : ""}
             competitionLocation={competition?.venue ?? ""}
-            onSave={(t) => { setTemplate(t); setTab("generate"); }}
+            onSave={(tmpl) => { setTemplate(tmpl); setTab("generate"); }}
             initial={template}
+            t={t}
           />
         ) : loadingComp || loadingSections ? (
           <div className="space-y-4">
@@ -561,7 +569,7 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
         ) : sections.length === 0 ? (
           <Card className="flex flex-col items-center gap-3 py-20 text-center">
             <Award className="h-12 w-12 text-[var(--text-tertiary)]" />
-            <p className="text-sm text-[var(--text-secondary)]">Žádné kategorie k zobrazení.</p>
+            <p className="text-sm text-[var(--text-secondary)]">{t("diplomas.noCategories")}</p>
           </Card>
         ) : (
           <div className="space-y-4">
@@ -569,10 +577,10 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
               <div className="flex items-center gap-3 rounded-xl border border-amber-300/30 bg-amber-50 dark:bg-amber-950/20 px-4 py-3">
                 <Upload className="h-5 w-5 text-amber-600 shrink-0" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-[var(--text-primary)]">Šablona není nahrána</p>
-                  <p className="text-xs text-[var(--text-secondary)]">Diplomy budou vytištěny s výchozím designem. Pro vlastní pozadí přejděte do editoru.</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{t("diplomas.noTemplateWarning")}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{t("diplomas.noTemplateDesc")}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setTab("editor")}>Nahrát šablonu</Button>
+                <Button variant="outline" size="sm" onClick={() => setTab("editor")}>{t("diplomas.uploadTemplate")}</Button>
               </div>
             )}
             {sections.map((section) => (
@@ -585,6 +593,7 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
                 competitionDate={competition ? formatDate(competition.eventDate) : ""}
                 competitionLocation={competition?.venue ?? ""}
                 template={template}
+                t={t}
               />
             ))}
           </div>

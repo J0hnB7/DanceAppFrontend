@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Trophy, BarChart3, Users, Zap, ArrowRight, AlertCircle } from "lucide-react";
+import { Plus, Trophy, AlertCircle, ArrowRight } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,35 +20,16 @@ const ARCHIVED_STATUSES: CompetitionStatus[] = ["COMPLETED", "CANCELLED"];
 
 type Tab = "all" | "upcoming" | "live" | "archive";
 
-
-function QuickAction({ href, icon: Icon, label, sub, accent }: { href: string; icon: React.ElementType; label: string; sub: string; accent: string }) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all hover:shadow-md hover:-translate-y-px"
-    >
-      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white ${accent}`}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
-        <p className="text-xs text-[var(--text-tertiary)]">{sub}</p>
-      </div>
-      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-tertiary)] transition-transform group-hover:translate-x-0.5" />
-    </Link>
-  );
-}
-
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("all");
   const all = useCompetitions();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { user } = useAuthStore();
 
   if (all.isError) {
     return (
       <AppShell>
-        <EmptyState icon={<AlertCircle className="h-10 w-10" />} title="Nepodařilo se načíst soutěže" description="Zkontroluj připojení nebo to zkus znovu." action={<Button onClick={() => all.refetch()}>Zkusit znovu</Button>} />
+        <EmptyState icon={<AlertCircle className="h-10 w-10" />} title={t("dashboard.loadError")} description={t("dashboard.loadErrorDesc")} action={<Button onClick={() => all.refetch()}>{t("dashboard.retry")}</Button>} />
       </AppShell>
     );
   }
@@ -72,118 +53,145 @@ export default function DashboardPage() {
     : archived.length;
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "all", label: t("dashboard.tabAll") },
+    { key: "all",      label: t("dashboard.tabAll") },
     { key: "upcoming", label: t("dashboard.upcoming") },
-    { key: "live", label: t("dashboard.liveNow") },
-    { key: "archive", label: t("dashboard.archived") },
+    { key: "live",     label: t("dashboard.liveNow") },
+    { key: "archive",  label: t("dashboard.archived") },
   ];
 
-  // Time-based greeting
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Dobré ráno" : hour < 18 ? "Dobré odpoledne" : "Dobrý večer";
+  const greeting = hour < 12 ? t("dashboard.greetingMorning") : hour < 18 ? t("dashboard.greetingAfternoon") : t("dashboard.greetingEvening");
   const firstName = user?.name?.split(" ")[0] ?? "";
 
   return (
     <AppShell>
-      {/* Welcome header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
+      {/* Header */}
+      <div
+        className="flex items-start justify-between gap-4"
+        style={{ marginBottom: 20 }}
+      >
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)" }}>
+          <h1
+            style={{
+              fontFamily: "var(--font-sora, Sora, sans-serif)",
+              fontSize: "1.6rem",
+              fontWeight: 800,
+              color: "var(--text-primary)",
+              letterSpacing: "-0.03em",
+              marginBottom: 4,
+              lineHeight: 1.2,
+            }}
+          >
             {greeting}{firstName ? `, ${firstName}` : ""}
           </h1>
-          <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
-            {t("dashboard.title")} · {new Date().toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          <p className="text-[0.86rem]" style={{ color: "var(--text-secondary)" }}>
+            {new Date().toLocaleDateString(locale === "en" ? "en-GB" : "cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
-        <Button asChild className="gap-1.5 shrink-0">
-          <Link href="/dashboard/competitions/new">
-            <Plus className="h-4 w-4" />
-            {t("dashboard.newCompetition")}
-          </Link>
-        </Button>
-      </div>
-
-      {/* Quick actions */}
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <QuickAction
+        <Link
           href="/dashboard/competitions/new"
-          icon={Plus}
-          label={t("dashboard.newCompetition")}
-          sub="Vytvořit novou soutěž"
-          accent="bg-[var(--accent)]"
-        />
-        <QuickAction
-          href="/dashboard/analytics"
-          icon={BarChart3}
-          label="Analytika"
-          sub="Statistiky a přehledy"
-          accent="bg-blue-500"
-        />
-        <QuickAction
-          href="/dashboard/participants"
-          icon={Users}
-          label="Účastníci"
-          sub="Správa párů a přihlášek"
-          accent="bg-teal-500"
-        />
+          className="flex shrink-0 items-center gap-2 rounded-lg font-semibold text-white transition-all text-[0.86rem]"
+          style={{
+            background: "var(--accent, #3B82F6)",
+            padding: "10px 20px",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#2563EB"; (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-1px)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--accent, #3B82F6)"; (e.currentTarget as HTMLAnchorElement).style.transform = ""; }}
+        >
+          <Plus className="h-4 w-4" />
+          {t("dashboard.newCompetition")}
+        </Link>
       </div>
 
-      {/* Live spotlight */}
+      {/* Live banner */}
       {live.length > 0 && (
-        <div className="mb-6 overflow-hidden rounded-[var(--radius-lg)] border border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 p-4 dark:border-emerald-900 dark:from-emerald-950/30 dark:to-green-950/20">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-              {live.length === 1 ? "1 soutěž právě probíhá" : `${live.length} soutěže právě probíhají`}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {live.map((c) => (
-              <Link
-                key={c.id}
-                href={`/dashboard/competitions/${c.id}`}
-                className="flex items-center gap-2 rounded-lg bg-white/70 px-3 py-1.5 text-sm font-medium text-emerald-800 shadow-sm transition-colors hover:bg-white dark:bg-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
-              >
-                <Zap className="h-3.5 w-3.5" />
-                {c.name}
-                <ArrowRight className="h-3 w-3 opacity-60" />
-              </Link>
-            ))}
-          </div>
+        <div
+          className="flex items-center gap-3 mb-6 rounded-xl transition-shadow cursor-pointer"
+          style={{
+            padding: "14px 18px",
+            background: "#ECFDF5",
+            border: "1px solid rgba(16,185,129,0.15)",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(16,185,129,0.1)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = ""; }}
+        >
+          <span
+            className="shrink-0 h-2 w-2 rounded-full"
+            style={{
+              background: "#10B981",
+              animation: "livePulse 2s infinite",
+              boxShadow: "0 0 0 0 rgba(16,185,129,0.5)",
+            }}
+          />
+          <p className="flex-1 text-[0.86rem] font-medium" style={{ color: "#059669" }}>
+            <strong className="font-bold">
+              {live.length === 1 ? t("dashboard.liveOngoing") : t("dashboard.liveOngoingMany", { n: live.length })}
+            </strong>
+          </p>
+          {live.map((c) => (
+            <Link
+              key={c.id}
+              href={`/dashboard/competitions/${c.id}`}
+              className="flex items-center gap-1 text-[0.82rem] font-semibold"
+              style={{ color: "#059669" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {c.name}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          ))}
         </div>
       )}
 
-      {/* Stat badges */}
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard value={competitions.length} label={t("dashboard.totalCompetitions")} sub={t("dashboard.total", { n: competitions.length })} color="bg-blue-500" />
-        <StatCard value={live.length} label={t("dashboard.liveNow")} sub={t("dashboard.ongoing")} color="bg-emerald-500" />
-        <StatCard value={upcoming.length} label={t("dashboard.upcoming")} sub={upcoming.length > 0 ? upcoming[0]?.eventDate?.slice(0, 10) ?? "" : "–"} color="bg-amber-500" />
-        <StatCard value={totalPairs} label={t("dashboard.totalPairs")} sub={t("dashboard.pairsCount", { n: String(totalPairs).padStart(2, "0") })} color="bg-blue-500" />
+      {/* Stats */}
+      <div className="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard value={competitions.length} label={t("dashboard.totalCompetitions")} sub={t("dashboard.total", { n: competitions.length })} color="blue" />
+        <StatCard value={live.length}         label={t("dashboard.liveNow")}           sub={t("dashboard.ongoing")}                                 color="green" />
+        <StatCard value={upcoming.length}     label={t("dashboard.upcoming")}          sub={upcoming[0]?.eventDate?.slice(0, 10) ?? "–"}             color="amber" />
+        <StatCard value={totalPairs}          label={t("dashboard.totalPairs")}        sub={t("dashboard.pairsCount", { n: String(totalPairs) })}    color="cyan" />
       </div>
 
-      {/* Tab pills */}
-      <div className="mb-5 flex items-center gap-1">
-        {tabs.map((tb) => (
-          <button
-            key={tb.key}
-            onClick={() => setTab(tb.key)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              tab === tb.key
-                ? "bg-[var(--accent)] text-white"
-                : "text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]"
-            }`}
-          >
-            {tb.label}
-            {tabCount(tb.key) > 0 && (
-              <span className={`ml-1.5 text-xs ${tab === tb.key ? "opacity-80" : "text-[var(--text-tertiary)]"}`}>
-                ({tabCount(tb.key)})
-              </span>
-            )}
-          </button>
-        ))}
+      {/* Tabs — underline style */}
+      <div
+        className="flex mb-5"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
+        {tabs.map((tb) => {
+          const isActive = tab === tb.key;
+          const count = tabCount(tb.key);
+          return (
+            <button
+              key={tb.key}
+              onClick={() => setTab(tb.key)}
+              className="text-[0.86rem] transition-colors"
+              style={{
+                padding: "10px 18px",
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? "var(--accent, #3B82F6)" : "var(--text-secondary)",
+                borderBottom: isActive ? "2px solid var(--accent, #3B82F6)" : "2px solid transparent",
+                background: "none",
+                border: "none",
+                borderBottomWidth: 2,
+                borderBottomStyle: "solid",
+                borderBottomColor: isActive ? "var(--accent, #3B82F6)" : "transparent",
+                cursor: "pointer",
+              }}
+            >
+              {tb.label}
+              {count > 0 && (
+                <span
+                  className="ml-1.5 text-[0.68rem] font-bold px-1.5 py-px rounded-lg"
+                  style={{
+                    background: "rgba(59,130,246,0.08)",
+                    color: "#3B82F6",
+                  }}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* List */}
@@ -212,6 +220,14 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+
+      <style>{`
+        @keyframes livePulse {
+          0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+          70%  { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+          100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+        }
+      `}</style>
     </AppShell>
   );
 }

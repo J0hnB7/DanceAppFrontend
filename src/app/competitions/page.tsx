@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api-client";
+import { useLocale } from "@/contexts/locale-context";
 
 interface CompetitionListItem {
   id: string;
@@ -20,18 +21,16 @@ interface CompetitionListItem {
   location?: string;
 }
 
-const DAY_SHORT = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
-
 function getMonthKey(dateStr?: string) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function formatMonthHeading(key: string) {
+function formatMonthHeading(key: string, locale: string) {
   const [year, month] = key.split("-");
   const d = new Date(Number(year), Number(month) - 1, 1);
-  const label = d.toLocaleDateString("cs-CZ", { month: "long", year: "numeric" });
+  const label = d.toLocaleDateString(locale === "en" ? "en-GB" : "cs-CZ", { month: "long", year: "numeric" });
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
@@ -41,6 +40,7 @@ const labelCls = "mb-1 block text-xs font-semibold text-[#6B7280] uppercase trac
 
 export default function PublicCompetitionsPage() {
   const router = useRouter();
+  const { t, locale } = useLocale();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -85,15 +85,16 @@ export default function PublicCompetitionsPage() {
     });
   }, [competitions, activeFilters]);
 
+  const noDateKey = t("publicCompetitions.noDate");
   const grouped = useMemo(() => {
     const map = new Map<string, CompetitionListItem[]>();
     for (const c of filtered) {
-      const key = getMonthKey(c.eventDate) || "Bez data";
+      const key = getMonthKey(c.eventDate) || noDateKey;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(c);
     }
     return map;
-  }, [filtered]);
+  }, [filtered, noDateKey]);
 
   const today = new Date().toISOString().slice(0, 10);
   const inThreeMonths = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -126,7 +127,7 @@ export default function PublicCompetitionsPage() {
                 style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".85rem", color: "#6B7280", background: "none", border: "none", cursor: "pointer", padding: 0 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-                Zpět
+                {t("publicCompetitions.back")}
               </button>
               <span style={{ color: "#E5E7EB" }}>|</span>
               <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
@@ -135,7 +136,7 @@ export default function PublicCompetitionsPage() {
               </Link>
             </div>
             <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
-              Přihlášení organizátora →
+              {t("publicCompetitions.organizerLogin")}
             </Link>
           </div>
         </nav>
@@ -152,17 +153,17 @@ export default function PublicCompetitionsPage() {
           <div style={{ position: "relative", zIndex: 1, maxWidth: 640, margin: "0 auto" }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 14px", borderRadius: 100, border: "1px solid rgba(255,255,255,.14)", background: "rgba(255,255,255,.07)", fontSize: ".73rem", fontWeight: 500, color: "rgba(255,255,255,.7)", marginBottom: 20 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
-              Soutěžní kalendář · {new Date().getFullYear()}
+              {t("publicCompetitions.badge")} · {new Date().getFullYear()}
             </div>
             <h1 style={{
               fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800,
               fontSize: "clamp(2rem,5vw,3.2rem)", lineHeight: 1.08, letterSpacing: "-.04em",
               color: "#fff", marginBottom: 14,
             }}>
-              Kalendář tanečních akcí
+              {t("publicCompetitions.title")}
             </h1>
             <p style={{ fontSize: "1rem", color: "rgba(255,255,255,.5)", lineHeight: 1.7, marginBottom: 0 }}>
-              Přihlaste se na soutěž a sledujte výsledky.
+              {t("publicCompetitions.subtitle")}
             </p>
           </div>
 
@@ -181,14 +182,14 @@ export default function PublicCompetitionsPage() {
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E5E7EB", padding: 24, marginBottom: 32, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.04)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".85rem" }}>🔍</div>
-              <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".97rem", color: "#111827" }}>Filtrovat soutěže</span>
+              <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".97rem", color: "#111827" }}>{t("publicCompetitions.filterTitle")}</span>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px 16px" }} className="filter-grid">
               <div>
-                <label htmlFor="filter-series" className={labelCls}>Seriál</label>
+                <label htmlFor="filter-series" className={labelCls}>{t("publicCompetitions.series")}</label>
                 <select id="filter-series" className={selectCls} value={series} onChange={(e) => setSeries(e.target.value)}>
-                  <option value="all">- všechny -</option>
+                  <option value="all">{t("publicCompetitions.allOptions")}</option>
                   <option value="CZECH_CHAMPIONSHIP">Mistrovství ČR</option>
                   <option value="CZECH_CUP">Český pohár</option>
                   <option value="EXTRALIGA">Extraliga</option>
@@ -199,17 +200,17 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="filter-competitor-type" className={labelCls}>Soutěžící</label>
+                <label htmlFor="filter-competitor-type" className={labelCls}>{t("publicCompetitions.competitors")}</label>
                 <select id="filter-competitor-type" className={selectCls} value={competitorType} onChange={(e) => setCompetitorType(e.target.value)}>
-                  <option value="all">- všechny -</option>
+                  <option value="all">{t("publicCompetitions.allOptions")}</option>
                   <option value="AMATEURS">Amatéři</option>
                   <option value="PROFESSIONALS">Profesionálové</option>
                 </select>
               </div>
               <div>
-                <label htmlFor="filter-age-category" className={labelCls}>Věková kategorie</label>
+                <label htmlFor="filter-age-category" className={labelCls}>{t("publicCompetitions.ageCategory")}</label>
                 <select id="filter-age-category" className={selectCls} value={ageCategory} onChange={(e) => setAgeCategory(e.target.value)}>
-                  <option value="all">- všechny -</option>
+                  <option value="all">{t("publicCompetitions.allOptions")}</option>
                   <option value="CHILDREN_I">Děti I</option>
                   <option value="CHILDREN_II">Děti II</option>
                   <option value="JUNIOR_I">Junioři I</option>
@@ -221,9 +222,9 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="filter-level" className={labelCls}>Výkonnostní třída</label>
+                <label htmlFor="filter-level" className={labelCls}>{t("publicCompetitions.level")}</label>
                 <select id="filter-level" className={selectCls} value={level} onChange={(e) => setLevel(e.target.value)}>
-                  <option value="all">- všechny -</option>
+                  <option value="all">{t("publicCompetitions.allOptions")}</option>
                   <option value="D">D</option>
                   <option value="C">C</option>
                   <option value="B">B</option>
@@ -235,9 +236,9 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="filter-dance-style" className={labelCls}>Disciplína</label>
+                <label htmlFor="filter-dance-style" className={labelCls}>{t("publicCompetitions.discipline")}</label>
                 <select id="filter-dance-style" className={selectCls} value={danceStyle} onChange={(e) => setDanceStyle(e.target.value)}>
-                  <option value="all">- všechny -</option>
+                  <option value="all">{t("publicCompetitions.allOptions")}</option>
                   <option value="STANDARD">Standardní tance</option>
                   <option value="LATIN">Latinsko-americké tance</option>
                   <option value="TEN_DANCE">10 tanců</option>
@@ -245,9 +246,9 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="filter-competition-type" className={labelCls}>Typ soutěží</label>
+                <label htmlFor="filter-competition-type" className={labelCls}>{t("publicCompetitions.competitionType")}</label>
                 <select id="filter-competition-type" className={selectCls} value={competitionType} onChange={(e) => setCompetitionType(e.target.value)}>
-                  <option value="all">- všechny -</option>
+                  <option value="all">{t("publicCompetitions.allOptions")}</option>
                   <option value="COUPLE">Párové</option>
                   <option value="SOLO_STANDARD">Sólo standard</option>
                   <option value="SOLO_LATIN">Sólo latino</option>
@@ -257,18 +258,18 @@ export default function PublicCompetitionsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="filter-search" className={labelCls}>Název akce</label>
+                <label htmlFor="filter-search" className={labelCls}>{t("publicCompetitions.eventName")}</label>
                 <input
                   id="filter-search"
                   className={selectCls}
-                  placeholder="- všechny -"
+                  placeholder={t("publicCompetitions.allOptions")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleFilter()}
                 />
               </div>
               <div>
-                <label htmlFor="filter-date-from" className={labelCls}>Období od</label>
+                <label htmlFor="filter-date-from" className={labelCls}>{t("publicCompetitions.periodFrom")}</label>
                 <input
                   id="filter-date-from"
                   type="date"
@@ -278,7 +279,7 @@ export default function PublicCompetitionsPage() {
                 />
               </div>
               <div>
-                <label htmlFor="filter-date-to" className={labelCls}>Období do</label>
+                <label htmlFor="filter-date-to" className={labelCls}>{t("publicCompetitions.periodTo")}</label>
                 <input
                   id="filter-date-to"
                   type="date"
@@ -301,11 +302,11 @@ export default function PublicCompetitionsPage() {
                 onMouseEnter={e => (e.currentTarget.style.opacity = ".88")}
                 onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
               >
-                Filtrovat
+                {t("publicCompetitions.filterButton")}
               </button>
               {filtered.length > 0 && (
                 <span style={{ fontSize: ".8rem", color: "#9CA3AF" }}>
-                  {filtered.length} {filtered.length === 1 ? "soutěž" : filtered.length < 5 ? "soutěže" : "soutěží"}
+                  {filtered.length} {filtered.length === 1 ? t("publicCompetitions.competitions_one") : filtered.length < 5 ? t("publicCompetitions.competitions_few") : t("publicCompetitions.competitions_many")}
                 </span>
               )}
             </div>
@@ -326,8 +327,8 @@ export default function PublicCompetitionsPage() {
           ) : grouped.size === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "80px 0", textAlign: "center" }}>
               <div style={{ width: 64, height: 64, borderRadius: 16, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.75rem" }}>🏆</div>
-              <p style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.1rem", color: "#111827" }}>Žádné soutěže</p>
-              <p style={{ fontSize: ".9rem", color: "#6B7280" }}>Zkuste upravit filtry nebo se vraťte později.</p>
+              <p style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.1rem", color: "#111827" }}>{t("publicCompetitions.noCompetitions")}</p>
+              <p style={{ fontSize: ".9rem", color: "#6B7280" }}>{t("publicCompetitions.noCompetitionsDesc")}</p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
@@ -341,7 +342,7 @@ export default function PublicCompetitionsPage() {
                       background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)",
                       WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
                     }}>
-                      {month === "Bez data" ? month : formatMonthHeading(month)}
+                      {month === noDateKey ? month : formatMonthHeading(month, locale)}
                     </h2>
                     <span style={{ fontSize: ".75rem", fontWeight: 600, padding: "2px 9px", borderRadius: 100, background: "#EEF2FF", color: "#4F46E5" }}>
                       {comps.length}
@@ -352,7 +353,7 @@ export default function PublicCompetitionsPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {comps.map((comp) => {
                       const d = comp.eventDate ? new Date(comp.eventDate) : null;
-                      const dayShort = d ? DAY_SHORT[d.getDay()] : "";
+                      const dayShort = d ? d.toLocaleDateString(locale === "en" ? "en-GB" : "cs-CZ", { weekday: "short" }) : "";
                       const dayNum = d ? d.getDate() : null;
                       const timeStr = d
                         ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
@@ -405,7 +406,7 @@ export default function PublicCompetitionsPage() {
                               {isLive && (
                                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: ".67rem", fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "2px 8px", borderRadius: 100, border: "1px solid rgba(5,150,105,.2)" }}>
                                   <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#059669", display: "inline-block" }} />
-                                  Probíhá
+                                  {t("publicCompetitions.ongoing")}
                                 </span>
                               )}
                             </div>
@@ -416,19 +417,19 @@ export default function PublicCompetitionsPage() {
 
                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                               {comp.registeredPairsCount !== undefined && (
-                                <span style={{ fontSize: ".75rem", color: "#6B7280" }}>{comp.registeredPairsCount} párů</span>
+                                <span style={{ fontSize: ".75rem", color: "#6B7280" }}>{comp.registeredPairsCount} {t("publicCompetitions.pairs")}</span>
                               )}
                               {comp.registeredPairsCount !== undefined && comp.sectionsCount !== undefined && (
                                 <span style={{ fontSize: ".75rem", color: "#D1D5DB" }}>·</span>
                               )}
                               {comp.sectionsCount !== undefined && (
                                 <span style={{ fontSize: ".75rem", color: "#6B7280" }}>
-                                  {comp.sectionsCount} {comp.sectionsCount === 1 ? "kategorie" : comp.sectionsCount < 5 ? "kategorie" : "kategorií"}
+                                  {comp.sectionsCount} {comp.sectionsCount === 1 ? t("publicCompetitions.categories_one") : t("publicCompetitions.categories_many")}
                                 </span>
                               )}
                               {comp.registrationOpen && (
                                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: ".67rem", fontWeight: 700, color: "#fff", background: "#059669", padding: "2px 9px", borderRadius: 100 }}>
-                                  Registrace otevřena
+                                  {t("status.REGISTRATION_OPEN")}
                                 </span>
                               )}
                             </div>
@@ -454,7 +455,7 @@ export default function PublicCompetitionsPage() {
             <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>DA</div>
             <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".9rem", color: "#111827" }}>DanceApp</span>
           </Link>
-          <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2025 DanceApp. Navrženo pro tanec.</p>
+          <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2025 DanceApp. {t("publicCompetitions.footer")}</p>
         </div>
 
       </div>

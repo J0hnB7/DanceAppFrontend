@@ -113,8 +113,8 @@ function CoupleTile({ pair, state, isDisabled, onTap, onLongPress }: {
 
 // ── Confirmation sheet ────────────────────────────────────────────────────────
 
-function ConfirmSheet({ open, selected, required, onConfirm, onBack }: {
-  open: boolean; selected: number; required: number; onConfirm: () => void; onBack: () => void;
+function ConfirmSheet({ open, selected, required, onConfirm, onBack, locale }: {
+  open: boolean; selected: number; required: number; onConfirm: () => void; onBack: () => void; locale: Locale;
 }) {
   if (!open) return null;
   return (
@@ -126,17 +126,17 @@ function ConfirmSheet({ open, selected, required, onConfirm, onBack }: {
           </div>
           <div>
             <h2 className="text-base font-semibold text-[var(--text-primary)]">
-              {selected < required ? "Méně křížů než požadováno" : "Více křížů než požadováno"}
+              {selected < required ? t("prelim.less_crosses", locale) : t("prelim.more_crosses", locale)}
             </h2>
             <p className="text-sm text-[var(--text-secondary)]">
-              Označeno <strong>{selected}</strong>, požadováno <strong>{required}</strong>
+              {t("prelim.marked", locale, { selected: String(selected), required: String(required) })}
             </p>
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onBack}>Zpět</Button>
+          <Button variant="outline" className="flex-1" onClick={onBack}>{t("judge.back", locale)}</Button>
           {selected > required && (
-            <Button className="flex-1" onClick={onConfirm}>Odeslat tak</Button>
+            <Button className="flex-1" onClick={onConfirm}>{t("judge.submit_anyway", locale)}</Button>
           )}
         </div>
       </div>
@@ -149,7 +149,13 @@ function ConfirmSheet({ open, selected, required, onConfirm, onBack }: {
 export default function PreliminaryRoundPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const router = useRouter();
-  const [locale] = useState<Locale>(() => detectLocale());
+  const [locale, setLocale] = useState<Locale>(() => detectLocale());
+
+  const toggleLocale = () => {
+    const next: Locale = locale === "cs" ? "en" : "cs";
+    setLocale(next);
+    localStorage.setItem("danceapp_locale", next);
+  };
   const isOnline = useOnline();
 
   const [round, setRound] = useState<RoundInfo | null>(null);
@@ -429,13 +435,13 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       {/* Offline banner */}
       {pingAlert && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-2.5 text-sm font-semibold text-[var(--accent)]">
-          <Bell className="h-4 w-4" /> Upozornění od porotní komise — prosím odevzdejte hodnocení
+          <Bell className="h-4 w-4" /> {t("prelim.ping_alert", locale)}
         </div>
       )}
 
       {!isOnline && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
-          <CloudOff className="h-3.5 w-3.5" /> Offline — hodnocení se uloží lokálně
+          <CloudOff className="h-3.5 w-3.5" /> {t("prelim.offline_local", locale)}
         </div>
       )}
 
@@ -470,6 +476,10 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
 
           {/* Right controls */}
           <div className="flex shrink-0 items-center gap-2">
+            <button onClick={toggleLocale}
+              className="flex h-7 items-center justify-center rounded-full bg-[var(--surface-secondary)] px-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:bg-[var(--border)]">
+              {locale === "cs" ? "EN" : "CZ"}
+            </button>
             <button onClick={toggleTheme}
               className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)]">
               {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
@@ -489,10 +499,10 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             </div>
             <div>
               <p className="text-xl font-bold text-[var(--text-primary)]">
-                {allDancesSubmitted ? "Všechny tance ohodnoceny" : "Hodnocení odesláno"}
+                {allDancesSubmitted ? t("prelim.all_submitted_title", locale) : t("prelim.submitted_title", locale)}
               </p>
               <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
-                {allDancesSubmitted ? "Děkujeme — čeká se na uzavření kola" : "Čeká se na další tanec"}
+                {allDancesSubmitted ? t("prelim.all_thanks", locale) : t("prelim.wait_next", locale)}
               </p>
             </div>
             {!allDancesSubmitted && (
@@ -510,10 +520,10 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             </div>
             <div>
               <p className="text-lg font-bold text-[var(--text-primary)]">
-                {activeDance?.name} — již ohodnoceno
+                {activeDance?.name} {t("prelim.already_submitted", locale)}
               </p>
               <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
-                Tento tanec jste již ohodnotili. Vyberte jiný tanec výše.
+                {t("prelim.dance_already_desc", locale)}
               </p>
             </div>
           </div>
@@ -522,7 +532,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             {/* ── Cross counter ── */}
             {allowedCrosses > 0 && (
               <div className="mb-4 text-center">
-                <p className="mb-1 text-xs font-medium uppercase tracking-widest text-[var(--text-tertiary)]">Vybráno</p>
+                <p className="mb-1 text-xs font-medium uppercase tracking-widest text-[var(--text-tertiary)]">{t("prelim.selected_label", locale)}</p>
                 <p className={cn(
                   "text-4xl font-black tabular-nums leading-none transition-colors",
                   isExact ? "text-green-500" : "text-[var(--text-primary)]"
@@ -533,7 +543,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
                   )}
                 </p>
                 {remaining > 0 && (
-                  <p className="mt-1 text-sm text-[var(--text-tertiary)]">{remaining} zbývá</p>
+                  <p className="mt-1 text-sm text-[var(--text-tertiary)]">{t("prelim.remaining", locale, { n: String(remaining) })}</p>
                 )}
               </div>
             )}
@@ -552,7 +562,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
                         : "bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]"
                     )}
                   >
-                    Skupina {heat.heatNumber}
+                    {t("prelim.group", locale, { n: String(heat.heatNumber) })}
                   </button>
                 ))}
               </div>
@@ -594,14 +604,14 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
                 disabled={submitting || givenCrosses === 0}
                 loading={submitting}
               >
-                Odeslat
+                {t("prelim.submit_btn", locale)}
               </Button>
             </div>
 
             <p className="text-center text-[11px] text-[var(--text-tertiary)]">
               {activeDance?.name ?? ""}
-              {heats.length > 1 && ` · Skupina ${heats[activeHeatIdx]?.heatNumber ?? 1}`}
-              {` · ${pairs.length} párů · postupuje ${allowedCrosses}`}
+              {heats.length > 1 && ` · ${t("prelim.group", locale, { n: String(heats[activeHeatIdx]?.heatNumber ?? 1) })}`}
+              {` · ${pairs.length} ${locale === "en" ? "pairs" : "párů"} · ${locale === "en" ? "advances" : "postupuje"} ${allowedCrosses}`}
             </p>
           </div>
         </div>
@@ -617,16 +627,20 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
               </div>
               <div>
                 <h2 className="text-base font-semibold text-[var(--text-primary)]">
-                  Nerozhodnuté páry
+                  {t("prelim.undecided_title", locale)}
                 </h2>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  Máte <strong>{tentativeCount}</strong> {tentativeCount === 1 ? "nerozhodnutý pár" : tentativeCount < 5 ? "nerozhodnuté páry" : "nerozhodnutých párů"} (žluté). Nebudou započítány.
+                  {locale === "cs" ? (
+                    <>Máte <strong>{tentativeCount}</strong> {tentativeCount === 1 ? t("prelim.undecided_one", locale) : tentativeCount < 5 ? t("prelim.undecided_few", locale) : t("prelim.undecided_many", locale)} (žluté). Nebudou započítány.</>
+                  ) : (
+                    <>You have <strong>{tentativeCount}</strong> {tentativeCount === 1 ? t("prelim.undecided_one", locale) : t("prelim.undecided_many", locale)} (yellow). They will not be counted.</>
+                  )}
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowTentativeWarn(false)}>Zpět</Button>
-              <Button className="flex-1 bg-amber-500 hover:bg-amber-600" onClick={confirmTentativeAndSubmit}>Odeslat přesto</Button>
+              <Button variant="outline" className="flex-1" onClick={() => setShowTentativeWarn(false)}>{t("judge.back", locale)}</Button>
+              <Button className="flex-1 bg-amber-500 hover:bg-amber-600" onClick={confirmTentativeAndSubmit}>{t("prelim.submit_anyway_btn", locale)}</Button>
             </div>
           </div>
         </div>
@@ -638,6 +652,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         required={allowedCrosses}
         onConfirm={doSubmit}
         onBack={() => setShowConfirm(false)}
+        locale={locale}
       />
     </div>
   );

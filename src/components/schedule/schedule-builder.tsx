@@ -28,10 +28,11 @@ import { Button } from "@/components/ui/button";
 import { SimpleDialog } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import type { SectionDto } from "@/lib/api/sections";
 import type { CompetitionDto } from "@/lib/api/competitions";
+import { useLocale } from "@/contexts/locale-context";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,10 @@ interface ScheduleBuilderProps {
   restrictedEdit?: boolean;
   onFloorControl?: (danceName: string, heatNumber: number) => void;
   activeFloor?: { danceName: string; heatNumber: number } | null;
+  /** Rendered between toolbar and slot list */
+  headerSlot?: React.ReactNode;
+  /** Hide the toolbar (Přegenerovat / Losovat vše / Publikovat) */
+  hideToolbar?: boolean;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -64,6 +69,16 @@ function formatDurSec(secs: number): string {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   return s > 0 ? `${m} min ${s} s` : `${m} min`;
+}
+
+/** Vraci end timestamp (ms) z ISO startTime a durationMinutes. */
+function computeEndTime(startTime: string, durationMinutes: number): number {
+  return new Date(startTime).getTime() + durationMinutes * 60_000;
+}
+
+/** Odstrani "(N paru)" suffix z labelu slotu. */
+function cleanLabel(label: string): string {
+  return label.replace(/\s*\(\d+\s*pár[ůy]?\)/i, "").trim();
 }
 
 function parsePairCount(label: string): number | null {
@@ -118,6 +133,7 @@ function AddBreakDialog({ competitionId, afterSlotId, onClose }: {
   onClose: () => void;
 }) {
   const { addBreak } = useScheduleStore();
+  const { t } = useLocale();
   const [duration, setDuration] = useState(15);
   const [loading, setLoading] = useState(false);
 
@@ -130,10 +146,10 @@ function AddBreakDialog({ competitionId, afterSlotId, onClose }: {
   };
 
   return (
-    <SimpleDialog open={!!afterSlotId} onClose={onClose} title="Vložit přestávku">
+    <SimpleDialog open={!!afterSlotId} onClose={onClose} title={t("scheduleBuilder.breakDialogTitle")}>
       <div className="space-y-4 pt-2">
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[var(--text-secondary)]">Délka (min)</label>
+          <label className="text-xs font-medium text-[var(--text-secondary)]">{t("scheduleBuilder.breakDialogDuration")}</label>
           <select
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
@@ -145,10 +161,10 @@ function AddBreakDialog({ competitionId, afterSlotId, onClose }: {
           </select>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onClose}>Zrušit</Button>
+          <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
           <Button onClick={handleAdd} loading={loading}>
             <Plus className="h-4 w-4 mr-1.5" />
-            Přidat
+            {t("common.add")}
           </Button>
         </div>
       </div>
@@ -159,6 +175,7 @@ function AddBreakDialog({ competitionId, afterSlotId, onClose }: {
 // ── Heat Pairs Row ─────────────────────────────────────────────────────────────
 
 function HeatPairsRow({ heat, totalHeats }: { heat: HeatAssignmentGroup; totalHeats: number }) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(totalHeats === 1); // auto-open if only 1 heat
 
   return (
@@ -170,10 +187,10 @@ function HeatPairsRow({ heat, totalHeats }: { heat: HeatAssignmentGroup; totalHe
         <div className="flex items-center gap-2">
           {open ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-tertiary)]" /> : <ChevronRight className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />}
           <span className="text-xs font-semibold text-[var(--text-primary)]">
-            Skupina {heat.heatNumber}
+            {t("scheduleBuilder.heatGroupName", { n: heat.heatNumber })}
           </span>
           <span className="text-xs text-[var(--text-tertiary)]">
-            {heat.pairs.length} {heat.pairs.length === 1 ? "pár" : heat.pairs.length < 5 ? "páry" : "párů"}
+            {t("scheduleBuilder.pairsCount", { n: heat.pairs.length })}
           </span>
         </div>
         <div className="flex gap-1">
@@ -241,6 +258,7 @@ function RoundCard({
 }: RoundCardProps) {
   const [collapsed, setCollapsed] = useState(!onFloorControl);
   const [showPairs, setShowPairs] = useState(false);
+  const { t } = useLocale();
   const { toast } = useToast();
 
   const { data: heatAssignments, refetch: redrawQuery, isFetching: isRedrawing, isError: heatError } = useQuery<HeatAssignmentGroup[]>({
@@ -254,7 +272,7 @@ function RoundCard({
         throw e;
       }
     },
-    enabled: showPairs && !collapsed,
+    enabled: !collapsed,
     staleTime: Infinity,
     retry: false,
   });
@@ -264,20 +282,17 @@ function RoundCard({
       await scheduleApi.drawHeats(competitionId, slot.id);
       redrawQuery();
     } catch {
-      toast({ title: "Chyba při losování", variant: "destructive" });
+      toast({ title: t("scheduleBuilder.drawError"), variant: "destructive" });
     }
   }, [competitionId, slot.id, redrawQuery, toast]);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: slot.id });
-
-  const style = { transform: CSS.Transform.toString(transform), transition };
-
   const updateStatus = useMutation({
     mutationFn: (status: BlockLiveStatus) => scheduleApi.updateBlockStatus(competitionId, slot.id, status),
-    onError: () => toast({ title: "Chyba při aktualizaci stavu", variant: "destructive" }),
+    onError: () => toast({ title: t("scheduleBuilder.updateStatusError"), variant: "destructive" }),
   });
 
   const isCompleted = slot.liveStatus === "COMPLETED";
   const isRunning = slot.liveStatus === "RUNNING";
+  const isFinal = /(?<!(semi|čtvrt))finál/i.test(slot.label);
 
   // Compute heats
   const pairCount = parsePairCount(slot.label) ?? maxPairsOnFloor;
@@ -296,94 +311,103 @@ function RoundCard({
   // Compute actual duration including transitions (slot.durationMinutes lacks them)
   const actualDurationSec = heatCount * effectiveDances.length * (danceDurationSec + transitionSec);
   const endMs = new Date(slot.startTime).getTime() + actualDurationSec * 1000;
+  const headerEndMs = computeEndTime(slot.startTime, slot.durationMinutes);
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
       className={cn(
-        "rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden transition-all",
-        isDragging && "shadow-xl ring-2 ring-[var(--accent)] opacity-90 z-50",
+        "group bg-[var(--surface)] overflow-hidden transition-all",
         isCompleted && "opacity-50",
         isRunning && "ring-2 ring-green-400 dark:ring-green-600 shadow-md",
       )}
     >
       {/* ── Header ── */}
-      <div className="flex items-start gap-2 px-3 py-2.5">
-        {/* Drag handle */}
-        <button
-          {...attributes} {...listeners}
-          className="mt-0.5 cursor-grab active:cursor-grabbing text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] touch-none shrink-0"
-          tabIndex={-1}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-
-        {/* Expand/collapse toggle */}
+      <div className="flex items-center min-h-[52px]">
+        {/* Expand/collapse — 28px */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="mt-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] shrink-0"
+          className={cn(
+            "flex items-center justify-center w-7 shrink-0 self-stretch text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors",
+            !collapsed && "rotate-90"
+          )}
         >
-          {collapsed
-            ? <ChevronRight className="h-4 w-4" />
-            : <ChevronDown className="h-4 w-4" />}
+          <ChevronRight className="h-3 w-3" />
         </button>
 
-        {/* Live status icon */}
-        <div className="mt-0.5 w-4 shrink-0">
-          {isRunning && <PlayCircle className="h-4 w-4 text-green-500 animate-pulse" />}
-          {isCompleted && <CheckCircle2 className="h-4 w-4 text-[var(--text-tertiary)]" />}
+        {/* Status dot — 20px, 10px dot for better visibility */}
+        <div
+          className="w-5 shrink-0 flex items-center justify-center"
+          aria-label={isCompleted ? "Dokonceno" : isRunning ? "Probiha" : "Nezahajeno"}
+          role="status"
+        >
+          <div className={cn(
+            "w-2.5 h-2.5 rounded-full border-[1.5px]",
+            isCompleted && "bg-green-400 border-green-400",
+            isRunning && "bg-red-500 border-red-500 animate-pulse",
+            !isCompleted && !isRunning && "border-[var(--text-tertiary)] bg-transparent"
+          )} />
         </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 flex-wrap">
-            <p className={cn(
-              "text-sm font-semibold leading-tight",
-              isCompleted && "line-through text-[var(--text-tertiary)]"
-            )}>
-              {slot.label.replace(/\s*\(\d+\s*párů?\)/i, "")}
-            </p>
-            <div className="flex items-center gap-1 shrink-0">
-              {/* Round type badge */}
-              {slot.roundNumber != null && (
-                <span className="text-[10px] font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-0.5">
-                  Kolo {slot.roundNumber}
+        {/* Block body — two-column layout */}
+        <div className="flex-1 flex items-center gap-3 py-3 pr-2 pl-1 min-w-0">
+          {/* LEFT: time range */}
+          <div className="w-[88px] shrink-0 text-[13px] font-semibold text-[var(--text-secondary)] tabular-nums whitespace-nowrap pt-0.5 text-center">
+            {formatTimeStr(slot.startTime)} – {formatTimeMs(headerEndMs)}
+          </div>
+
+          {/* RIGHT: content */}
+          <div className="flex-1 min-w-0">
+            {/* Line 1: name + status badge + round badge */}
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <span className={cn(
+                "text-sm font-bold text-[var(--text-primary)] truncate",
+                isCompleted && "line-through text-[var(--text-tertiary)]"
+              )}>
+                {cleanLabel(slot.label)}
+              </span>
+              {/* Status badge: COMPLETED */}
+              {isCompleted && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wide px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 shrink-0">
+                  <CheckCircle2 className="h-2.5 w-2.5" />
+                  {t("scheduleBuilder.roundDoneBadge")}
+                </span>
+              )}
+              {/* Status badge: RUNNING — includes round number */}
+              {isRunning && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wide px-2 py-0.5 rounded-full bg-red-500/10 text-red-300 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  {slot.roundNumber != null ? t("scheduleBuilder.roundRunningWithNum", { n: slot.roundNumber }) : t("scheduleBuilder.roundRunningBadge")}
+                </span>
+              )}
+              {/* Round badge — only when NOT running (running badge already includes round number) */}
+              {!isRunning && slot.roundNumber != null && (
+                <span className="text-[10px] font-bold tracking-wide px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 shrink-0">
+                  {t("scheduleBuilder.roundBadge", { n: slot.roundNumber })}
+                </span>
+              )}
+            </div>
+
+            {/* Line 2: metadata */}
+            <div className="flex items-center flex-wrap gap-0 text-[11px] text-[var(--text-secondary)]">
+              <span>{t("scheduleBuilder.pairsCount", { n: pairCount })}</span>
+              <span className="text-[var(--text-tertiary)] mx-1" aria-hidden="true">·</span>
+              <span>{heatCount} {heatCount === 1 ? t("scheduleBuilder.heatSingular") : heatCount < 5 ? t("scheduleBuilder.heatPluralFew") : t("scheduleBuilder.heatPluralMany")}</span>
+              <span className="text-[var(--text-tertiary)] mx-1" aria-hidden="true">·</span>
+              <span>{t("scheduleBuilder.dancesCount", { n: effectiveDances.length })}</span>
+              <span className="text-[var(--text-tertiary)] mx-1" aria-hidden="true">·</span>
+              <span>{formatDurSec(actualDurationSec)}</span>
+              {advancingCount != null && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-300 bg-blue-500/10 px-1.5 py-0.5 rounded-full ml-2">
+                  {t("scheduleBuilder.advancingCount", { n: advancingCount })}
                 </span>
               )}
             </div>
           </div>
-          {/* Meta row */}
-          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-            <span className="flex items-center gap-1 text-xs font-mono text-[var(--text-secondary)]">
-              <Clock className="h-3 w-3" />
-              {formatTimeStr(slot.startTime)} – {formatTimeMs(endMs)}
-            </span>
-            <span className="flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
-              <Users className="h-3 w-3" />
-              {pairCount} párů
-            </span>
-            <span className="text-xs text-[var(--text-tertiary)]">
-              {heatCount} {heatCount === 1 ? "skupina" : heatCount < 5 ? "skupiny" : "skupin"}
-            </span>
-            <span className="text-xs text-[var(--text-tertiary)]">
-              {effectiveDances.length} tanců
-            </span>
-            <span className="text-xs text-[var(--text-tertiary)]">
-              {formatDurSec(actualDurationSec)}
-            </span>
-            {advancingCount != null && (
-              <span className="flex items-center gap-1 text-xs text-blue-500 dark:text-blue-400">
-                <ArrowRight className="h-3 w-3" />
-                postupuje {advancingCount}
-              </span>
-            )}
-          </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-1 shrink-0 mt-0.5">
-          {/* Toggle pairs panel — only for rounds where draw is allowed */}
+        <div className="flex items-center gap-1 shrink-0 pr-3 pl-2">
+          {/* Toggle pairs panel */}
           <button
             onClick={() => { if (!drawAllowed) return; setShowPairs(!showPairs); if (collapsed) setCollapsed(false); }}
             disabled={!drawAllowed}
@@ -395,36 +419,32 @@ function RoundCard({
                   : "text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]"
                 : "text-[var(--text-tertiary)] opacity-30 cursor-not-allowed"
             )}
-            title={drawAllowed ? "Zobrazit páry ve skupinách" : "Dostupné až po dokončení předchozího kola"}
+            title={drawAllowed ? t("scheduleBuilder.showPairsTitle") : t("scheduleBuilder.drawLockedTitle")}
           >
             <Users className="h-4 w-4" />
           </button>
 
-          {!isCompleted && (
-            <>
-              {!isRunning ? (
-                <button
-                  onClick={() => updateStatus.mutate("RUNNING")}
-                  className="p-1 rounded hover:bg-[var(--surface-secondary)] transition-colors text-[var(--text-secondary)]"
-                  title="Zahájit kolo"
-                >
-                  <PlayCircle className="h-4 w-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => updateStatus.mutate("COMPLETED")}
-                  className="p-1 rounded hover:bg-[var(--surface-secondary)] transition-colors text-[var(--text-secondary)]"
-                  title="Ukončit kolo"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                </button>
+          {!isFinal && (
+            <button
+              onClick={() => redraw()}
+              disabled={isRedrawing || !drawAllowed}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs",
+                drawAllowed
+                  ? "hover:bg-[var(--surface-secondary)] text-[var(--text-secondary)] disabled:opacity-40"
+                  : "text-[var(--text-tertiary)] opacity-30 cursor-not-allowed"
               )}
-            </>
+              title={drawAllowed ? t("scheduleBuilder.redrawTitle") : t("scheduleBuilder.drawLockedTitle")}
+            >
+              <ArrowRight className={cn("h-3 w-3 rotate-90", isRedrawing && "animate-spin")} />
+              {t("scheduleBuilder.drawButton")}
+            </button>
           )}
+
           <button
             onClick={() => onAddBreakAfter(slot.id)}
             className="p-1 rounded hover:bg-[var(--surface-secondary)] transition-colors text-[var(--text-secondary)]"
-            title="Přidat přestávku za"
+            title={t("scheduleBuilder.addBreakTitle")}
           >
             <Pause className="h-4 w-4" />
           </button>
@@ -440,27 +460,27 @@ function RoundCard({
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
                 <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">
-                  Přiřazení párů do skupin
+                  {t("scheduleBuilder.pairsInHeats")}
                 </span>
                 <button
                   onClick={() => redraw()}
                   disabled={isRedrawing}
                   className="flex items-center gap-1 text-xs text-[var(--accent)] hover:opacity-70 transition-opacity disabled:opacity-40"
-                  title="Znovu losovat (WDSF Rule 8.1.5 — náhodný los)"
+                  title={t("scheduleBuilder.redrawTitle")}
                 >
                   <ArrowRight className={cn("h-3 w-3 rotate-90", isRedrawing && "animate-spin")} />
-                  Losovat
+                  {t("scheduleBuilder.redrawButton")}
                 </button>
               </div>
               {heatError ? (
                 <div className="px-3 py-3 text-xs text-red-500">
-                  Chyba při načítání přiřazení párů.
+                  {t("scheduleBuilder.heatLoadError")}
                 </div>
               ) : isRedrawing || !heatAssignments ? (
-                <div className="px-3 py-3 text-xs text-[var(--text-tertiary)]">Načítám…</div>
+                <div className="px-3 py-3 text-xs text-[var(--text-tertiary)]">{t("scheduleBuilder.heatLoading")}</div>
               ) : heatAssignments.length === 0 ? (
                 <div className="px-3 py-3 text-xs text-[var(--text-tertiary)]">
-                  Páry zatím nebyly rozlosovány — klikněte <strong>Losovat</strong>.
+                  {t("scheduleBuilder.notDrawn")}
                 </div>
               ) : (
                 <div className="divide-y divide-[var(--border)]">
@@ -500,9 +520,18 @@ function RoundCard({
                         <span className="font-mono text-xs text-[var(--text-tertiary)] w-11 shrink-0 tabular-nums">
                           {formatTimeMs(item.startMs)}
                         </span>
-                        <span className={cn("text-sm flex-1", isActive ? "text-[var(--accent)] font-semibold" : "text-[var(--text-primary)]")}>
-                          Skupina {item.num}
-                          {isActive && <span className="ml-2 text-[10px] font-bold uppercase tracking-widest opacity-70">● na parketu</span>}
+                        <span className={cn("text-sm flex-1 flex items-center gap-2 min-w-0", isActive ? "text-[var(--accent)] font-semibold" : "text-[var(--text-primary)]")}>
+                          <span className="shrink-0">{t("scheduleBuilder.heatGroup", { n: item.num ?? 0 })}</span>
+                          {isActive && <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 shrink-0">● {t("scheduleBuilder.onFloor")}</span>}
+                          {heatAssignments && heatAssignments.length > 0 && (() => {
+                            const heat = heatAssignments.find(h => h.heatNumber === item.num);
+                            if (!heat || heat.pairs.length === 0) return null;
+                            return (
+                              <span className="text-xs text-[var(--text-tertiary)] font-normal truncate">
+                                {heat.pairs.map(p => p.startNumber).join(", ")}
+                              </span>
+                            );
+                          })()}
                         </span>
                         <span className="text-xs text-[var(--text-tertiary)] tabular-nums shrink-0">
                           {formatDurSec(item.durationSec)}
@@ -519,7 +548,7 @@ function RoundCard({
                         {formatTimeMs(item.startMs)}
                       </span>
                       <span className="text-xs italic text-[var(--text-tertiary)] flex-1">
-                        — Nástup / odchod —
+                        {t("scheduleBuilder.transition")}
                       </span>
                       <span className="text-xs text-[var(--text-tertiary)] tabular-nums shrink-0 opacity-60">
                         {formatDurSec(item.durationSec)}
@@ -565,7 +594,8 @@ function SimpleCardIcon({ type }: { type: string }) {
   return null;
 }
 
-function SimpleCard({ slot, competitionId, onDelete }: SimpleCardProps) {
+function SimpleCard({ slot, competitionId: _competitionId, onDelete }: SimpleCardProps) {
+  const { t } = useLocale();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: slot.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const isBreak = slot.type === "BREAK" || slot.type === "JUDGE_BREAK";
@@ -577,54 +607,77 @@ function SimpleCard({ slot, competitionId, onDelete }: SimpleCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all",
+        "group flex items-center min-h-[44px] rounded-xl border transition-all",
         SIMPLE_CARD_STYLES[slot.type] ?? SIMPLE_CARD_STYLES.CUSTOM,
         isBreak && "border-dashed",
         isDragging && "shadow-lg ring-2 ring-[var(--accent)] opacity-90 z-50",
       )}
     >
-      {/* Drag handle */}
-      <button
-        {...attributes} {...listeners}
-        className="cursor-grab active:cursor-grabbing text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] touch-none shrink-0"
-        tabIndex={-1}
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
+      {/* Drag handle — 32px */}
+      <div className="flex items-center justify-center w-8 shrink-0 self-stretch">
+        <button
+          {...attributes} {...listeners}
+          className="cursor-grab active:cursor-grabbing text-transparent group-hover:text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] touch-none"
+          tabIndex={-1}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </div>
 
-      <SimpleCardIcon type={slot.type} />
+      {/* Type icon — 28px */}
+      <div className="flex items-center justify-center w-7 shrink-0">
+        <SimpleCardIcon type={slot.type} />
+      </div>
 
-      {/* Time */}
-      <span className="font-mono text-xs text-[var(--text-secondary)] shrink-0 tabular-nums">
-        {formatTimeStr(slot.startTime)} – {formatTimeMs(endMs)}
-      </span>
+      {/* Block body — two-column */}
+      <div className="flex-1 flex items-center gap-3 py-2 pr-2 pl-1 min-w-0">
+        {/* LEFT: time */}
+        <div className={cn(
+          "w-[88px] shrink-0 text-xs font-semibold tabular-nums whitespace-nowrap",
+          slot.type === "AWARD_CEREMONY" ? "text-green-400" :
+          slot.type === "BREAK" || slot.type === "JUDGE_BREAK" ? "text-amber-400" :
+          "text-[var(--text-tertiary)]"
+        )}>
+          {formatTimeStr(slot.startTime)} – {formatTimeMs(endMs)}
+        </div>
 
-      {/* Label */}
-      <span className={cn("text-sm font-medium flex-1 truncate", SIMPLE_CARD_TEXT[slot.type] ?? SIMPLE_CARD_TEXT.CUSTOM)}>
-        {slot.label}
-      </span>
+        {/* RIGHT: name */}
+        <span className={cn(
+          "text-sm font-semibold flex-1 truncate",
+          SIMPLE_CARD_TEXT[slot.type] ?? SIMPLE_CARD_TEXT.CUSTOM,
+        )}>
+          {slot.label}
+        </span>
+      </div>
 
-      {/* Duration */}
-      <span className={cn("text-xs tabular-nums shrink-0", SIMPLE_CARD_TEXT[slot.type] ?? SIMPLE_CARD_TEXT.CUSTOM, "opacity-70")}>
-        {slot.durationMinutes} min
-      </span>
-
-      {/* Delete button */}
-      <button
-        onClick={() => onDelete(slot.id)}
-        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] hover:text-red-500 shrink-0"
-        title="Smazat"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+      {/* Duration badge + delete */}
+      <div className="flex items-center gap-1.5 pr-3 shrink-0">
+        <span className={cn(
+          "text-[10px] font-bold px-2 py-0.5 rounded-full",
+          slot.type === "AWARD_CEREMONY" && "bg-green-500/10 text-green-400",
+          (slot.type === "BREAK" || slot.type === "JUDGE_BREAK") && "bg-amber-500/10 text-amber-400",
+          slot.type === "CUSTOM" && "bg-[var(--surface-secondary)] text-[var(--text-secondary)]",
+        )}>
+          {slot.durationMinutes} min
+        </span>
+        <button
+          onClick={() => onDelete(slot.id)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] hover:text-red-500 shrink-0"
+          title={t("common.delete")}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
 
 // ── ScheduleBuilder ────────────────────────────────────────────────────────────
 
-export function ScheduleBuilder({ competitionId, competition, restrictedEdit = false, onFloorControl, activeFloor }: ScheduleBuilderProps) {
+export function ScheduleBuilder({ competitionId, competition, restrictedEdit = false, onFloorControl, activeFloor, headerSlot, hideToolbar = false }: ScheduleBuilderProps) {
+  const { t } = useLocale();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { slots, isDirty, isGenerating, scheduleStatus, moveSlot, generateSchedule, publishSchedule, removeSlot } = useScheduleStore();
   const [breakAfterSlotId, setBreakAfterSlotId] = useState<string | null>(null);
   const [isDrawingAll, setIsDrawingAll] = useState(false);
@@ -706,6 +759,43 @@ export function ScheduleBuilder({ competitionId, competition, restrictedEdit = f
     return map;
   }, [slots]);
 
+  const sectionMap = useMemo(() => {
+    const map = new Map<string, SectionDto>();
+    for (const s of sections) map.set(s.id, s);
+    return map;
+  }, [sections]);
+
+  type RenderGroup =
+    | { kind: "section"; sectionId: string; rounds: ScheduleSlot[] }
+    | { kind: "standalone"; slot: ScheduleSlot };
+
+  const renderGroups = useMemo((): RenderGroup[] => {
+    // Collect all rounds per section (non-consecutive rounds of same section stay in one group)
+    const sectionRounds = new Map<string, ScheduleSlot[]>();
+    for (const slot of slots) {
+      if (slot.type === "ROUND" && slot.sectionId) {
+        const arr = sectionRounds.get(slot.sectionId) ?? [];
+        arr.push(slot);
+        sectionRounds.set(slot.sectionId, arr);
+      }
+    }
+
+    const groups: RenderGroup[] = [];
+    const emitted = new Set<string>();
+    for (const slot of slots) {
+      if (slot.type === "ROUND" && slot.sectionId) {
+        if (!emitted.has(slot.sectionId)) {
+          emitted.add(slot.sectionId);
+          groups.push({ kind: "section", sectionId: slot.sectionId, rounds: sectionRounds.get(slot.sectionId)! });
+        }
+        // subsequent rounds of same section already included above — skip
+      } else {
+        groups.push({ kind: "standalone", slot });
+      }
+    }
+    return groups;
+  }, [slots]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -753,16 +843,18 @@ export function ScheduleBuilder({ competitionId, competition, restrictedEdit = f
       }
     }
     setIsDrawingAll(false);
+    // Invalidate heat assignment queries so pairs panels refresh
+    queryClient.invalidateQueries({ queryKey: ["heat-assignments", competitionId] });
     if (failed === 0) {
-      toast({ title: `Losování dokončeno (${ok} kol)`, variant: "success" });
+      toast({ title: t("scheduleBuilder.drawComplete", { n: ok }), variant: "success" });
     } else {
-      toast({ title: `Losování: ${ok} ok, ${failed} selhalo`, variant: "destructive" });
+      toast({ title: t("scheduleBuilder.drawPartial", { ok, failed }), variant: "destructive" });
     }
   };
 
   const handlePublish = async () => {
     await publishSchedule(competitionId);
-    toast({ title: "Harmonogram publikován", variant: "success" });
+    toast({ title: t("scheduleBuilder.schedulePublished"), variant: "success" });
   };
 
   const isPublished = scheduleStatus === "PUBLISHED";
@@ -771,9 +863,9 @@ export function ScheduleBuilder({ competitionId, competition, restrictedEdit = f
     return (
       <div className="rounded-xl border border-dashed border-[var(--border)] py-16 flex flex-col items-center gap-3">
         <Clock className="h-10 w-10 text-[var(--text-tertiary)]" />
-        <p className="text-sm text-[var(--text-secondary)]">Harmonogram ještě nebyl vygenerován.</p>
+        <p className="text-sm text-[var(--text-secondary)]">{t("scheduleBuilder.noSchedule")}</p>
         <Button onClick={() => generateSchedule(competitionId)} loading={isGenerating} className="gap-2">
-          Vygenerovat harmonogram
+          {t("scheduleBuilder.generateButton")}
         </Button>
       </div>
     );
@@ -782,70 +874,123 @@ export function ScheduleBuilder({ competitionId, competition, restrictedEdit = f
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      {!hideToolbar && <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-[var(--text-secondary)]">{slots.length} bloků</span>
+          <span className="text-sm text-[var(--text-secondary)]">{t("scheduleBuilder.blocks", { n: slots.length })}</span>
           {isDirty && (
             <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
-              Neuložené změny
+              {t("scheduleBuilder.unsavedChanges")}
             </span>
           )}
           {isPublished && (
             <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
               <Globe className="h-3 w-3" />
-              Publikováno
+              {t("scheduleBuilder.published")}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => generateSchedule(competitionId)} loading={isGenerating}>
-            ↺ Přegenerovat
+            {t("scheduleBuilder.regenerate")}
           </Button>
           {firstRoundSlots.length > 0 && (
             <Button variant="outline" size="sm" onClick={handleDrawAll} loading={isDrawingAll} className="gap-1.5">
               <Shuffle className="h-3.5 w-3.5" />
-              Losovat vše
+              {t("scheduleBuilder.drawAll")}
             </Button>
           )}
           <Button size="sm" onClick={handlePublish} disabled={isPublished && !isDirty} className="gap-2">
             <Globe className="h-4 w-4" />
-            {isPublished ? "Aktualizovat" : "Publikovat"}
+            {isPublished ? t("scheduleBuilder.updateButton") : t("scheduleBuilder.publishButton")}
           </Button>
         </div>
-      </div>
+      </div>}
+
+      {/* Timeline or other header content */}
+      {headerSlot}
+
+      {/* Separator */}
+      {headerSlot && (
+        <div className="flex items-center gap-3 pt-2">
+          <div className="h-px flex-1 bg-[var(--border)]" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]" style={{ fontFamily: "var(--font-sora)" }}>
+            {t("scheduleBuilder.categories")}
+          </span>
+          <div className="h-px flex-1 bg-[var(--border)]" />
+        </div>
+      )}
 
       {/* Slot list */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={slots.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
-            {slots.map((slot) => {
-              if (slot.type === "ROUND") {
+          <div className="space-y-4">
+            {renderGroups.map((group, gi) => {
+              if (group.kind === "standalone") {
                 return (
-                  <RoundCard
-                    key={slot.id}
-                    slot={slot}
+                  <SimpleCard
+                    key={group.slot.id}
+                    slot={group.slot}
                     competitionId={competitionId}
-                    danceNames={slot.sectionId ? (sectionDanceNames.get(slot.sectionId) ?? []) : []}
-                    danceCount={slot.sectionId ? (sectionDanceCounts.get(slot.sectionId) ?? 0) : 0}
-                    advancingCount={advancingCounts.get(slot.id) ?? null}
-                    danceDurationSec={danceDurationSec}
-                    transitionSec={transitionSec}
-                    maxPairsOnFloor={maxPairsOnFloor}
-                    drawAllowed={drawAllowedMap.get(slot.id) ?? false}
-                    onAddBreakAfter={setBreakAfterSlotId}
-                    onFloorControl={onFloorControl}
-                    activeFloor={activeFloor}
+                    onDelete={handleDelete}
                   />
                 );
               }
+              const { sectionId, rounds } = group;
+              const section = sectionMap.get(sectionId);
+              const firstRound = rounds[0];
+              const lastRound = rounds[rounds.length - 1];
+              const groupEndMs = new Date(lastRound.startTime).getTime() + lastRound.durationMinutes * 60_000;
+              const pairCount = parsePairCount(firstRound.label);
+              const isGroupCompleted = rounds.every((s) => s.liveStatus === "COMPLETED");
+              const isGroupRunning = rounds.some((s) => s.liveStatus === "RUNNING");
               return (
-                <SimpleCard
-                  key={slot.id}
-                  slot={slot}
-                  competitionId={competitionId}
-                  onDelete={handleDelete}
-                />
+                <div key={`${sectionId}-${gi}`} className="rounded-xl border border-[var(--border)] overflow-hidden">
+                  {/* Section header */}
+                  <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[var(--surface-secondary)] border-b border-[var(--border)]">
+                    <span className={cn(
+                      "w-2 h-2 rounded-full shrink-0",
+                      isGroupCompleted ? "bg-green-400" : isGroupRunning ? "bg-red-500 animate-pulse" : "bg-[var(--text-tertiary)]"
+                    )} />
+                    <span className="text-[11px] font-bold tracking-widest uppercase text-[var(--text-primary)]">
+                      {section?.name ?? sectionId}
+                    </span>
+                    <span className="text-[var(--text-tertiary)] text-xs">·</span>
+                    <span className="text-xs tabular-nums text-[var(--text-secondary)]">
+                      {formatTimeStr(firstRound.startTime)} – {formatTimeMs(groupEndMs)}
+                    </span>
+                    {pairCount != null && (
+                      <>
+                        <span className="text-[var(--text-tertiary)] text-xs">·</span>
+                        <span className="text-xs text-[var(--text-secondary)]">{t("scheduleBuilder.pairsCount", { n: pairCount })}</span>
+                      </>
+                    )}
+                    <span className="text-[var(--text-tertiary)] text-xs">·</span>
+                    <span className="text-xs text-[var(--text-secondary)]">
+                      {rounds.length} {rounds.length === 1 ? t("scheduleBuilder.roundSingular") : rounds.length < 5 ? t("scheduleBuilder.roundPluralFew") : t("scheduleBuilder.roundPluralMany")}
+                    </span>
+                  </div>
+                  {/* Rounds */}
+                  <div className="divide-y divide-[var(--border)]">
+                    {rounds.map((slot) => (
+                      <RoundCard
+                        key={slot.id}
+                        slot={slot}
+                        competitionId={competitionId}
+                        danceNames={sectionDanceNames.get(sectionId) ?? []}
+                        danceCount={sectionDanceCounts.get(sectionId) ?? 0}
+                        advancingCount={advancingCounts.get(slot.id) ?? null}
+                        danceDurationSec={danceDurationSec}
+                        transitionSec={transitionSec}
+                        maxPairsOnFloor={maxPairsOnFloor}
+                        drawAllowed={drawAllowedMap.get(slot.id) ?? false}
+                        onAddBreakAfter={setBreakAfterSlotId}
+                        onFloorControl={onFloorControl}
+                        activeFloor={activeFloor}
+                      />
+                    ))}
+                  </div>
+                </div>
               );
             })}
           </div>

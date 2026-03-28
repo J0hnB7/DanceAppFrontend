@@ -74,6 +74,33 @@ const T = {
   "final.dance_done_review": { cs: "Použijte tlačítka výše pro kontrolu ostatních tanců.", en: "Use the buttons above to review other dances." },
   "final.submitted_for": { cs: "Odesláno pro", en: "Submitted for" },
   "final.submit_dance": { cs: "Odeslat", en: "Submit" },
+
+  // Preliminary round page
+  "prelim.ping_alert": { cs: "Upozornění od porotní komise — prosím odevzdejte hodnocení", en: "Alert from jury committee — please submit your scoring" },
+  "prelim.offline_local": { cs: "Offline — hodnocení se uloží lokálně", en: "Offline — scoring will be saved locally" },
+  "prelim.selected_label": { cs: "Vybráno", en: "Selected" },
+  "prelim.remaining": { cs: "{n} zbývá", en: "{n} remaining" },
+  "prelim.group": { cs: "Skupina {n}", en: "Group {n}" },
+  "prelim.all_submitted_title": { cs: "Všechny tance ohodnoceny", en: "All dances scored" },
+  "prelim.submitted_title": { cs: "Hodnocení odesláno", en: "Scoring submitted" },
+  "prelim.all_thanks": { cs: "Děkujeme — čeká se na uzavření kola", en: "Thank you — waiting for round to close" },
+  "prelim.wait_next": { cs: "Čeká se na další tanec", en: "Waiting for next dance" },
+  "prelim.already_submitted": { cs: "— již ohodnoceno", en: "— already scored" },
+  "prelim.dance_already_desc": { cs: "Tento tanec jste již ohodnotili. Vyberte jiný tanec výše.", en: "You have already scored this dance. Select another dance above." },
+  "prelim.undecided_title": { cs: "Nerozhodnuté páry", en: "Undecided pairs" },
+  "prelim.undecided_one": { cs: "nerozhodnutý pár", en: "undecided pair" },
+  "prelim.undecided_few": { cs: "nerozhodnuté páry", en: "undecided pairs" },
+  "prelim.undecided_many": { cs: "nerozhodnutých párů", en: "undecided pairs" },
+  "prelim.submit_btn": { cs: "Odeslat", en: "Submit" },
+  "prelim.submit_anyway_btn": { cs: "Odeslat přesto", en: "Submit anyway" },
+  "prelim.less_crosses": { cs: "Méně křížů než požadováno", en: "Fewer crosses than required" },
+  "prelim.more_crosses": { cs: "Více křížů než požadováno", en: "More crosses than required" },
+  "prelim.marked": { cs: "Označeno {selected}, požadováno {required}", en: "Marked {selected}, required {required}" },
+
+  // Lobby page additional
+  "judge.ping_alert_short": { cs: "Upozornění od porotní komise", en: "Alert from jury committee" },
+  "judge.fallback_mode": { cs: "Záložní režim — kontrola každých 10 s", en: "Fallback mode — checking every 10 s" },
+  "judge.lobby_offline": { cs: "Offline — marks se uloží lokálně", en: "Offline — marks will be saved locally" },
 } as const;
 
 type TranslationKey = keyof typeof T;

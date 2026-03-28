@@ -104,7 +104,7 @@ export function CompetitionSidebar({
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
-  const { locale, setLocale } = useLocale();
+  const { t, locale, setLocale } = useLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -122,32 +122,33 @@ export function CompetitionSidebar({
 
   const navGroups: NavGroup[] = [
     {
-      label: "Příprava",
+      label: t("nav.groupPrepare"),
       items: [
-        { id: "overview", label: "Přehled", icon: icons.overview, href: base },
-        { id: "categories", label: "Kategorie", icon: icons.categories, href: `${base}/sections`, badge: sectionCount || undefined, badgeType: "count" },
-        { id: "pairs", label: "Páry", icon: icons.pairs, href: `${base}/pairs`, badge: pairsCount || undefined, badgeType: "count" },
-        { id: "judges", label: "Porota", icon: icons.judges, href: `${base}/judges`, badgeType: "count" },
-        { id: "checkin", label: "Check-in", icon: icons.checkin, href: `${base}/presence` },
-        { id: "schedule", label: "Harmonogram", icon: icons.schedule, href: `${base}/schedule` },
+        { id: "overview", label: t("nav.overview"), icon: icons.overview, href: base },
+        { id: "categories", label: t("nav.categories"), icon: icons.categories, href: `${base}/sections`, badge: sectionCount || undefined, badgeType: "count" },
+        { id: "pairs", label: t("nav.pairs"), icon: icons.pairs, href: `${base}/pairs`, badge: pairsCount || undefined, badgeType: "count" },
+        { id: "judges", label: t("nav.judges"), icon: icons.judges, href: `${base}/judges`, badgeType: "count" },
+        { id: "checkin", label: t("nav.checkin"), icon: icons.checkin, href: `${base}/presence` },
+        { id: "schedule", label: t("nav.schedule"), icon: icons.schedule, href: `${base}/schedule` },
       ],
     },
     {
-      label: "Průběh",
+      label: t("nav.groupLive"),
       items: [
-        { id: "live", label: "Live řízení", icon: icons.live, href: `${base}/live`, badge: "LIVE", badgeType: "live" },
-        { id: "results", label: "Vyhodnocení", icon: icons.results, href: `${base}/scoring` },
-        { id: "diplomas", label: "Diplomy", icon: icons.diplomas, href: `${base}/diplomas` },
+        { id: "live", label: t("nav.liveManagement"), icon: icons.live, href: `${base}/live`, badge: "LIVE", badgeType: "live" },
+        { id: "scoring", label: t("nav.liveRound"), icon: icons.live, href: `${base}/scoring` },
+        { id: "results", label: t("nav.results"), icon: icons.results, href: `${base}/results` },
+        { id: "diplomas", label: t("nav.diplomas"), icon: icons.diplomas, href: `${base}/diplomas` },
       ],
     },
     {
-      label: "Správa",
+      label: t("nav.groupAdmin"),
       items: [
-        { id: "content", label: "Obsah", icon: icons.content },
-        { id: "email", label: "E-maily & šablony", icon: icons.email, href: `${base}/notifications` },
-        { id: "payments", label: "Platby", icon: icons.payments, href: `${base}/payments` },
-        { id: "budget", label: "Rozpočet", icon: icons.budget, href: `${base}/budget` },
-        { id: "settings", label: "Nastavení", icon: icons.settings, href: `${base}/settings` },
+        { id: "content", label: t("nav.content"), icon: icons.content, href: `${base}?tab=content` },
+        { id: "email", label: t("nav.emails"), icon: icons.email, href: `${base}/notifications` },
+        { id: "payments", label: t("nav.payments"), icon: icons.payments, href: `${base}/payments` },
+        { id: "budget", label: t("nav.budget"), icon: icons.budget, href: `${base}/budget` },
+        { id: "settings", label: t("nav.settings"), icon: icons.settings, href: `${base}/settings` },
       ],
     },
   ];
@@ -155,6 +156,10 @@ export function CompetitionSidebar({
   const isActive = (item: NavItem) => {
     if (!item.href) return false;
     if (item.id === "overview") return pathname === base;
+    if (item.id === "results") {
+      return pathname.startsWith(`${base}/results`) ||
+        pathname.includes("/sections/") && pathname.includes("/results");
+    }
     return pathname.startsWith(item.href);
   };
 
@@ -185,14 +190,14 @@ export function CompetitionSidebar({
           className="flex items-center gap-2 rounded-md px-1.5 py-2 text-[13px] font-medium text-[#64748B] transition-colors duration-150 hover:text-[#94A3B8]"
         >
           <span className="h-3.5 w-3.5 shrink-0">{icons.back}</span>
-          Zpět na dashboard
+          {t("nav.backToDashboard")}
         </Link>
 
         {/* Utility icons row */}
         <div className="flex items-center gap-0.5 px-1">
           <button
             onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
+            aria-label={theme === "dark" ? t("nav.lightMode") : t("nav.darkMode")}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-[#4E5F72] transition-all duration-150 hover:bg-[rgba(255,255,255,0.06)] hover:text-[#94A3B8]"
           >
             <span className="h-[16px] w-[16px]">{theme === "dark" ? icons.moon : icons.sun}</span>
@@ -208,7 +213,7 @@ export function CompetitionSidebar({
 
           {/* Bell */}
           <button
-            aria-label="Upozornění"
+            aria-label={t("nav.notifications")}
             onClick={() => { setNotifOpen((v) => !v); setUserMenuOpen(false); }}
             className="relative flex h-8 w-8 items-center justify-center rounded-lg text-[#4E5F72] transition-all duration-150 hover:bg-[rgba(255,255,255,0.06)] hover:text-[#94A3B8]"
           >
@@ -221,7 +226,7 @@ export function CompetitionSidebar({
           </button>
 
           <button
-            aria-label="Účet"
+            aria-label={t("nav.accountMenu")}
             onClick={() => { setUserMenuOpen((v) => !v); setNotifOpen(false); }}
             className="flex h-7 w-7 ml-0.5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
             style={{ backgroundColor: avatarColor }}
@@ -237,11 +242,11 @@ export function CompetitionSidebar({
             <div className="relative z-[120] mx-1 mb-1 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#0F1624] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 border-b border-[rgba(255,255,255,0.07)]">
                 <span className="text-[12px] font-semibold text-[#94A3B8] uppercase tracking-wide">
-                  Upozornění{notifCount > 0 && <span className="ml-1.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-bold text-white">{notifCount}</span>}
+                  {t("nav.notifications")}{notifCount > 0 && <span className="ml-1.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-bold text-white">{notifCount}</span>}
                 </span>
                 {notifCount > 0 && (
                   <button onClick={markAllRead} className="flex items-center gap-1 text-[11px] text-[#4E5F72] hover:text-[#94A3B8] transition-colors">
-                    <CheckCheck className="h-3 w-3" /> vše přečteno
+                    <CheckCheck className="h-3 w-3" /> {t("nav.markAllRead")}
                   </button>
                 )}
               </div>
@@ -249,7 +254,7 @@ export function CompetitionSidebar({
                 {alerts.length === 0 ? (
                   <div className="flex flex-col items-center gap-2 py-6 text-center">
                     <Bell className="h-6 w-6 text-[#374151]" />
-                    <p className="text-[12px] text-[#4E5F72]">Žádná upozornění</p>
+                    <p className="text-[12px] text-[#4E5F72]">{t("nav.noNotifications")}</p>
                   </div>
                 ) : (
                   alerts.map((alert) => {
@@ -307,14 +312,14 @@ export function CompetitionSidebar({
                 onClick={() => setUserMenuOpen(false)}
                 className="flex w-full items-center px-3 py-2 text-[13px] text-[#94A3B8] hover:bg-[rgba(255,255,255,0.05)] hover:text-white transition-colors"
               >
-                Nastavení
+                {t("nav.settings")}
               </Link>
               <div className="h-px bg-[rgba(255,255,255,0.07)]" />
               <button
                 onClick={() => { setUserMenuOpen(false); logout(); }}
                 className="flex w-full items-center px-3 py-2 text-[13px] text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
               >
-                Odhlásit
+                {t("nav.logout")}
               </button>
             </div>
           </>
@@ -326,7 +331,7 @@ export function CompetitionSidebar({
       {/* Nav — scrollable */}
       <nav
         className="sidebar-nav flex-1 overflow-y-auto overflow-x-hidden px-3 py-1"
-        aria-label="Navigace soutěže"
+        aria-label={t("nav.competitionNav")}
         style={{ scrollbarWidth: "none" }}
       >
         {navGroups.map((group) => (
@@ -405,7 +410,7 @@ export function CompetitionSidebar({
         </span>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Otevřít menu"
+          aria-label={t("nav.openMenu")}
           aria-expanded={mobileOpen}
           aria-controls="comp-sidebar"
           className="flex h-9 w-9 items-center justify-center rounded-lg text-[#94A3B8] transition-all duration-150 hover:bg-[rgba(255,255,255,0.06)] hover:text-[#F1F5F9]"

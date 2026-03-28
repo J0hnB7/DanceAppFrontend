@@ -184,7 +184,7 @@ function JudgeStatusTable({
       {allIn && (
         <div className="mt-4 flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--success)]/30 bg-[var(--success)]/5 px-6 py-4">
           <CheckCircle2 className="h-6 w-6 text-[var(--success)]" />
-          <p className="font-semibold text-[var(--text-primary)]">Všechna hodnocení přijata</p>
+          <p className="font-semibold text-[var(--text-primary)]">{t("scoring.allMarksIn")}</p>
         </div>
       )}
     </div>
@@ -233,10 +233,10 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
       apiClient.post(`/marks/conflicts/${conflictId}/resolve`, { resolution }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["rounds", roundId, "submission-status"] });
-      toast({ title: "Konflikt vyřešen", variant: "success" });
+      toast({ title: t("scoring.conflictResolved"), variant: "success" });
     },
     onError: () => {
-      toast({ title: "Chyba při řešení konfliktu", variant: "destructive" });
+      toast({ title: t("scoring.conflictResolveFailed"), variant: "destructive" });
     },
   });
 
@@ -247,7 +247,7 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
       toast({ title: t("round.resultsCalculated"), variant: "success" });
       if (activeRound?.sectionId) {
         router.push(
-          `/dashboard/competitions/${competitionId}/sections/${activeRound.sectionId}/rounds/${roundId}/results`
+          `/dashboard/competitions/${competitionId}/sections/${activeRound.sectionId}/rounds/${roundId}`
         );
       }
     },
@@ -317,7 +317,7 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
           description={
             roundDetail
               ? `${roundDetail.roundType} · ${t("round.label")} ${roundDetail.roundNumber}`
-              : "Čekání na kolo"
+              : t("scoring.waitingForRound")
           }
           className="mb-0"
           backHref={`/dashboard/competitions/${competitionId}`}
@@ -342,8 +342,8 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
               <BarChart3 className="h-8 w-8 text-[var(--accent)]" />
             </div>
             <div>
-              <p className="font-semibold text-[var(--text-primary)]">{"Čekání na kolo"}</p>
-              <p className="text-sm text-[var(--text-secondary)]">{"Organizátor brzy otevře kolo."}</p>
+              <p className="font-semibold text-[var(--text-primary)]">{t("scoring.waitingForRound")}</p>
+              <p className="text-sm text-[var(--text-secondary)]">{t("scoring.organizerWillOpenRound")}</p>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)]" />
@@ -360,10 +360,10 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
               <AlertTriangle className="h-5 w-5 shrink-0 text-[var(--warning)]" />
               <div className="flex-1">
                 <p className="text-sm font-semibold text-[var(--text-primary)]">
-                  Remíza detekována — {tieDetected.dance}
+                  {t("scoring.tieDetected", { dance: tieDetected.dance })}
                 </p>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  {tieDetected.count} párů ve stejné pozici
+                  {t("scoring.tiedPairs", { count: tieDetected.count })}
                 </p>
               </div>
               <Button size="sm" variant="outline" onClick={() => setTieDetected(null)}>
@@ -383,7 +383,7 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-6 w-6 text-[var(--success)]" />
                 <div>
-                  <p className="font-semibold text-[var(--text-primary)]">Všechna hodnocení přijata</p>
+                  <p className="font-semibold text-[var(--text-primary)]">{t("scoring.allMarksIn")}</p>
                   <p className="text-sm text-[var(--text-secondary)]">
                     {t("scoring.calculate")}
                   </p>
@@ -404,7 +404,7 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
           {status && !allMarksIn && (
             <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] px-6 py-4 text-sm text-[var(--text-secondary)]">
               <Clock className="h-5 w-5 shrink-0" />
-              {t("scoring.waiting")} — {status.judges.filter((j) => !j.submitted).length} {t("judges.judge").toLowerCase()} čeká
+              {t("scoring.waiting")} — {status.judges.filter((j) => !j.submitted).length} {t("judges.judge").toLowerCase()} {t("scoring.pending")}
             </div>
           )}
         </div>

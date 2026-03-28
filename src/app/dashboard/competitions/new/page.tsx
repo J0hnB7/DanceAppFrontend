@@ -500,7 +500,7 @@ export default function NewCompetitionPage() {
               {step > 1 ? (
                 <Button type="button" variant="outline" onClick={() => setStep(1)}>
                   <ChevronLeft className="mr-1 h-4 w-4" />
-                  Zpět
+                  {t("common.back")}
                 </Button>
               ) : (
                 <div />

@@ -1,15 +1,8 @@
 "use client";
 
-import { use, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Trophy, Medal, BarChart3 } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
-import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
-import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Trophy, Medal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -18,101 +11,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { roundsApi } from "@/lib/api/rounds";
-import { scoringApi } from "@/lib/api/scoring";
 import type { RoundResultsResponse, PreliminaryResultResponse } from "@/lib/api/scoring";
 import { useLocale } from "@/contexts/locale-context";
-import { SkatingWorkbook } from "./skating-workbook";
 
-function PlacementBadge({ placement }: { placement: number }) {
+export function PlacementBadge({ placement }: { placement: number }) {
   if (placement === 1) return <Trophy className="h-4 w-4 text-yellow-500" />;
   if (placement === 2) return <Medal className="h-4 w-4 text-gray-400" />;
   if (placement === 3) return <Medal className="h-4 w-4 text-amber-700" />;
   return <span className="font-mono text-sm font-bold">{placement}</span>;
 }
 
-export default function RoundResultsPage({
-  params,
-}: {
-  params: Promise<{ id: string; sectionId: string; roundId: string }>;
-}) {
-  const { id: competitionId, sectionId, roundId } = use(params);
+export function FinalResults({ results }: { results: RoundResultsResponse }) {
   const { t } = useLocale();
-  const [showWorkbook, setShowWorkbook] = useState(false);
-
-  const { data: round, isLoading: roundLoading } = useQuery({
-    queryKey: ["rounds", "detail", roundId],
-    queryFn: () => roundsApi.get(roundId),
-  });
-
-  const { data: results, isLoading: resultsLoading } = useQuery({
-    queryKey: ["rounds", "detail", roundId, "results"],
-    queryFn: () => roundsApi.getResults(roundId),
-    enabled: round?.status === "CALCULATED",
-  });
-
-  if (roundLoading) {
-    return (
-      <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="mt-4 h-96 w-full" />
-      </AppShell>
-    );
-  }
-
-  const isFinal = round?.roundType === "FINAL";
-  const isPreliminary = round?.roundType === "PRELIMINARY";
-
-  return (
-    <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
-      <PageHeader
-        title={t("roundResults.title", { type: round?.roundType ?? "" })}
-        description={t("roundResults.roundNumber", { number: round?.roundNumber ?? "" })}
-        backHref={`/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}`}
-        actions={<Badge variant="success">{t("roundResults.calculated")}</Badge>}
-      />
-
-      {resultsLoading && <Skeleton className="h-96 w-full" />}
-
-      {isFinal && results && (
-        <>
-          <FinalResults results={results as RoundResultsResponse} t={t} />
-          <div className="mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowWorkbook((v) => !v)}
-            >
-              <BarChart3 className="h-4 w-4" />
-              {showWorkbook ? t("workbook.hide") : t("workbook.show")}
-            </Button>
-          </div>
-          {showWorkbook && (
-            <div className="mt-4">
-              <SkatingWorkbook
-                results={results as RoundResultsResponse}
-                judgeCount={round?.judgeCount ?? 5}
-              />
-            </div>
-          )}
-        </>
-      )}
-
-      {isPreliminary && results && (
-        <PreliminaryResults results={results as PreliminaryResultResponse} t={t} />
-      )}
-
-      {round?.status !== "CALCULATED" && (
-        <div className="flex flex-col items-center gap-3 py-20 text-center">
-          <Trophy className="h-12 w-12 text-[var(--text-tertiary)]" />
-          <p className="text-[var(--text-secondary)]">{t("roundResults.notCalculated")}</p>
-        </div>
-      )}
-    </AppShell>
-  );
-}
-
-function FinalResults({ results, t }: { results: RoundResultsResponse; t: (key: string) => string }) {
   return (
     <div className="flex flex-col gap-6">
       {results.dances.map((dance) => (
@@ -154,7 +64,8 @@ function FinalResults({ results, t }: { results: RoundResultsResponse; t: (key: 
   );
 }
 
-function PreliminaryResults({ results, t }: { results: PreliminaryResultResponse; t: (key: string, params?: Record<string, string | number>) => string }) {
+export function PreliminaryResults({ results }: { results: PreliminaryResultResponse }) {
+  const { t } = useLocale();
   const advancing = results.pairs.filter((p) => p.advances);
   const notAdvancing = results.pairs.filter((p) => !p.advances);
 

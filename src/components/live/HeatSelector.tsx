@@ -1,5 +1,7 @@
 'use client'
 
+import { useLocale } from '@/contexts/locale-context'
+
 export interface HeatItem {
   id: string
   number: number
@@ -22,6 +24,7 @@ interface Props {
 }
 
 export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props) {
+  const { t } = useLocale()
   const selectedHeat = heats.find((h) => h.id === selectedId)
 
   return (
@@ -37,7 +40,7 @@ export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props)
           className="text-[12px] font-bold uppercase tracking-[.8px]"
           style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
         >
-          {selectedId ? 'Skupina na parketu' : 'Vybrat skupinu'}
+          {selectedId ? t('live.heatOnFloor') : t('live.selectHeat')}
         </span>
         {danceLabel && (
           <span className="ml-auto text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -81,7 +84,7 @@ export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props)
                   color: active ? 'var(--accent)' : 'var(--text-primary)',
                 }}
               >
-                Skupina {heat.number}
+                {t('live.heat', { n: heat.number })}
               </span>
               {active ? (
                 <span
@@ -92,7 +95,7 @@ export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props)
                     fontFamily: 'var(--font-sora)',
                   }}
                 >
-                  NA PARKETU
+                  {t('live.heatOnFloorBadge')}
                 </span>
               ) : heat.submittedJudges !== undefined && heat.totalJudges !== undefined && heat.totalJudges > 0 ? (
                 <span
@@ -102,7 +105,7 @@ export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props)
                     color: heat.submittedJudges === heat.totalJudges ? 'var(--success)' : 'var(--text-tertiary)',
                   }}
                 >
-                  {heat.submittedJudges === heat.totalJudges ? '✓ Hotovo' : `${heat.submittedJudges}/${heat.totalJudges}`}
+                  {heat.submittedJudges === heat.totalJudges ? t('live.heatDone') : `${heat.submittedJudges}/${heat.totalJudges}`}
                 </span>
               ) : null}
             </button>
@@ -110,7 +113,7 @@ export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props)
         })}
         {heats.length === 0 && (
           <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            Vyberte tanec
+            {t('live.selectDanceFirst')}
           </p>
         )}
       </div>
@@ -122,7 +125,7 @@ export function HeatSelector({ heats, selectedId, onSelect, danceLabel }: Props)
             className="mb-2.5 text-[10px] font-bold uppercase tracking-[.8px]"
             style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
           >
-            Páry na parketu
+            {t('live.pairsOnFloor')}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {selectedHeat.pairNumbers.map((num) => (

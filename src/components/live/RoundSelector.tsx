@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useLocale } from '@/contexts/locale-context'
 
 export interface RoundItem {
   id: string
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function RoundSelector({ rounds, selectedId, onSelect }: Props) {
+  const { t } = useLocale()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -63,7 +65,7 @@ export function RoundSelector({ rounds, selectedId, onSelect }: Props) {
           className="text-[12px] font-bold uppercase tracking-[.8px]"
           style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
         >
-          Vybrat kolo
+          {t('live.selectRound')}
         </span>
       </div>
 
@@ -184,7 +186,7 @@ export function RoundSelector({ rounds, selectedId, onSelect }: Props) {
                               fontFamily: 'var(--font-sora)',
                             }}
                           >
-                            {round.status === 'active' ? 'Probíhá' : round.status === 'done' ? 'Hotovo' : 'Čeká'}
+                            {round.status === 'active' ? t('live.roundActive') : round.status === 'done' ? t('live.roundDone') : t('live.roundWaiting')}
                           </span>
                         </div>
                       </button>
@@ -196,7 +198,7 @@ export function RoundSelector({ rounds, selectedId, onSelect }: Props) {
           })()}
           {rounds.length === 0 && (
             <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-              Žádná kola
+              {t('live.noRounds')}
             </p>
           )}
         </div>

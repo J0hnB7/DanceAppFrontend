@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { X } from 'lucide-react'
+import { useLocale } from '@/contexts/locale-context'
 import { JudgeCard } from './JudgeCard'
 import apiClient from '@/lib/api-client'
 import { liveApi, type JudgeStatusDto } from '@/lib/api/live'
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId, activeRoundId, heatResults }: Props) {
+  const { t } = useLocale()
   const { toast } = useToast()
   const isHydrating = useLiveStore((s) => s.isHydrating)
   const judgeOnline = useLiveStore((s) => s.judgeOnline)
@@ -37,7 +39,7 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
       try {
         await liveApi.pingJudge(judgeId)
       } catch {
-        toast({ title: 'Ping se nezdařil', variant: 'destructive' })
+        toast({ title: t('live.pingFailed'), variant: 'destructive' })
       }
     },
     [toast]
@@ -101,7 +103,7 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
             className="text-[12px] font-bold uppercase tracking-[.8px]"
             style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
           >
-            Porotci
+            {t('live.judgesSection')}
           </span>
           {totalCount > 0 && (
             <span
@@ -111,7 +113,7 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
                 color: isHydrating ? 'var(--text-tertiary)' : allDone ? 'var(--success)' : 'var(--text-secondary)',
               }}
             >
-              {isHydrating ? 'načítám…' : `${submittedCount} / ${totalCount} potvrzeno`}
+              {isHydrating ? t('live.loading') : t('live.confirmed', { n: submittedCount, total: totalCount })}
             </span>
           )}
         </div>
@@ -171,7 +173,7 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
                   {selectedJudge.name}
                 </p>
                 <p className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
-                  Hodnocení páry — postupující ✓
+                  {t('live.judgeCallbacksTitle')}
                 </p>
               </div>
               <button
@@ -213,7 +215,7 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
               </div>
             ) : callbackPairIds && callbackPairIds.length === 0 ? (
               <p className="text-center text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
-                Žádné callbacky nebyly zadány
+                {t('live.noCallbacks')}
               </p>
             ) : null}
           </div>

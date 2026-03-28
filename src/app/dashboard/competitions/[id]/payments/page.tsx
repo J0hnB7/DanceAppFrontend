@@ -87,12 +87,12 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
       }),
     onSuccess: () => {
       invalidate();
-      toast({ title: "Faktura vytvořena", variant: "success" });
+      toast({ title: t("payments.invoiceCreated"), variant: "success" });
       setCreateOpen(false);
       setSelectedPairId("");
       setInvoiceAmount("");
     },
-    onError: () => toast({ title: "Nepodařilo se vytvořit fakturu", variant: "destructive" }),
+    onError: () => toast({ title: t("payments.failedCreate"), variant: "destructive" }),
   });
 
   const { data: invoices = [], isLoading } = useQuery({
@@ -135,7 +135,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
           </div>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
-            Vytvořit fakturu
+            {t("payments.createInvoice")}
           </Button>
         </div>
 
@@ -219,7 +219,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
                             onClick={() => invoicesApi.downloadPdf(competitionId, inv.id)}
                           >
                             <Download className="h-3.5 w-3.5" />
-                            Faktura PDF
+                            {t("payments.invoicePdf")}
                           </Button>
                         )}
                       </div>
@@ -236,14 +236,14 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Vytvořit fakturu</DialogTitle>
+            <DialogTitle>{t("payments.createInvoice")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Soutěžící</label>
+              <label className="mb-1.5 block text-sm font-medium">{t("payments.competitor")}</label>
               <Select onValueChange={setSelectedPairId} value={selectedPairId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Vyberte soutěžícího..." />
+                  <SelectValue placeholder={t("payments.selectCompetitor")} />
                 </SelectTrigger>
                 <SelectContent>
                   {pairs?.map((p) => (
@@ -257,7 +257,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-sm font-medium">Částka</label>
+                <label className="mb-1.5 block text-sm font-medium">{t("payments.amount")}</label>
                 <Input
                   type="number"
                   min="0"
@@ -268,7 +268,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium">Měna</label>
+                <label className="mb-1.5 block text-sm font-medium">{t("payments.currency")}</label>
                 <Select onValueChange={setInvoiceCurrency} value={invoiceCurrency}>
                   <SelectTrigger>
                     <SelectValue />
@@ -281,13 +281,13 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>Zrušit</Button>
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>{t("common.cancel")}</Button>
               <Button
                 onClick={() => createInvoice.mutate()}
                 loading={createInvoice.isPending}
                 disabled={!selectedPairId || !invoiceAmount}
               >
-                Vytvořit
+                {t("payments.create")}
               </Button>
             </div>
           </div>

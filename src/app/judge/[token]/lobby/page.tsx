@@ -157,7 +157,7 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
       {/* Ping alert */}
       {pingAlert && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-2.5 text-sm font-semibold text-[var(--accent)]">
-          <Bell className="h-4 w-4" /> Upozornění od porotní komise
+          <Bell className="h-4 w-4" /> {t("judge.ping_alert_short", locale)}
         </div>
       )}
 
@@ -165,7 +165,7 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
       {pollingFallback && isOnline && (
         <div className="flex items-center justify-center gap-2 border-b border-amber-200/30 bg-amber-50/20 px-4 py-2 text-xs font-medium text-amber-700 dark:text-amber-400">
           <Clock className="h-3.5 w-3.5" />
-          Záložní režim — kontrola každých 10 s
+          {t("judge.fallback_mode", locale)}
         </div>
       )}
 
@@ -173,7 +173,7 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
       {!isOnline && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
           <WifiOff className="h-3.5 w-3.5" />
-          Offline — marks se uloží lokálně
+          {t("judge.lobby_offline", locale)}
         </div>
       )}
 

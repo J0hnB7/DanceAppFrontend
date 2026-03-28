@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLiveStore } from "@/store/live-store";
 import { competitionsApi } from "@/lib/api/competitions";
 import { useSSE } from "@/hooks/use-sse";
+import { useLocale } from "@/contexts/locale-context";
 
 export default function CompetitionDisplayPage({
   params,
@@ -19,6 +20,7 @@ export default function CompetitionDisplayPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useLocale();
 
   const { data: competition } = useQuery({
     queryKey: ["competitions", "detail", id],
@@ -111,7 +113,7 @@ export default function CompetitionDisplayPage({
                     }}
                   >
                     {r.votes}/{r.totalJudges} ·{" "}
-                    {r.advances ? "POSTUPUJE" : "VYŘAZEN"}
+                    {r.advances ? t("display.advances") : t("display.eliminated")}
                   </span>
                 </div>
               ))}
@@ -121,7 +123,7 @@ export default function CompetitionDisplayPage({
               className="mb-3 text-[80px] font-extrabold leading-none"
               style={{ fontFamily: "var(--font-sora)" }}
             >
-              Probíhá
+              {t("display.ongoing")}
             </div>
           )}
 
@@ -132,7 +134,7 @@ export default function CompetitionDisplayPage({
                 className="text-sm"
                 style={{ color: "rgba(255,255,255,.4)" }}
               >
-                Porotci
+                {t("display.judges")}
               </div>
               <div className="flex gap-2">
                 {Object.entries(judgeStatuses).map(([judgeId, status]) => (
@@ -156,7 +158,7 @@ export default function CompetitionDisplayPage({
                 className="text-xs"
                 style={{ color: "rgba(255,255,255,.35)" }}
               >
-                {submittedCount}/{totalJudges} odevzdalo
+                {submittedCount}/{totalJudges} {t("display.submitted")}
               </div>
             </div>
           )}
@@ -166,7 +168,7 @@ export default function CompetitionDisplayPage({
           className="text-center text-2xl font-bold"
           style={{ color: "rgba(255,255,255,.25)", fontFamily: "var(--font-sora)" }}
         >
-          Připravuje se…
+          {t("display.gettingReady")}
         </div>
       )}
 

@@ -193,7 +193,7 @@ export default function NewSectionPage({ params }: { params: Promise<{ id: strin
         className="mb-4 flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Zpět
+        {t("common.back")}
       </button>
       <PageHeader title={t("newSection.title")} description={t("newSection.description")} />
       <div className="mx-auto max-w-lg">

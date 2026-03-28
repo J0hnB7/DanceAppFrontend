@@ -15,7 +15,7 @@ export function AppShell({ children, headerActions, sidebar, noPadding }: AppShe
     <div className="flex h-screen flex-col overflow-hidden">
       <SandboxBanner />
       <div className="flex flex-1 overflow-hidden">
-        {sidebar ?? <Sidebar />}
+        {sidebar !== undefined ? sidebar : <Sidebar />}
         <div className="flex flex-1 flex-col overflow-hidden">
           {headerActions && (
             <div className="flex shrink-0 items-center justify-end gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-6 py-3">

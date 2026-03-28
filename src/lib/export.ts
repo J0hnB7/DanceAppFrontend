@@ -30,6 +30,17 @@ export async function exportResultsToExcel(
   });
 }
 
+// ── XLSX export with judge scores (admin only) ────────────────────────────────
+export function downloadSectionResultsWithAudit(sectionId: string, sectionName: string) {
+  const url = `/api/v1/sections/${sectionId}/results/export?format=xlsx&withAudit=true`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${sectionName}_results_audit.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 // ── PDF export via browser print ──────────────────────────────────────────────
 export function exportResultsToPDF(
   summary: SectionFinalSummaryResponse,

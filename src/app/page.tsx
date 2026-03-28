@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useLocale } from "@/contexts/locale-context";
 
 /* ─── tiny helpers ───────────────────────────────────── */
 function useScrollNav(heroRef: React.RefObject<HTMLElement | null>) {
@@ -100,6 +101,7 @@ export default function Home() {
   const heroRef = useRef<HTMLElement>(null);
   const navLight = useScrollNav(heroRef);
   useReveal();
+  const { t } = useLocale();
 
   return (
     <>
@@ -142,7 +144,7 @@ export default function Home() {
           DanceApp
         </Link>
         <ul className="nav-links-hide" style={{ display: "flex", gap: 28, listStyle: "none" }}>
-          {[["#roles","Role"],["#scoring","Skating systém"],["#security","Bezpečnost"]].map(([href, label]) => (
+          {[["#roles", t("landing.navRoles")],["#scoring", t("landing.navScoring")],["#security", t("landing.navSecurity")]].map(([href, label]) => (
             <li key={href}>
               <a href={href} style={{ fontSize: ".875rem", textDecoration: "none", fontWeight: 500, color: navLight ? "#4B5563" : "rgba(255,255,255,.65)", transition: "color .2s" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "#4F46E5")}
@@ -157,12 +159,12 @@ export default function Home() {
             background: navLight ? "transparent" : "rgba(255,255,255,.1)",
             color: navLight ? "#4B5563" : "#fff",
             border: navLight ? "1px solid #E5E7EB" : "1px solid rgba(255,255,255,.2)",
-          }}>Přihlásit se</Link>
+          }}>{t("landing.signIn")}</Link>
           <Link href="/login" style={{
             padding: "7px 18px", borderRadius: 8, fontSize: ".85rem", fontWeight: 600, textDecoration: "none", transition: "all .2s",
             background: navLight ? "#4F46E5" : "#fff",
             color: navLight ? "#fff" : "#0A1628",
-          }}>Začít zdarma</Link>
+          }}>{t("landing.startFree")}</Link>
         </div>
       </nav>
 
@@ -187,24 +189,24 @@ export default function Home() {
         ))}
 
         <div className="hero-anim-0" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 100, border: "1px solid rgba(255,255,255,.14)", background: "rgba(255,255,255,.07)", backdropFilter: "blur(8px)", fontSize: ".76rem", fontWeight: 500, color: "rgba(255,255,255,.75)", marginBottom: 28 }}>
-          <span className="badge-dot" /> Připraveno pro reálné soutěže
+          <span className="badge-dot" /> {t("landing.heroReady")}
         </div>
 
         <h1 className="hero-anim-1" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(2.8rem,6vw,5.2rem)", fontWeight: 800, lineHeight: 1.05, letterSpacing: "-.04em", color: "#fff", maxWidth: 860, marginBottom: 22 }}>
-          Systém pro organizátory<br />
-          <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 45%,#6ee7b7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>tanečních soutěží.</em>
+          {t("landing.heroTitle1")}<br />
+          <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 45%,#6ee7b7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>{t("landing.heroTitle2")}</em>
         </h1>
 
         <p className="hero-anim-2" style={{ fontSize: "1.1rem", lineHeight: 1.72, color: "rgba(255,255,255,.55)", maxWidth: 540, marginBottom: 38 }}>
-          Přihlášky, platby, rozhodčí, Skating systém, diplomy — vše na jednom místě, bez papírů.
+          {t("landing.heroDesc")}
         </p>
 
         <div className="hero-anim-3" style={{ display: "flex", gap: 13, flexWrap: "wrap", justifyContent: "center", marginBottom: 72 }}>
           <Link href="/login" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", background: "#fff", color: "#0A1628", border: "none", fontWeight: 700, textDecoration: "none", transition: "all .2s" }}
             onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 8px 30px rgba(255,255,255,.15)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "none"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none"; }}
-          >Začít zdarma →</Link>
-          <a href="#roles" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", border: "1px solid rgba(255,255,255,.22)", color: "#fff", fontWeight: 500, textDecoration: "none", background: "rgba(255,255,255,.06)", transition: "all .2s" }}>Jak to funguje</a>
+          >{t("landing.ctaStart")}</Link>
+          <a href="#roles" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", border: "1px solid rgba(255,255,255,.22)", color: "#fff", fontWeight: 500, textDecoration: "none", background: "rgba(255,255,255,.06)", transition: "all .2s" }}>{t("landing.howItWorks")}</a>
         </div>
 
         {/* Dashboard preview */}
@@ -276,11 +278,11 @@ export default function Home() {
       {/* ROLES */}
       <section id="roles" style={{ padding: "96px 5vw", background: "#F9FAFB" }}>
         <div className="reveal" style={{ maxWidth: 1160, margin: "0 auto 52px", textAlign: "center" }}>
-          <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>Role v systému</div>
+          <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>{t("landing.rolesTag")}</div>
           <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.85rem,3.5vw,2.85rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: "-.03em", color: "#111827", marginBottom: 14 }}>
-            Jeden systém, <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>čtyři perspektivy</em>
+            {t("landing.rolesTitle1")} <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>{t("landing.rolesTitle2")}</em>
           </h2>
-          <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, margin: "0 auto" }}>Každá role dostane přesně to, co potřebuje.</p>
+          <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, margin: "0 auto" }}>{t("landing.rolesDesc")}</p>
         </div>
         <div className="roles-4col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 18, maxWidth: 1160, margin: "0 auto" }}>
           {[
@@ -309,10 +311,10 @@ export default function Home() {
       <section id="scoring" style={{ padding: "96px 5vw", background: "#fff" }}>
         <div className="sk-two-col" style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
           <div className="reveal">
-            <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>Scoring engine</div>
+            <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>{t("landing.scoringTag")}</div>
             <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.85rem,3.5vw,2.85rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: "-.03em", color: "#111827", marginBottom: 14 }}>
-              Mezinárodní<br />
-              <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>Skating systém</em>
+              {t("landing.scoringTitle1")}<br />
+              <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>{t("landing.scoringTitle2")}</em>
             </h2>
             <p style={{ fontSize: ".97rem", color: "#4B5563", lineHeight: 1.72, marginBottom: 24 }}>Automatický výpočet podle mezinárodního Skating systému (Rules 5–11). Matice hodnocení je průhledná a auditovatelná. Kolize jsou detekovány automaticky včetně návrhu Dance-off kol.</p>
             <div style={{ display: "flex", gap: 9, flexWrap: "wrap", marginTop: 26 }}>
@@ -369,11 +371,11 @@ export default function Home() {
       {/* ACCORDION */}
       <section style={{ padding: "96px 5vw", background: "#F9FAFB" }}>
         <div className="inner cx reveal" style={{ maxWidth: 1160, margin: "0 auto 52px", textAlign: "center" }}>
-          <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>Scénáře použití</div>
+          <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>{t("landing.accordionTag")}</div>
           <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.85rem,3.5vw,2.85rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: "-.03em", color: "#111827", marginBottom: 14 }}>
-            Od malé přehlídky<br />po <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>federační turnaj</em>
+            {t("landing.accordionTitle1")}<br />{t("landing.accordionTitle2Prefix")} <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>{t("landing.accordionTitle2Em")}</em>
           </h2>
-          <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, margin: "0 auto" }}>Systém se přizpůsobí rozsahu vaší soutěže.</p>
+          <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, margin: "0 auto" }}>{t("landing.accordionDesc")}</p>
         </div>
         <Accordion items={[
           { icon: "🏙️", title: "Regionální přehlídka", sub: "10–30 kategorií · 50–150 párů", text: "Import párů z Excelu, rozhodčí přes QR kód, Skating systém počítá výsledky automaticky. Diplomy k tisku hned po finále. Celý soutěžní den bez papírů.", stats: [["Kategorie","10–30"],["Páry","50–150"],["Rozhodčí","3–7"]] },
@@ -385,11 +387,11 @@ export default function Home() {
       {/* GDPR / SECURITY */}
       <section id="security" style={{ padding: "96px 5vw", background: "#fff" }}>
         <div className="reveal" style={{ maxWidth: 1160, margin: "0 auto 52px", textAlign: "center" }}>
-          <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>Bezpečnost &amp; GDPR</div>
+          <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#4F46E5", marginBottom: 11 }}>{t("landing.securityTag")}</div>
           <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.85rem,3.5vw,2.85rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: "-.03em", color: "#111827", marginBottom: 14 }}>
-            Spolehlivé a <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>bezpečné</em>
+            {t("landing.securityTitle1")} <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>{t("landing.securityTitle2")}</em>
           </h2>
-          <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, margin: "0 auto" }}>Systém splňuje požadavky GDPR a zajišťuje transparentnost pro organizátory i účastníky.</p>
+          <p style={{ fontSize: "1rem", color: "#4B5563", lineHeight: 1.72, maxWidth: 500, margin: "0 auto" }}>{t("landing.securityDesc")}</p>
         </div>
         <div className="gdpr-3col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18, maxWidth: 1160, margin: "0 auto" }}>
           {[
@@ -417,17 +419,17 @@ export default function Home() {
           <div key={i} style={{ position: "absolute", borderRadius: "50%", filter: "blur(90px)", pointerEvents: "none", width: orb.w, height: orb.h, background: orb.bg, animation: `orb ${orb.style.animationDuration} ease-in-out ${orb.style.animationDelay} infinite`, ...orb.style }} />
         ))}
         <div className="reveal" style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#67e8f9", marginBottom: 11 }}>Začít dnes</div>
+          <div style={{ display: "inline-block", fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#67e8f9", marginBottom: 11 }}>{t("landing.ctaTag")}</div>
           <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(2rem,4vw,3.4rem)", fontWeight: 800, letterSpacing: "-.04em", lineHeight: 1.1, color: "#fff", maxWidth: 700, margin: "0 auto 16px" }}>
-            Uspořádejte první soutěž<br />
-            <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>bez papírů.</em>
+            {t("landing.ctaTitle1")}<br />
+            <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", display: "inline-block", paddingBottom: "0.1em", marginBottom: "-0.1em" }}>{t("landing.ctaTitle2")}</em>
           </h2>
           <p style={{ color: "rgba(255,255,255,.5)", fontSize: "1rem", maxWidth: 450, margin: "0 auto 36px", lineHeight: 1.7 }}>
-            Zaregistrujte se zdarma a zkuste to nanečisto — nebo nás kontaktujte a vše vám ukážeme.
+            {t("landing.ctaDesc")}
           </p>
           <div style={{ display: "flex", gap: 13, flexWrap: "wrap", justifyContent: "center" }}>
-            <Link href="/login" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", background: "#fff", color: "#0A1628", fontWeight: 700, textDecoration: "none", transition: "all .2s" }}>Začít zdarma →</Link>
-            <a href="mailto:info@danceapp.cz" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", border: "1px solid rgba(255,255,255,.22)", color: "#fff", fontWeight: 500, textDecoration: "none", background: "rgba(255,255,255,.06)", transition: "all .2s" }}>Kontaktovat nás</a>
+            <Link href="/login" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", background: "#fff", color: "#0A1628", fontWeight: 700, textDecoration: "none", transition: "all .2s" }}>{t("landing.ctaStart")}</Link>
+            <a href="mailto:info@danceapp.cz" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", border: "1px solid rgba(255,255,255,.22)", color: "#fff", fontWeight: 500, textDecoration: "none", background: "rgba(255,255,255,.06)", transition: "all .2s" }}>{t("landing.ctaContact")}</a>
           </div>
         </div>
       </section>
@@ -440,11 +442,11 @@ export default function Home() {
             DanceApp
           </Link>
           <ul style={{ display: "flex", gap: 24, listStyle: "none" }}>
-            {[["#","Funkce"],["#","Dokumentace"],["mailto:info@danceapp.cz","Kontakt"],["#security","GDPR"]].map(([href, label]) => (
+            {[["#", t("landing.footerFeatures")],["#", t("landing.footerDocs")],["mailto:info@danceapp.cz", t("landing.footerContact")],["#security","GDPR"]].map(([href, label]) => (
               <li key={label}><a href={href} style={{ fontSize: ".8rem", color: "#4B5563", textDecoration: "none" }}>{label}</a></li>
             ))}
           </ul>
-          <div style={{ fontSize: ".73rem", color: "#9CA3AF" }}>© 2025 DanceApp. Navrženo pro tanec.</div>
+          <div style={{ fontSize: ".73rem", color: "#9CA3AF" }}>{t("landing.copyright")}</div>
         </div>
       </footer>
     </>

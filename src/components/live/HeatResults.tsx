@@ -1,5 +1,6 @@
 'use client'
 
+import { useLocale } from '@/contexts/locale-context'
 import type { HeatResult } from '@/store/live-store'
 
 interface Props {
@@ -7,13 +8,14 @@ interface Props {
 }
 
 export function HeatResults({ results }: Props) {
+  const { t } = useLocale()
   return (
     <div className="px-5 py-4">
       <div
         className="mb-3 text-xs font-medium uppercase tracking-widest"
         style={{ color: 'var(--text-tertiary)' }}
       >
-        6. Výsledky skupiny
+        {t('live.heatResultsTitle')}
       </div>
       <div className="flex flex-col gap-2">
         {results.map((r) => {
@@ -55,7 +57,7 @@ export function HeatResults({ results }: Props) {
                   color: r.advances ? 'var(--success)' : 'var(--destructive)',
                 }}
               >
-                {r.votes}/{r.totalJudges} · {r.advances ? 'POSTUPUJE' : 'VYŘAZEN'}
+                {r.votes}/{r.totalJudges} · {r.advances ? t('live.advances') : t('live.eliminated')}
               </span>
             </div>
           )

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/contexts/locale-context";
 
 interface PageHeaderProps {
   title: string;
@@ -14,6 +15,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions, className, backHref }: PageHeaderProps) {
   const router = useRouter();
+  const { t } = useLocale();
 
   return (
     <div className={cn("mb-6 flex items-start justify-between gap-4", className)}>
@@ -22,7 +24,7 @@ export function PageHeader({ title, description, actions, className, backHref }:
           <button
             onClick={() => router.push(backHref)}
             className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
-            aria-label="Zpět"
+            aria-label={t("common.back")}
           >
             <ArrowLeft className="h-4 w-4" />
           </button>

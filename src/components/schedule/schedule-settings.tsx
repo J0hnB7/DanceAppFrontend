@@ -6,6 +6,7 @@ import { scheduleConfigApi, type ScheduleConfig } from "@/lib/api/schedule";
 import { useScheduleStore } from "@/store/schedule-store";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/locale-context";
 
 interface ScheduleSettingsProps {
   competitionId: string;
@@ -42,11 +43,11 @@ const TRANSITION_OPTIONS = [
 const MAX_PAIRS_OPTIONS = [4, 6, 8, 10, 12, 16];
 const BREAK_DURATION_OPTIONS = [5, 10, 15, 20, 30];
 const JUDGE_BREAK_DURATION_OPTIONS = [5, 10, 15, 20];
-const JUDGE_BREAK_AFTER_OPTIONS = [
-  { value: 0, label: "Vypnuto" },
-  { value: 60, label: "60 min" },
-  { value: 90, label: "90 min" },
-  { value: 120, label: "120 min" },
+const JUDGE_BREAK_AFTER_VALUES = [
+  { value: 0, disabled: true },
+  { value: 60, disabled: false },
+  { value: 90, disabled: false },
+  { value: 120, disabled: false },
 ];
 const BUFFER_OPTIONS = [0, 5, 10, 15, 20, 30];
 
@@ -77,6 +78,7 @@ export function ScheduleSettings({
   initialConfig,
   onRegenerateRequest,
 }: ScheduleSettingsProps) {
+  const { t } = useLocale();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { scheduleStatus, generateSchedule, isGenerating } = useScheduleStore();
@@ -123,27 +125,27 @@ export function ScheduleSettings({
       await queryClient.invalidateQueries({ queryKey: ["competition", competitionId] });
       // Regenerate schedule with updated config
       await generateSchedule(competitionId);
-      toast({ title: "Nastavení uloženo, harmonogram přegenerován", variant: "success" });
+      toast({ title: t("scheduleSettings.saved"), variant: "success" });
       onRegenerateRequest?.();
     },
     onError: () => {
-      toast({ title: "Chyba při ukládání", variant: "destructive" });
+      toast({ title: t("scheduleSettings.saveFailed"), variant: "destructive" });
     },
   });
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 space-y-5 max-w-lg">
-      <h2 className="text-base font-semibold text-[var(--text-primary)]">Nastavení harmonogramu</h2>
+      <h2 className="text-base font-semibold text-[var(--text-primary)]">{t("scheduleSettings.title")}</h2>
 
       {scheduleStatus === "PUBLISHED" && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-200">
-          ⚠ Harmonogram je publikován. Změna vyžaduje nové vygenerování.
+          ⚠ {t("scheduleSettings.published")}
         </div>
       )}
 
       {/* Start time */}
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-[var(--text-secondary)]">Začátek soutěže</label>
+        <label className="text-xs font-medium text-[var(--text-secondary)]">{t("scheduleSettings.startTime")}</label>
         <input
           type="time"
           value={startTime}
@@ -155,7 +157,7 @@ export function ScheduleSettings({
       <div className="grid grid-cols-2 gap-4">
         {/* Dance duration */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[var(--text-secondary)]">Délka tance</label>
+          <label className="text-xs font-medium text-[var(--text-secondary)]">{t("scheduleSettings.danceDuration")}</label>
           <select
             value={config.danceDurationSeconds}
             onChange={(e) => setConfig((c) => ({ ...c, danceDurationSeconds: Number(e.target.value) }))}
@@ -169,7 +171,7 @@ export function ScheduleSettings({
 
         {/* Transition */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[var(--text-secondary)]">Nástup/odchod (rezerva)</label>
+          <label className="text-xs font-medium text-[var(--text-secondary)]">{t("scheduleSettings.transition")}</label>
           <select
             value={config.transitionDurationSeconds}
             onChange={(e) => setConfig((c) => ({ ...c, transitionDurationSeconds: Number(e.target.value) }))}
@@ -183,7 +185,7 @@ export function ScheduleSettings({
 
         {/* Max pairs */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[var(--text-secondary)]">Max soutěžících na parketu</label>
+          <label className="text-xs font-medium text-[var(--text-secondary)]">{t("scheduleSettings.maxPairs")}</label>
           <select
             value={config.maxPairsOnFloor}
             onChange={(e) => setConfig((c) => ({ ...c, maxPairsOnFloor: Number(e.target.value) }))}
@@ -197,7 +199,7 @@ export function ScheduleSettings({
 
         {/* Break duration */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[var(--text-secondary)]">Délka pauzy</label>
+          <label className="text-xs font-medium text-[var(--text-secondary)]">{t("scheduleSettings.breakDuration")}</label>
           <select
             value={config.breakDurationMinutes}
             onChange={(e) => setConfig((c) => ({ ...c, breakDurationMinutes: Number(e.target.value) }))}
@@ -212,7 +214,7 @@ export function ScheduleSettings({
 
       {/* Break rule */}
       <div className="space-y-2">
-        <label className="text-xs font-medium text-[var(--text-secondary)]">Vkládat pauzu</label>
+        <label className="text-xs font-medium text-[var(--text-secondary)]">{t("scheduleSettings.breakRule")}</label>
         {(["AFTER_ROUND", "BETWEEN_CATEGORIES", "BOTH"] as const).map((rule) => (
           <label key={rule} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -224,9 +226,9 @@ export function ScheduleSettings({
               className="accent-[var(--accent)]"
             />
             <span className="text-sm text-[var(--text-primary)]">
-              {rule === "AFTER_ROUND" && "Po každém kole"}
-              {rule === "BETWEEN_CATEGORIES" && "Mezi kategoriemi"}
-              {rule === "BOTH" && "Obojí"}
+              {rule === "AFTER_ROUND" && t("scheduleSettings.afterRound")}
+              {rule === "BETWEEN_CATEGORIES" && t("scheduleSettings.betweenCategories")}
+              {rule === "BOTH" && t("scheduleSettings.both")}
             </span>
           </label>
         ))}
@@ -234,22 +236,22 @@ export function ScheduleSettings({
 
       {/* Judge break */}
       <div className="rounded-lg border border-[var(--border)] p-4 space-y-3">
-        <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">Pauzy pro porotce</p>
+        <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">{t("scheduleSettings.judgeBreaks")}</p>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-[var(--text-secondary)]">Navrhnout pauzu po</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">{t("scheduleSettings.suggestBreakAfter")}</label>
             <select
               value={config.judgeBreakAfterMinutes}
               onChange={(e) => setConfig((c) => ({ ...c, judgeBreakAfterMinutes: Number(e.target.value) }))}
               className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             >
-              {JUDGE_BREAK_AFTER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+              {JUDGE_BREAK_AFTER_VALUES.map((o) => (
+                <option key={o.value} value={o.value}>{o.disabled ? t("scheduleSettings.disabled") : `${o.value} min`}</option>
               ))}
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-[var(--text-secondary)]">Délka pauzy</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">{t("scheduleSettings.breakDuration")}</label>
             <select
               value={config.judgeBreakDurationMinutes}
               onChange={(e) => setConfig((c) => ({ ...c, judgeBreakDurationMinutes: Number(e.target.value) }))}
@@ -265,10 +267,10 @@ export function ScheduleSettings({
 
       {/* Slot buffer */}
       <div className="rounded-lg border border-[var(--border)] p-4 space-y-2">
-        <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">Rezerva na zpoždění</p>
+        <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">{t("scheduleSettings.delayBuffer")}</p>
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-[var(--text-secondary)]">
-            Buffer za každým kolem: {config.slotBufferMinutes} min (0–30 min)
+            {t("scheduleSettings.bufferLabel", { min: config.slotBufferMinutes ?? 0 })}
           </label>
           <select
             value={config.slotBufferMinutes}
@@ -280,14 +282,14 @@ export function ScheduleSettings({
             ))}
           </select>
           <p className="text-xs text-[var(--text-tertiary)]">
-            Reálné soutěže vždy nabíhají zpoždění. Buffer se přičítá ke každému bloku jako záchrana.
+            {t("scheduleSettings.bufferDesc")}
           </p>
         </div>
       </div>
 
       <div className="flex gap-2 pt-1">
         <Button onClick={() => mutate()} loading={isPending || isGenerating}>
-          ⟳ Uložit a přegenerovat
+          ⟳ {t("scheduleSettings.saveRegenerate")}
         </Button>
       </div>
     </div>

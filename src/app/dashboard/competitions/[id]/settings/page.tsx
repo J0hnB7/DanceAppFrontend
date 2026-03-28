@@ -101,8 +101,8 @@ export default function SettingsPage({
   return (
     <AppShell sidebar={<CompetitionSidebar competitionId={id} />}>
       <PageHeader
-        title="Nastavení"
-        description="Konfigurace soutěže"
+        title={t("competitionDetail.settings")}
+        description={t("competition.settings.configDesc")}
         backHref={`/dashboard/competitions/${id}`}
       />
 
@@ -156,11 +156,11 @@ export default function SettingsPage({
                   </div>
 
                   <div>
-                    <p className="mb-1 text-xs font-medium text-[var(--text-secondary)]">QR kód pro platbu</p>
+                    <p className="mb-1 text-xs font-medium text-[var(--text-secondary)]">{t("competition.settings.qrCode")}</p>
                     <div className="flex items-start gap-4">
                       {bankQrCode ? (
                         <div className="relative shrink-0">
-                          <img src={bankQrCode} alt="QR kód" className="h-24 w-24 rounded-lg border border-[var(--border)] object-contain bg-white p-1" />
+                          <img src={bankQrCode} alt={t("competition.settings.qrCode")} className="h-24 w-24 rounded-lg border border-[var(--border)] object-contain bg-white p-1" />
                           <button
                             type="button"
                             onClick={() => { setBankQrCode(""); scheduleSave({ paymentConfig: { iban: bankIban, bic: bankBic, holder: bankHolder, address: bankAddress, qrCode: "" } }); }}
@@ -172,7 +172,7 @@ export default function SettingsPage({
                       ) : (
                         <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--surface-secondary)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]">
                           <svg xmlns="http://www.w3.org/2000/svg" className="mb-1 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m-4 4h8m-12 8h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                          <span className="text-[10px] font-medium">Nahrát QR</span>
+                          <span className="text-[10px] font-medium">{t("competition.settings.uploadQr")}</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -192,7 +192,7 @@ export default function SettingsPage({
                         </label>
                       )}
                       <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)]">
-                        Nahrajte QR kód pro platbu převodem. Zobrazí se na veřejné registrační stránce vedle bankovních údajů.
+                        {t("competition.settings.qrCodeDesc")}
                       </p>
                     </div>
                   </div>
@@ -277,7 +277,7 @@ export default function SettingsPage({
                   onClick={() => window.open(`/competitions/${id}/display`, "_blank")}
                 >
                   <Layers className="h-4 w-4" />
-                  Kiosk / projekce
+                  {t("competition.settings.kiosk")}
                 </Button>
               </div>
             </div>
@@ -286,8 +286,8 @@ export default function SettingsPage({
               <>
                 <Separator />
                 <div>
-                  <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">Soutěžní systém</p>
-                  <p className="mb-3 text-xs text-[var(--text-secondary)]">Způsob hodnocení pro každou kategorii.</p>
+                  <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">{t("competition.settings.scoringSystem")}</p>
+                  <p className="mb-3 text-xs text-[var(--text-secondary)]">{t("competition.settings.scoringSystemDesc")}</p>
                   <div className="flex flex-col gap-2">
                     {sections.map((section) => (
                       <div key={section.id} className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
@@ -298,7 +298,7 @@ export default function SettingsPage({
                         <Select
                           defaultValue={(section as unknown as { scoringSystem?: string }).scoringSystem ?? "skating"}
                           onValueChange={(v) => {
-                            toast({ title: `Systém pro ${section.name} nastaven na ${v}` });
+                            toast({ title: t("competition.settings.systemSet", { name: section.name, system: v }) });
                           }}
                         >
                           <SelectTrigger className="h-8 w-36 text-xs">

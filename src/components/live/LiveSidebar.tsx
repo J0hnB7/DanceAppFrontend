@@ -1,6 +1,7 @@
 'use client'
 
 import { Signal } from 'lucide-react'
+import { useLocale } from '@/contexts/locale-context'
 import { useLiveStore } from '@/store/live-store'
 
 interface RunningItem {
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export function LiveSidebar({ running, stats, selectedBlock }: Props) {
+  const { t } = useLocale()
   const { lastSentAt } = useLiveStore()
 
   return (
@@ -42,7 +44,7 @@ export function LiveSidebar({ running, stats, selectedBlock }: Props) {
             className="mb-2.5 text-[10px] font-bold uppercase tracking-[.8px]"
             style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
           >
-            Probíhá nyní
+            {t('live.runningNow')}
           </div>
           {running.map((item, i) => (
             <div
@@ -80,13 +82,13 @@ export function LiveSidebar({ running, stats, selectedBlock }: Props) {
           className="mb-2.5 text-[10px] font-bold uppercase tracking-[.8px]"
           style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
         >
-          Přehled dne
+          {t('live.dayOverview')}
         </div>
         {[
-          { lbl: 'Celkem kol', val: stats.totalRounds, cls: '' },
-          { lbl: 'Hotovo', val: stats.doneRounds, cls: 'green' },
-          { lbl: 'Čeká', val: stats.waitRounds, cls: 'blue' },
-          { lbl: 'Párů celkem', val: stats.totalPairs, cls: '' },
+          { lbl: t('live.totalRounds'), val: stats.totalRounds, cls: '' },
+          { lbl: t('live.roundDone'), val: stats.doneRounds, cls: 'green' },
+          { lbl: t('live.roundWaiting'), val: stats.waitRounds, cls: 'blue' },
+          { lbl: t('live.totalPairs'), val: stats.totalPairs, cls: '' },
         ].map((row) => (
           <div
             key={row.lbl}
@@ -129,7 +131,7 @@ export function LiveSidebar({ running, stats, selectedBlock }: Props) {
               style={{ color: 'var(--accent)', fontFamily: 'var(--font-sora)' }}
             >
               <Signal className="h-2.5 w-2.5" />
-              Poslední signál
+              {t('live.lastSignal')}
             </div>
             <div className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
               {(() => { const d = new Date(lastSentAt); return isFinite(d.getTime()) ? d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null; })()}
@@ -145,7 +147,7 @@ export function LiveSidebar({ running, stats, selectedBlock }: Props) {
             className="mb-2.5 text-[10px] font-bold uppercase tracking-[.8px]"
             style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
           >
-            Vybraný blok
+            {t('live.selectedBlock')}
           </div>
           <div
             className="rounded-[11px] border p-[11px]"

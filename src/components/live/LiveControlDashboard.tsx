@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Send, Lock, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
 
+import { useLocale } from '@/contexts/locale-context'
 import apiClient from '@/lib/api-client'
 import { useLiveStore } from '@/store/live-store'
 import { liveApi, type JudgeStatusDto } from '@/lib/api/live'
@@ -77,6 +78,7 @@ export function LiveControlDashboard({
     setRoundClosed,
   } = useLiveStore()
 
+  const { t } = useLocale()
   const { toast } = useToast()
   const [sending, setSending] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
@@ -112,11 +114,11 @@ export function LiveControlDashboard({
       } else {
         // Success — round closed and calculated
         setRoundClosed(true)
-        toast({ title: 'Kolo uzavřeno a vyhodnoceno' })
+        toast({ title: t('live.roundClosedToast') })
       }
     } catch (err) {
       console.error('[LiveControlDashboard] close round failed', err)
-      toast({ title: 'Nepodařilo se uzavřít kolo', variant: 'destructive' })
+      toast({ title: t('live.roundCloseFailed'), variant: 'destructive' })
     } finally {
       setClosing(false)
       setShowCloseConfirm(false)
@@ -132,10 +134,10 @@ export function LiveControlDashboard({
       setCloseResult(result)
       setShowCollisionDialog(false)
       setRoundClosed(true)
-      toast({ title: 'Kolo uzavřeno a vyhodnoceno' })
+      toast({ title: t('live.roundClosedToast') })
     } catch (err) {
       console.error('[LiveControlDashboard] resolve tie failed', err)
-      toast({ title: 'Nepodařilo se vyřešit remízu', variant: 'destructive' })
+      toast({ title: t('live.tieFailed'), variant: 'destructive' })
     } finally {
       setClosing(false)
     }
@@ -275,7 +277,7 @@ export function LiveControlDashboard({
     if (!selectedHeatId) return
     const realHeatId = heatIdMap[selectedHeatId]
     if (!realHeatId) {
-      toast({ title: 'Skupina zatím není synchronizována. Zkuste znovu.', variant: 'destructive' })
+      toast({ title: t('live.heatNotSynced'), variant: 'destructive' })
       return
     }
     setSending(true)
@@ -286,7 +288,7 @@ export function LiveControlDashboard({
       }
       await liveApi.sendHeat(realHeatId, selectedDanceName ?? undefined)
       setLastSentAt(new Date().toISOString())
-      toast({ title: 'Skupina odeslána porotcům' })
+      toast({ title: t('live.heatSent') })
       // Refresh judge statuses + online immediately after sending
       liveApi.getJudgeStatuses(realHeatId, selectedDanceName ?? undefined, competitionId).then((statuses) => {
         for (const s of statuses) {
@@ -295,22 +297,22 @@ export function LiveControlDashboard({
         }
       }).catch(() => {})
     } catch {
-      toast({ title: 'Nepodařilo se odeslat skupinu', variant: 'destructive' })
+      toast({ title: t('live.heatSendFailed'), variant: 'destructive' })
     } finally {
       setSending(false)
     }
-  }, [selectedHeatId, heatIdMap, activeRoundId, setLastSentAt, toast])
+  }, [selectedHeatId, heatIdMap, activeRoundId, setLastSentAt, toast, t])
   const selectedHeat = heats.find((h) => h.id === selectedHeatId)
 
   const roundLabel = selectedRound?.label ?? '—'
   const danceLabel = selectedDance?.name ?? '—'
-  const heatLabel = selectedHeat ? `Skupina ${selectedHeat.number}` : '—'
+  const heatLabel = selectedHeat ? t('live.heat', { n: selectedHeat.number }) : '—'
   const pairNumbers = selectedHeat?.pairNumbers ?? []
 
   // Bottom bar context text
-  let ctxLine = 'Vyberte kolo pro zahájení'
-  if (selectedRoundId && !selectedDanceId) ctxLine = `${roundLabel} — vyberte tanec`
-  else if (selectedDanceId && !selectedHeatId) ctxLine = `${danceLabel} — vyberte skupinu`
+  let ctxLine = t('live.ctxSelectRound')
+  if (selectedRoundId && !selectedDanceId) ctxLine = t('live.ctxSelectDance', { round: roundLabel })
+  else if (selectedDanceId && !selectedHeatId) ctxLine = t('live.ctxSelectHeat', { dance: danceLabel })
   else if (selectedHeatId) ctxLine = `${roundLabel} · ${danceLabel} · ${heatLabel}`
 
   // Sidebar stats
@@ -318,8 +320,8 @@ export function LiveControlDashboard({
   const waitRounds = rounds.filter((r) => r.status === 'upcoming').length
   const sidebarRunning = selectedRound ? [{
     label: `${competitionName} — ${selectedRound.label}`,
-    meta: heats.length > 0 ? `${heats.length} skupin` : '',
-    floorLabel: selectedHeat ? `Skupina ${selectedHeat.number} na parketu` : 'Vyberte skupinu',
+    meta: heats.length > 0 ? t('live.heatsCount', { n: heats.length }) : '',
+    floorLabel: selectedHeat ? t('live.heatOnFloorLabel', { n: selectedHeat.number }) : t('live.selectHeatPrompt'),
   }] : []
 
   // Sidebar selected block
@@ -369,7 +371,7 @@ export function LiveControlDashboard({
 
             {/* 2. Dance selector */}
             {selectedRoundId && (
-              <DanceSelector dances={dances} selectedId={selectedDanceId} onSelect={selectDance} roundLabel={selectedRound?.label} />
+              <DanceSelector dances={dances} selectedId={selectedDanceId} onSelect={selectDance} roundLabel={selectedRound?.label} confirmations={danceConfirmations} />
             )}
 
             {/* 3. Heat selector */}
@@ -384,7 +386,7 @@ export function LiveControlDashboard({
                   try {
                     await liveApi.skipHeat(realId)
                   } catch {
-                    toast({ title: 'Nepodařilo se přeskočit skupinu', variant: 'destructive' })
+                    toast({ title: t('live.heatSkipFailed'), variant: 'destructive' })
                   }
                 }}
                 onReorder={() => {}}
@@ -452,7 +454,7 @@ export function LiveControlDashboard({
           </div>
           {lastSentAt && (
             <div className="mt-0.5 text-[10px]" style={{ color: 'var(--success)' }}>
-              Odesláno{' '}
+              {t('live.sent')}{' '}
               {(() => { const d = new Date(lastSentAt); return isFinite(d.getTime()) ? d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null; })()}
             </div>
           )}
@@ -464,7 +466,7 @@ export function LiveControlDashboard({
             <button
               onClick={() => setShowCloseConfirm(true)}
               disabled={!allDancesConfirmed || closing}
-              title={!allDancesConfirmed ? 'Nejprve musí všichni porotci potvrdit všechny tance' : 'Uzavřít kolo a vyhodnotit'}
+              title={!allDancesConfirmed ? t('live.allConfirmedRequired') : t('live.closeConfirmTitle')}
               className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: allDancesConfirmed
@@ -474,7 +476,7 @@ export function LiveControlDashboard({
               }}
             >
               {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-              {closing ? 'Vyhodnocuji…' : 'Uzavřít kolo'}
+              {closing ? t('live.evaluating') : t('live.closeRound')}
             </button>
           )}
 
@@ -485,7 +487,7 @@ export function LiveControlDashboard({
               style={{ background: 'rgba(48,209,88,0.15)', color: '#30d158' }}
             >
               <CheckCircle2 className="h-4 w-4" />
-              Kolo uzavřeno
+              {t('live.roundClosed')}
             </div>
           )}
 
@@ -499,7 +501,7 @@ export function LiveControlDashboard({
             }}
           >
             <Send className="h-4 w-4" />
-            {sending ? 'Odesílám…' : 'Odeslat porotcům'}
+            {sending ? t('live.sending') : t('live.sendHeat')}
           </button>
         </div>
       </div>
@@ -517,15 +519,15 @@ export function LiveControlDashboard({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Klávesové zkratky
+              {t('live.keyboardShortcuts')}
             </div>
             {[
-              ['Space', 'Odeslat skupinu porotcům'],
-              ['←  /  →', 'Přepínání skupin'],
-              ['P', 'Prezentační mód'],
-              ['I', 'Zaznamenat incident'],
-              ['ESC', 'Zavřít modaly / prezentaci'],
-              ['?', 'Tato nápověda'],
+              ['Space', t('live.shortcutSendHeat')],
+              ['←  /  →', t('live.shortcutSwitchHeats')],
+              ['P', t('live.shortcutPresMode')],
+              ['I', t('live.shortcutIncident')],
+              ['ESC', t('live.shortcutEscape')],
+              ['?', t('live.shortcutHelp')],
             ].map(([key, desc]) => (
               <div
                 key={key}
@@ -552,7 +554,7 @@ export function LiveControlDashboard({
               className="mt-4 w-full rounded-lg py-2 text-xs"
               style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
             >
-              Zavřít
+              {t('common.close')}
             </button>
           </div>
         </div>
@@ -595,12 +597,10 @@ export function LiveControlDashboard({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-1 text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Uzavřít kolo a vyhodnotit?
+              {t('live.closeConfirmTitle')}
             </div>
             <p className="mb-5 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Po uzavření bude kolo vyhodnoceno dle pravidel Skating System.
-              Postupující páry budou přiřazeny do dalšího kola.
-              Tuto akci lze vzít zpět.
+              {t('live.closeConfirmDesc')}
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -609,7 +609,7 @@ export function LiveControlDashboard({
                 className="rounded-lg px-4 py-2 text-sm"
                 style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
               >
-                Zrušit
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleCloseRound}
@@ -618,7 +618,7 @@ export function LiveControlDashboard({
                 style={{ background: 'linear-gradient(135deg, #30d158, #28a745)' }}
               >
                 {closing && <Loader2 className="h-4 w-4 animate-spin" />}
-                Uzavřít a vyhodnotit
+                {t('live.closeAndEvaluate')}
               </button>
             </div>
           </div>
@@ -637,11 +637,10 @@ export function LiveControlDashboard({
           >
             <div className="mb-1 flex items-center gap-2 text-base font-semibold" style={{ color: '#ff9f0a' }}>
               <AlertTriangle className="h-5 w-5" />
-              Remíza na hranici postupu
+              {t('live.tieTitle')}
             </div>
             <p className="mb-4 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Na hranici postupu se umístilo více párů se stejným počtem bodů.
-              Dle pravidel WDSF (Rule E.8.1) postupují všechny páry na sdíleném místě.
+              {t('live.tieDesc')}
             </p>
 
             {/* Show tied pairs */}
@@ -651,7 +650,7 @@ export function LiveControlDashboard({
                 style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
               >
                 <div className="mb-1 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                  Páry na hranici:
+                  {t('live.tiePairsAtBoundary')}
                 </div>
                 <div style={{ color: 'var(--text-primary)' }}>
                   {closeResult.pairs
@@ -669,7 +668,7 @@ export function LiveControlDashboard({
                 className="rounded-lg px-4 py-2 text-sm"
                 style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
               >
-                Méně (nepostoupí)
+                {t('live.tieLess')}
               </button>
               <button
                 onClick={() => handleResolveTie('more')}
@@ -678,7 +677,7 @@ export function LiveControlDashboard({
                 style={{ background: 'linear-gradient(135deg, #30d158, #28a745)' }}
               >
                 {closing && <Loader2 className="h-4 w-4 animate-spin" />}
-                Více — postupují všichni (WDSF)
+                {t('live.tieMore')}
               </button>
             </div>
           </div>
@@ -698,7 +697,7 @@ export function LiveControlDashboard({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Výsledky kola — {closeResult.pairsToAdvance} párů postupuje
+              {t('live.roundResultsTitle', { n: closeResult.pairsToAdvance })}
             </div>
             <div className="space-y-2">
               {closeResult.pairs
@@ -731,7 +730,7 @@ export function LiveControlDashboard({
                           color: pair.advances ? '#30d158' : '#ff453a',
                         }}
                       >
-                        {pair.advances ? 'POSTUPUJE' : 'VYŘAZEN'}
+                        {pair.advances ? t('live.advances') : t('live.eliminated')}
                       </span>
                     </div>
                   </div>
@@ -742,7 +741,7 @@ export function LiveControlDashboard({
               className="mt-4 w-full rounded-lg py-2 text-xs"
               style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
             >
-              Zavřít
+              {t('common.close')}
             </button>
           </div>
         </div>

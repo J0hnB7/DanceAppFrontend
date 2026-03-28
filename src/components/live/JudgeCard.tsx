@@ -1,5 +1,6 @@
 'use client'
 
+import { useLocale } from '@/contexts/locale-context'
 import type { JudgeStatus } from '@/store/live-store'
 
 interface Props {
@@ -14,14 +15,14 @@ interface Props {
   onClick?: (judgeId: string) => void
 }
 
-const STATUS_LABELS: Record<JudgeStatus, string> = {
-  pending: 'Čeká',
-  scoring: 'Zadává',
-  submitted: 'Potvrzeno',
-  offline: 'Offline',
-}
-
 export function JudgeCard({ judgeId, letter, name, status, online, canPing, onPing, onClick }: Props) {
+  const { t } = useLocale()
+  const STATUS_LABELS: Record<JudgeStatus, string> = {
+    pending: t('live.judgeStatusPending'),
+    scoring: t('live.judgeStatusScoring'),
+    submitted: t('live.judgeStatusSubmitted'),
+    offline: t('live.judgeStatusOffline'),
+  }
   const isSubmitted = status === 'submitted'
   const isScoring = status === 'scoring'
   const isOffline = status === 'offline'
@@ -112,7 +113,7 @@ export function JudgeCard({ judgeId, letter, name, status, online, canPing, onPi
             boxShadow: online ? '0 0 4px rgba(48,209,88,.6)' : undefined,
           }}
         />
-        {online ? 'Online' : 'Offline'}
+        {online ? t('live.judgeOnline') : t('live.judgeOffline')}
       </div>
 
       {/* Ping button */}
@@ -127,7 +128,7 @@ export function JudgeCard({ judgeId, letter, name, status, online, canPing, onPi
             fontFamily: 'var(--font-sora)',
           }}
         >
-          Ping
+          {t('live.ping')}
         </button>
       )}
     </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { AlertTriangle, MonitorPlay, Printer, Keyboard, ArrowLeft, Sun, Moon, Signal } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { useLocale } from '@/contexts/locale-context'
 
 interface Props {
   competitionId: string
@@ -31,6 +32,7 @@ export function LiveStatusBar({
   const [time, setTime] = useState(() => new Date())
   const [isDark, setIsDark] = useState(true)
   const router = useRouter()
+  const { t } = useLocale()
 
   useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000)
@@ -57,7 +59,7 @@ export function LiveStatusBar({
           onClick={() => router.push(`/dashboard/competitions/${competitionId}`)}
           className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] shrink-0"
           style={{ color: 'var(--text-secondary)' }}
-          title="Zpět"
+          title={t("common.back")}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>

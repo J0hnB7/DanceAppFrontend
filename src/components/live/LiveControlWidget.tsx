@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { Activity } from 'lucide-react'
+import { useLocale } from '@/contexts/locale-context'
 import { useLiveStore } from '@/store/live-store'
 import type { JudgeStatusDto } from '@/lib/api/live'
 
@@ -27,6 +28,7 @@ export function LiveControlWidget({
   pairNumbers = [],
   onOpenFull,
 }: Props) {
+  const { t } = useLocale()
   const { judgeStatuses, selectedHeatId, hydrateFromServer } = useLiveStore()
 
   // Hydrate widget state when heat is active
@@ -84,7 +86,7 @@ export function LiveControlWidget({
             className="cursor-pointer rounded border px-2 py-0.5 text-[10px] transition-colors hover:bg-[var(--surface-2)]"
             style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           >
-            Otevřít Live řízení →
+            {t('live.openLive')}
           </button>
         )}
       </div>
@@ -135,7 +137,7 @@ export function LiveControlWidget({
               className="mb-1 flex items-center justify-between text-[10px]"
               style={{ color: 'var(--text-secondary)' }}
             >
-              <span>Porotci odevzdali</span>
+              <span>{t('live.judgesSubmitted')}</span>
               <span
                 style={{
                   fontFamily: 'var(--font-sora)',
@@ -167,7 +169,7 @@ export function LiveControlWidget({
         {/* Empty state */}
         {!selectedHeatId && (
           <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-            Live řízení není aktivní
+            {t('live.liveNotActive')}
           </p>
         )}
       </div>

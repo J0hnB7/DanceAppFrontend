@@ -2,6 +2,7 @@
 
 import { memo, useRef } from 'react'
 import { NowLine } from '@/components/live/NowLine'
+import { useLocale } from '@/contexts/locale-context'
 
 const PX_PER_MIN = 3.2
 const GAP_PX = 3
@@ -112,6 +113,7 @@ const Segment = memo(function Segment({ block }: { block: TimelineBlock }) {
 })
 
 export function DayTimeline({ blocks, showNowLine = true }: Props) {
+  const { t } = useLocale()
   const scrollRef = useRef<HTMLDivElement>(null)
   const totalPx = blocks.reduce((sum, b) => sum + b.durationMinutes * PX_PER_MIN + GAP_PX, 0)
 
@@ -123,7 +125,7 @@ export function DayTimeline({ blocks, showNowLine = true }: Props) {
           className="text-[10px] font-bold uppercase tracking-[.8px]"
           style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
         >
-          Harmonogram dne
+          {t('scheduleBuilder.daySchedule')}
         </span>
         {blocks.length > 0 && (
           <span

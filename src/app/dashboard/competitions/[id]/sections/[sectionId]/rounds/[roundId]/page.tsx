@@ -2,7 +2,11 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Square, BarChart3, Clock, CheckCircle2, Users, AlertTriangle, Bell } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Play, Square, BarChart3, Clock, CheckCircle2, Users, AlertTriangle, Bell,
+  Share2, FileSpreadsheet,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
@@ -20,9 +24,13 @@ import {
 } from "@/components/ui/dialog";
 import { useRound, useRoundAction, useSubmissionStatus } from "@/hooks/queries/use-rounds";
 import { useSection } from "@/hooks/queries/use-sections";
+import { roundsApi } from "@/lib/api/rounds";
 import { formatTime, cn, getRoundStatusBadgeVariant, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
+import { FinalResults, PreliminaryResults } from "@/components/results/round-results-display";
+import { downloadSectionResultsWithAudit } from "@/lib/export";
+import type { RoundResultsResponse, PreliminaryResultResponse } from "@/lib/api/scoring";
 
 // ── CollisionResolutionDialog ─────────────────────────────────────────────────
 function CollisionResolutionDialog({
@@ -188,15 +196,23 @@ export default function RoundDetailPage({
   const router = useRouter();
   const [collisionOpen, setCollisionOpen] = useState(false);
 
+  const isCalculated = round?.status === "CALCULATED";
+
+  const { data: results, isLoading: resultsLoading } = useQuery({
+    queryKey: ["rounds", "detail", roundId, "results"],
+    queryFn: () => roundsApi.getResults(roundId),
+    enabled: isCalculated,
+  });
+
   const dances = (section?.dances.map((d) => d.danceName).filter(Boolean) ?? []) as string[];
+  const isFinal = round?.roundType === "FINAL";
 
   const handleOpen = async () => {
     try {
       await actions.start.mutateAsync();
       toast({ title: t("round.roundOpened") });
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, t("common.error"));
-      toast({ title: msg, variant: "destructive" });
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     }
   };
 
@@ -206,8 +222,7 @@ export default function RoundDetailPage({
       await actions.close.mutateAsync();
       toast({ title: t("round.roundClosed") });
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, t("common.error"));
-      toast({ title: msg, variant: "destructive" });
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     }
   };
 
@@ -215,16 +230,12 @@ export default function RoundDetailPage({
     try {
       await actions.calculate.mutateAsync();
       toast({ title: t("round.resultsCalculated"), variant: "success" });
-      router.push(
-        `/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}/results`
-      );
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
         setCollisionOpen(true);
       } else {
-        const msg = getErrorMessage(err, t("common.error"));
-        toast({ title: msg, variant: "destructive" });
+        toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
       }
     }
   };
@@ -237,20 +248,23 @@ export default function RoundDetailPage({
         title: choice === "more" ? t("round.resolvedMore") : t("round.resolvedFewer"),
         variant: "success",
       });
-      router.push(
-        `/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}/results`
-      );
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, t("common.error"));
-      toast({ title: msg, variant: "destructive" });
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
     }
   };
 
   const handleReminder = (judgeNumber: number) => {
-    toast({
-      title: t("round.reminderSent", { number: judgeNumber }),
-      variant: "success",
-    });
+    toast({ title: t("round.reminderSent", { number: judgeNumber }), variant: "success" });
+  };
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/scoreboard/${competitionId}`;
+    await navigator.clipboard.writeText(url);
+    toast({ title: t("round.linkCopied"), variant: "success" });
+  };
+
+  const handleExportWithScores = () => {
+    downloadSectionResultsWithAudit(sectionId, section?.name ?? "results");
   };
 
   if (isLoading || !round) {
@@ -306,19 +320,17 @@ export default function RoundDetailPage({
               {t("round.calculateResults")}
             </Button>
           )}
-          {round.status === "CALCULATED" && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                router.push(
-                  `/dashboard/competitions/${competitionId}/sections/${sectionId}/rounds/${roundId}/results`
-                )
-              }
-            >
-              <BarChart3 className="h-4 w-4" />
-              {t("round.viewResults")}
-            </Button>
+          {isCalculated && (
+            <>
+              <Button size="sm" variant="outline" onClick={handleShare}>
+                <Share2 className="h-4 w-4" />
+                {t("round.shareLink")}
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleExportWithScores}>
+                <FileSpreadsheet className="h-4 w-4" />
+                {t("round.exportWithScores")}
+              </Button>
+            </>
           )}
         </div>
       }
@@ -328,9 +340,7 @@ export default function RoundDetailPage({
         description={`${round.judgeCount} ${t("judges.title")} · ${section?.name ?? ""}`}
         backHref={`/dashboard/competitions/${competitionId}/sections/${sectionId}`}
         actions={
-          <Badge
-            variant={getRoundStatusBadgeVariant(round.status)}
-          >
+          <Badge variant={getRoundStatusBadgeVariant(round.status)}>
             {round.status}
           </Badge>
         }
@@ -395,6 +405,28 @@ export default function RoundDetailPage({
           dances={dances.length > 0 ? dances : ["Dance 1", "Dance 2", "Dance 3"]}
           onSendReminder={handleReminder}
         />
+      )}
+
+      {/* Results — shown inline after calculation */}
+      {isCalculated && (
+        <div className="mt-8">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[var(--border)]" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+              {t("round.resultsSection")}
+            </h2>
+            <div className="h-px flex-1 bg-[var(--border)]" />
+          </div>
+
+          {resultsLoading && <Skeleton className="h-64 w-full" />}
+
+          {results && isFinal && (
+            <FinalResults results={results as RoundResultsResponse} />
+          )}
+          {results && !isFinal && (
+            <PreliminaryResults results={results as PreliminaryResultResponse} />
+          )}
+        </div>
       )}
 
       {/* Collision dialog */}

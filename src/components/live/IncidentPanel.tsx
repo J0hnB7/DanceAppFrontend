@@ -2,19 +2,15 @@
 
 import { useState } from 'react'
 import { AlertTriangle, Plus } from 'lucide-react'
+import { useLocale } from '@/contexts/locale-context'
 import type { Incident } from '@/store/live-store'
 import { useLiveStore } from '@/store/live-store'
 import { liveApi } from '@/lib/api/live'
 import { useToast } from '@/hooks/use-toast'
 
-const INCIDENT_TYPES = [
-  { value: 'withdrawal', label: 'Stažení páru' },
-  { value: 'penalty', label: 'Penalizace' },
-  { value: 'injury', label: 'Zranění' },
-  { value: 'other', label: 'Jiné' },
-] as const
+const INCIDENT_TYPE_VALUES = ['withdrawal', 'penalty', 'injury', 'other'] as const
 
-type IncidentType = typeof INCIDENT_TYPES[number]['value']
+type IncidentType = typeof INCIDENT_TYPE_VALUES[number]
 
 interface Props {
   incidents: Incident[]
@@ -26,6 +22,13 @@ interface Props {
 }
 
 export function IncidentPanel({ incidents, competitionId, roundId, heatId, modal, onClose }: Props) {
+  const { t } = useLocale()
+  const INCIDENT_TYPES = [
+    { value: 'withdrawal' as IncidentType, label: t('live.incidentWithdrawal') },
+    { value: 'penalty' as IncidentType, label: t('live.incidentPenalty') },
+    { value: 'injury' as IncidentType, label: t('live.incidentInjury') },
+    { value: 'other' as IncidentType, label: t('live.incidentOther') },
+  ]
   const [showForm, setShowForm] = useState(modal ?? false)
   const [type, setType] = useState<IncidentType>('withdrawal')
   const [pairNumber, setPairNumber] = useState('')
@@ -54,7 +57,7 @@ export function IncidentPanel({ incidents, competitionId, roundId, heatId, modal
       setShowForm(false)
       onClose?.()
     } catch {
-      toast({ title: 'Nepodařilo se uložit incident', variant: 'destructive' })
+      toast({ title: t('live.incidentSaveFailed'), variant: 'destructive' })
     } finally {
       setSubmitting(false)
     }
@@ -66,7 +69,7 @@ export function IncidentPanel({ incidents, competitionId, roundId, heatId, modal
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
             <AlertTriangle className="h-4 w-4" style={{ color: 'var(--destructive)' }} />
-            Incident
+            {t('live.incidentModal')}
           </div>
           <button
             onClick={onClose}
@@ -88,7 +91,7 @@ export function IncidentPanel({ incidents, competitionId, roundId, heatId, modal
             className="text-[12px] font-bold uppercase tracking-[.8px]"
             style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sora)' }}
           >
-            Incidenty
+            {t('live.incidents')}
           </span>
           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>({incidents.length})</span>
           <button
@@ -97,7 +100,7 @@ export function IncidentPanel({ incidents, competitionId, roundId, heatId, modal
             style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           >
             <Plus className="h-3 w-3" />
-            Přidat
+            {t('live.addIncident')}
           </button>
         </div>
       )}
@@ -127,14 +130,14 @@ export function IncidentPanel({ incidents, competitionId, roundId, heatId, modal
             type="number"
             value={pairNumber}
             onChange={(e) => setPairNumber(e.target.value)}
-            placeholder="Číslo páru (volitelné)"
+            placeholder={t('live.incidentPairPlaceholder')}
             className="mb-2 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none"
             style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
           />
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Poznámka *"
+            placeholder={t('live.incidentNotePlaceholder')}
             rows={2}
             className="mb-3 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none resize-none"
             style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
@@ -146,14 +149,14 @@ export function IncidentPanel({ incidents, competitionId, roundId, heatId, modal
               className="cursor-pointer rounded-lg px-4 py-2 text-xs font-semibold transition-colors disabled:opacity-40"
               style={{ background: 'var(--accent)', color: '#fff' }}
             >
-              {submitting ? 'Ukládám...' : 'Uložit incident'}
+              {submitting ? t('live.incidentSaving') : t('live.incidentSaveButton')}
             </button>
             <button
               onClick={() => setShowForm(false)}
               className="cursor-pointer rounded-lg border px-4 py-2 text-xs transition-colors hover:bg-[var(--surface-2)]"
               style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
             >
-              Zrušit
+              {t('common.cancel')}
             </button>
           </div>
         </div>
@@ -181,8 +184,8 @@ export function IncidentPanel({ incidents, competitionId, roundId, heatId, modal
                   className="text-xs font-semibold"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  {incident.type === 'withdrawal' ? 'Stažení' : 'Penalizace'}
-                  {incident.pairNumber ? ` — pár ${incident.pairNumber}` : ''}
+                  {incident.type === 'withdrawal' ? t('live.incidentDisplayWithdrawal') : t('live.incidentDisplayPenalty')}
+                  {incident.pairNumber ? ` — ${t('live.incidentPairRef', { n: incident.pairNumber })}` : ''}
                 </span>
                 <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                   {new Date(incident.timestamp).toLocaleTimeString('cs-CZ', {

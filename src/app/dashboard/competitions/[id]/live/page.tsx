@@ -98,15 +98,15 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
         apiClient.get<{ judges: Array<{ judgeTokenId: string; status: string }> }>(
           `/competitions/${competitionId}/connectivity`
         ).then((res) => {
+          const connectivity = res.data.judges ?? [];
           setBaseJudges((prev) =>
             prev.map((j) => {
-              const conn = res.data.judges?.find((c) => c.judgeTokenId === j.judgeId);
+              const conn = connectivity.find((c) => c.judgeTokenId === j.judgeId);
               if (!conn) return j;
-              const isOnline = conn.status === 'ONLINE';
-              updateJudgeOnline(j.judgeId, isOnline);
-              return { ...j, online: isOnline };
+              return { ...j, online: conn.status === 'ONLINE' };
             })
           );
+          connectivity.forEach((c) => updateJudgeOnline(c.judgeTokenId, c.status === 'ONLINE'));
         }).catch(() => {});
       })
       .catch(() => {});
@@ -134,15 +134,15 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
       apiClient.get<{ judges: Array<{ judgeTokenId: string; status: string }> }>(
         `/competitions/${competitionId}/connectivity`
       ).then((res) => {
+        const onlineMap = new Map(res.data.judges?.map((c) => [c.judgeTokenId, c.status === 'ONLINE']));
         setBaseJudges((prev) =>
           prev.map((j) => {
-            const conn = res.data.judges?.find((c) => c.judgeTokenId === j.judgeId);
-            if (!conn) return j;
-            const isOnline = conn.status === 'ONLINE';
-            updateJudgeOnline(j.judgeId, isOnline);
+            const isOnline = onlineMap.get(j.judgeId);
+            if (isOnline === undefined) return j;
             return { ...j, online: isOnline };
           })
         );
+        res.data.judges?.forEach((c) => updateJudgeOnline(c.judgeTokenId, c.status === 'ONLINE'));
       }).catch(() => {});
     const id = setInterval(refresh, 30_000);
     return () => clearInterval(id);

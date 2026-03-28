@@ -21,7 +21,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 function LoginPageInner() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
@@ -111,21 +111,21 @@ function LoginPageInner() {
           {/* center content */}
           <div style={{ position: "relative", zIndex: 1 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 13px", borderRadius: 100, border: "1px solid rgba(255,255,255,.14)", background: "rgba(255,255,255,.07)", fontSize: ".73rem", fontWeight: 500, color: "rgba(255,255,255,.7)", marginBottom: 24 }}>
-              <span className="badge-dot-g" /> Systém pro taneční soutěže
+              <span className="badge-dot-g" /> {t("auth.systemTagline")}
             </div>
             <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.9rem,2.8vw,2.7rem)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-.04em", color: "#fff", marginBottom: 16 }}>
-              Organizujte soutěže<br />
-              <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 45%,#6ee7b7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>bez papírů.</em>
+              {locale === "en" ? "Organize competitions" : "Organizujte soutěže"}<br />
+              <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 45%,#6ee7b7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{locale === "en" ? "without paperwork." : "bez papírů."}</em>
             </h2>
             <p style={{ fontSize: ".97rem", lineHeight: 1.72, color: "rgba(255,255,255,.5)", maxWidth: 400, marginBottom: 40 }}>
-              Přihlášky, platby, rozhodčí, Skating systém, diplomy — vše na jednom místě.
+              {t("auth.taglineDesc")}
             </p>
 
           </div>
 
           {/* bottom */}
           <div style={{ position: "relative", zIndex: 1 }}>
-            <p style={{ fontSize: ".73rem", color: "rgba(255,255,255,.25)" }}>© 2025 DanceApp. Navrženo pro tanec.</p>
+            <p style={{ fontSize: ".73rem", color: "rgba(255,255,255,.25)" }}>{t("auth.copyright")}</p>
           </div>
         </div>
 
@@ -207,7 +207,7 @@ function LoginPageInner() {
                 )}
 
                 <button type="submit" className="login-btn" disabled={loading} style={{ marginTop: 4 }}>
-                  {loading ? "Přihlašuji…" : t("auth.signIn")}
+                  {loading ? t("auth.signingIn") : t("auth.signIn")}
                 </button>
 
                 <p style={{ textAlign: "center", fontSize: ".83rem", color: "#6B7280", marginTop: 4 }}>
@@ -220,7 +220,7 @@ function LoginPageInner() {
             {/* back to landing */}
             <p style={{ textAlign: "center", marginTop: 20, fontSize: ".78rem", color: "#9CA3AF" }}>
               <Link href="/" style={{ color: "#6B7280", textDecoration: "none" }}>
-                ← Zpět na hlavní stránku
+                {t("auth.backToHome")}
               </Link>
             </p>
           </div>

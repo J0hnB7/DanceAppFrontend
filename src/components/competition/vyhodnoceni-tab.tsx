@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { CheckCircle2, Download, Clock, Award, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api-client";
+import { useLocale } from "@/contexts/locale-context";
 
 interface PairInfo {
   id: string;
@@ -29,16 +30,20 @@ interface Props {
 
 type ResultView = "vysledky" | string; // "vysledky" | roundId
 
-const ROUND_TYPE_LABEL: Record<string, string> = {
-  HEAT: "1. kolo",
-  SEMIFINAL: "Semifinále",
-  FINAL: "Finále",
-  SINGLE_ROUND: "Kolo",
-};
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
-function roundLabel(r: { roundType: string; roundNumber: number }): string {
-  if (r.roundType === "PRELIMINARY") return `Kolo ${r.roundNumber}`;
-  return ROUND_TYPE_LABEL[r.roundType] ?? r.roundType;
+function getRoundTypeLabel(t: TFn): Record<string, string> {
+  return {
+    HEAT: t("results.roundHeat"),
+    SEMIFINAL: t("results.roundSemifinal"),
+    FINAL: t("results.roundFinal"),
+    SINGLE_ROUND: t("results.roundSingle"),
+  };
+}
+
+function roundLabel(r: { roundType: string; roundNumber: number }, t: TFn): string {
+  if (r.roundType === "PRELIMINARY") return t("results.roundPrelim", { n: r.roundNumber });
+  return getRoundTypeLabel(t)[r.roundType] ?? r.roundType;
 }
 
 function pairName(pair: PairInfo) {
@@ -61,10 +66,12 @@ function VysledkovaListina({
   rounds: RoundDto[];
   pairs?: PairInfo[];
 }) {
+  const { t } = useLocale();
+
   if (!summary || summary.rankings.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">
-        Výsledky nejsou k dispozici.
+        {t("results.noResults")}
       </p>
     );
   }
@@ -88,9 +95,9 @@ function VysledkovaListina({
   );
   const heatOnly = ranked.filter((r) => r.finalPlacement > (finalCount + semifinalCount || 0));
 
-  if (finalists.length) groups.push({ label: "Finále", rows: finalists });
-  if (semiFinalists.length) groups.push({ label: "Semifinále", rows: semiFinalists });
-  if (heatRounds.length && heatOnly.length) groups.push({ label: "1. kolo", rows: heatOnly });
+  if (finalists.length) groups.push({ label: t("results.roundFinal"), rows: finalists });
+  if (semiFinalists.length) groups.push({ label: t("results.roundSemifinal"), rows: semiFinalists });
+  if (heatRounds.length && heatOnly.length) groups.push({ label: t("results.roundHeat"), rows: heatOnly });
   if (!groups.length) groups.push({ label: "", rows: ranked });
 
   return (
@@ -161,6 +168,7 @@ function PreliminaryRoundView({
   roundId: string;
   pairs?: PairInfo[];
 }) {
+  const { t } = useLocale();
   const { data, isLoading } = useQuery({
     queryKey: ["round-preliminary", roundId],
     queryFn: () =>
@@ -171,7 +179,7 @@ function PreliminaryRoundView({
 
   if (isLoading) return <div className="py-8 flex justify-center"><Spinner /></div>;
   if (!data?.pairs?.length) return (
-    <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">Výsledky nejsou k dispozici.</p>
+    <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">{t("results.noResults")}</p>
   );
 
   const sorted = [...(data.pairs as PrelimPair[])].sort((a, b) => a.startNumber - b.startNumber);
@@ -258,8 +266,9 @@ function FinalRoundView({
   results: RoundResultsResponse;
   pairs?: PairInfo[];
 }) {
+  const { t } = useLocale();
   if (!results.dances?.length) return (
-    <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">Výsledky nejsou k dispozici.</p>
+    <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">{t("results.noResults")}</p>
   );
 
   // All unique pairs sorted by start number
@@ -292,13 +301,13 @@ function FinalRoundView({
           <tr className="border-b border-[var(--border)]">
             <th className="py-2 pr-2 text-left text-xs font-medium text-[var(--text-tertiary)] w-8"></th>
             <th className="py-2 pr-2 text-left text-xs font-medium text-[var(--text-tertiary)] w-10">#</th>
-            <th className="py-2 pr-4 text-left text-xs font-medium text-[var(--text-tertiary)]">Tančící</th>
+            <th className="py-2 pr-4 text-left text-xs font-medium text-[var(--text-tertiary)]">{t("results.dancers")}</th>
             {results.dances.map((d) => (
               <th key={d.danceId} className="py-2 px-2 text-center text-xs font-medium text-[var(--text-tertiary)] min-w-[70px]">
                 {d.danceName}
               </th>
             ))}
-            <th className="py-2 pl-3 text-center text-xs font-medium text-[var(--text-tertiary)] w-16">Součet</th>
+            <th className="py-2 pl-3 text-center text-xs font-medium text-[var(--text-tertiary)] w-16">{t("results.sum")}</th>
           </tr>
         </thead>
         <tbody>
@@ -335,6 +344,7 @@ function FinalRoundView({
 
 // ── Round results fetcher ──────────────────────────────────────────────────────
 function RoundResults({ round, pairs }: { round: RoundDto; pairs?: PairInfo[] }) {
+  const { t } = useLocale();
   const isFinal = round.roundType === "FINAL" || round.roundType === "SINGLE_ROUND" || round.roundType === "SEMIFINAL";
 
   const { data, isLoading } = useQuery({
@@ -345,7 +355,7 @@ function RoundResults({ round, pairs }: { round: RoundDto; pairs?: PairInfo[] })
 
   if (!isFinal) return <PreliminaryRoundView roundId={round.id} pairs={pairs} />;
   if (isLoading) return <div className="py-8 flex justify-center"><Spinner /></div>;
-  if (!data) return <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">Výsledky nejsou k dispozici.</p>;
+  if (!data) return <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">{t("results.noResults")}</p>;
 
   return <FinalRoundView results={data} pairs={pairs} />;
 }
@@ -360,6 +370,7 @@ function SectionResults({
   competitionId: string;
   pairs?: PairInfo[];
 }) {
+  const { t } = useLocale();
   const [view, setView] = useState<ResultView>("vysledky");
   const queryClient = useQueryClient();
 
@@ -393,17 +404,17 @@ function SectionResults({
   if (!visibleRounds.length && !summary?.rankings?.length) {
     return (
       <p className="py-12 text-center text-sm text-[var(--text-tertiary)]">
-        Zatím nebyla zahájena žádná kola.
+        {t("results.noRoundsStarted")}
       </p>
     );
   }
 
   const IN_PROGRESS_STATUSES = new Set(["IN_PROGRESS", "OPEN", "CLOSED"]);
   const tabs: { id: ResultView; label: string; inProgress: boolean }[] = [
-    { id: "vysledky", label: "Výsledková listina", inProgress: false },
+    { id: "vysledky", label: t("results.title"), inProgress: false },
     ...completedRounds.map((r) => ({
       id: r.id,
-      label: roundLabel(r),
+      label: roundLabel(r, t),
       inProgress: IN_PROGRESS_STATUSES.has(r.status),
     })),
   ];
@@ -448,7 +459,7 @@ function SectionResults({
               {tab.inProgress && <Clock className="h-3 w-3 text-[var(--warning)]" />}
               {tab.label}
               {tab.inProgress && (
-                <span className="text-[10px] font-bold text-[var(--warning)]">PROBÍHÁ</span>
+                <span className="text-[10px] font-bold text-[var(--warning)]">{t("results.inProgress")}</span>
               )}
             </button>
           ))}
@@ -460,7 +471,7 @@ function SectionResults({
           style={{ background: "var(--accent)" }}
         >
           <Download className="h-3.5 w-3.5" />
-          {exporting ? "Exportuji…" : "Export XLSX"}
+          {exporting ? t("results.exporting") : t("results.exportXlsx")}
         </button>
       </div>
 
@@ -472,10 +483,10 @@ function SectionResults({
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/5 px-4 py-3">
             <div className="flex-1">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                Výsledky čekají na schválení
+                {t("results.pendingApproval")}
               </p>
               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                Po schválení bude kolo uzavřeno a nelze ho znovu otevřít.
+                {t("results.pendingApprovalDesc")}
               </p>
             </div>
             <button
@@ -485,7 +496,7 @@ function SectionResults({
               style={{ background: "var(--success)" }}
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-              {approveRoundMutation.isPending ? "Schvaluji…" : "Schválit a uzavřít kolo"}
+              {approveRoundMutation.isPending ? t("results.approving") : t("results.approveClose")}
             </button>
           </div>
         );
@@ -510,13 +521,14 @@ function SectionResults({
 
 // ── Main tab component ─────────────────────────────────────────────────────────
 export function VyhodnoceniTab({ competitionId, sections, pairs }: Props) {
+  const { t } = useLocale();
   const [selectedSection, setSelectedSection] = useState<string>(sections[0]?.id ?? "");
   const router = useRouter();
 
   if (!sections.length) {
     return (
       <p className="py-12 text-center text-sm text-[var(--text-tertiary)]">
-        Žádné kategorie k zobrazení.
+        {t("results.noCategories")}
       </p>
     );
   }
@@ -534,8 +546,8 @@ export function VyhodnoceniTab({ competitionId, sections, pairs }: Props) {
           <Award className="h-6 w-6 text-white" />
         </div>
         <div className="flex-1 text-left">
-          <p className="text-sm font-bold text-[var(--text-primary)]">Diplomy</p>
-          <p className="text-xs text-[var(--text-secondary)]">Generování a tisk diplomů pro všechny kategorie</p>
+          <p className="text-sm font-bold text-[var(--text-primary)]">{t("results.diplomas")}</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t("results.diplomasDesc")}</p>
         </div>
         <ChevronRight className="h-5 w-5 text-[var(--text-tertiary)] transition-transform group-hover:translate-x-1" />
       </button>
