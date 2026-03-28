@@ -34,7 +34,6 @@
     "required": "Povinné",
     "note": "Poznámka"
   },
-
   "nav": {
     "competitions": "Soutěže",
     "myRegistrations": "Moje přihlášky",
@@ -44,9 +43,9 @@
     "settings": "Nastavení",
     "logout": "Odhlásit se",
     "seeder": "Seeder",
+    "archive": "Archiv",
     "accountMenu": "Účet"
   },
-
   "status": {
     "DRAFT": "Koncept",
     "PUBLISHED": "Zveřejněno",
@@ -55,7 +54,6 @@
     "COMPLETED": "Ukončeno",
     "CANCELLED": "Zrušeno"
   },
-
   "competition": {
     "title": "Soutěže",
     "new": "Nová soutěž",
@@ -130,7 +128,6 @@
       "publicPageDesc": "Zobrazit veřejnou stránku soutěže."
     }
   },
-
   "section": {
     "title": "Kategorie",
     "new": "Přidat kategorii",
@@ -173,7 +170,6 @@
     "presenceNotClosed": "Prezence pro tuto kategorii ještě nebyla uzavřena",
     "presentPairs": "{{present}} přítomných z {{total}} registrovaných"
   },
-
   "pairs": {
     "title": "Páry",
     "manage": "Správa párů",
@@ -252,7 +248,6 @@
     "paymentWaived": "Prominuto",
     "cyclePaymentTitle": "Kliknutím změníš platbu na: {{next}}"
   },
-
   "judges": {
     "title": "Tokeny porotců",
     "description": "Sdílejte QR kódy s porotci. Po naskenování se přihlásí bez registrace.",
@@ -315,7 +310,6 @@
     "pinShow": "Zobrazit PIN",
     "pinHide": "Skrýt PIN"
   },
-
   "news": {
     "title": "Aktuality",
     "add": "Publikovat aktualitu",
@@ -326,7 +320,6 @@
     "contentLabel": "Obsah",
     "contentPlaceholder": "Text aktuality..."
   },
-
   "publicCompetition": {
     "statusLabels": {
       "DRAFT": "Koncept",
@@ -390,7 +383,6 @@
     "pairsRegisteredCount": "({{count}} přihlášeno)",
     "registrationDeadlineLabel": "Uzávěrka:"
   },
-
   "publicRegister": {
     "backToCompetition": "Zpět na soutěž",
     "locationDate": "{{location}} · {{date}}",
@@ -433,7 +425,6 @@
     },
     "failed": "Přihlášení se nezdařilo"
   },
-
   "auth": {
     "login": "Přihlásit se",
     "register": "Registrovat",
@@ -495,7 +486,6 @@
     "verificationFailedDesc": "Odkaz mohl vypršet.",
     "resendVerification": "Znovu odeslat ověřovací email"
   },
-
   "publicReg": {
     "competitionNotFound": "Soutěž nenalezena",
     "invalidLink": "Tento odkaz může být neplatný.",
@@ -533,7 +523,6 @@
     "submit": "Odeslat přihlášku",
     "organizerLogin": "Přihlášení organizátora →"
   },
-
   "settings": {
     "title": "Nastavení",
     "profile": "Profil",
@@ -582,7 +571,6 @@
     "nameLabel": "Jméno",
     "organizationLabel": "Organizace"
   },
-
   "dashboard": {
     "title": "Dashboard",
     "description": "Spravujte své soutěže",
@@ -603,7 +591,6 @@
     "pairsCount": "{{n}} párů",
     "tabAll": "Vše"
   },
-
   "analytics": {
     "title": "Analytika",
     "topCompetitions": "Top soutěže",
@@ -630,9 +617,22 @@
     "inProgress": "Probíhá",
     "completed": "Ukončeno",
     "recentActivity": "Nedávná aktivita",
-    "pairsLabel": "párů"
+    "pairsLabel": "párů",
+    "attendanceTitle": "Registrace vs. příchod",
+    "attendanceSub": "Pouze ukončené soutěže",
+    "avgAttendance": "Průměrná účast",
+    "registered": "Přihlášeno",
+    "attended": "Přišlo",
+    "registrationActivityTitle": "Aktivita registrací",
+    "registrationActivitySub": "Posledních 14 dní",
+    "newPairsTotal": "nových párů celkem",
+    "financeTitle": "Finance",
+    "financeSub": "Napříč všemi soutěžemi",
+    "paidRevenue": "Vybráno",
+    "pendingRevenue": "Čeká na platbu",
+    "noFinanceData": "Žádná finanční data",
+    "noAttendanceData": "Žádné ukončené soutěže"
   },
-
   "archive": {
     "title": "Archiv",
     "description": "Všechny minulé soutěže",
@@ -645,7 +645,6 @@
     "events": "{{count}} akcí",
     "pairsCount": "{{count}} párů"
   },
-
   "myRegistrations": {
     "title": "Moje přihlášky",
     "registrations": "Přihlášky",
@@ -675,7 +674,6 @@
     "paidCount": "Zaplaceno",
     "pendingCount": "Čeká na platbu"
   },
-
   "participants": {
     "title": "Účastníci",
     "description": "{{count}} párů celkem napříč {{competitions}} soutěžemi",
@@ -690,7 +688,6 @@
     "searchPlaceholder": "Hledat podle jména, klubu nebo čísla...",
     "noRegistered": "Zatím žádné registrované páry"
   },
-
   "round": {
     "openRound": "Otevřít kolo",
     "closeRound": "Uzavřít kolo",
@@ -723,7 +720,6 @@
     "status": "Stav",
     "pending": "Čeká"
   },
-
   "results": {
     "title": "Výsledky",
     "calculateSummary": "Vypočítat souhrn",
@@ -758,7 +754,6 @@
     "champion": "ŠAMPION",
     "presentNavHint": "← → nebo Mezerník pro navigaci · Esc pro ukončení"
   },
-
   "diplomas": {
     "title": "Diplomy",
     "sectionsCompleted": "{{completed}} / {{total}} kategorií dokončeno",
@@ -770,7 +765,6 @@
     "sumLabel": "Součet: {{value}}",
     "print": "Tisknout"
   },
-
   "live": {
     "liveDashboard": "Live dashboard",
     "live": "Live",
@@ -790,7 +784,6 @@
     "newAlerts": "{{count}} nových",
     "allClear": "Vše v pořádku — žádná upozornění"
   },
-
   "presence": {
     "title": "Prezence",
     "description": "Check-in účastníků v den soutěže",
@@ -823,7 +816,6 @@
     "unpaidBadge": "nezaplaceno",
     "searchPlaceholder": "Hledat podle jména nebo čísla..."
   },
-
   "scoreboard": {
     "liveResults": "ŽIVÉ VÝSLEDKY",
     "loadingResults": "Načítání výsledků...",
@@ -839,7 +831,6 @@
     "loadError": "Nepodařilo se načíst výsledky",
     "loadErrorBody": "Zkuste obnovit stránku nebo zkontrolujte připojení."
   },
-
   "moderator": {
     "viewTitle": "Pohled moderátora / DJ",
     "invalidLink": "Neplatný odkaz moderátora",
@@ -857,7 +848,6 @@
     "dances": "Tance",
     "started": "Zahájeno"
   },
-
   "newCompetition": {
     "flowTitle": "UX Flow pro Organizátora",
     "step1": "Vytvořit soutěž",
@@ -880,7 +870,6 @@
     "roundLabel": "Kolo {{n}}",
     "pairLabel": "Pár {{n}}"
   },
-
   "competitionDetail": {
     "addPair": "Přidat pár",
     "addSection": "Přidat kategorií",
@@ -924,7 +913,7 @@
     "paymentMethods": "3. Platební metody",
     "paymentMethodsSub": "Jak a kam zaplatit — bankovní převod, hotovost, online platba.",
     "paymentMethodLabel": "Způsob platby",
-    "paymentMethodDesc": "Jak budou účastníci platit registrační poplatek.",
+    "paymentMethodDesc": "Jak a kam zaplatit — bankovní převod, hotovost, online platba.",
     "feeCalculationType": "Výpočet registračního poplatku",
     "feeCalculationDesc": "Způsob výpočtu poplatku — zobrazí se účastníkům i ve výpisu registrací.",
     "bankHolder": "Majitel účtu",
@@ -948,10 +937,7 @@
     "otherMethod": "Jiná metoda",
     "dancers": "Tančící",
     "paymentStatus": "Platba",
-    "noSections": "Žádné kategorie",
-    "noJudges": "Žádní porotci",
     "judgeLabel": "Porotce {{n}}",
-    "moreItems": "+ {{count}} dalších",
     "roundFinal": "Finále",
     "roundPreliminary": "Kolo {{n}}",
     "roundQualification": "Kvalifikace",
@@ -962,17 +948,8 @@
     "dances": "tanců",
     "pairsLabel": "párů",
     "paymentMethod": "Způsob platby",
-    "paymentMethodDesc": "Jak a kam zaplatit — bankovní převod, hotovost, online platba.",
     "feeCalculationLabel": "Výpočet registračního poplatku",
-    "feeCalculationDesc": "Způsob výpočtu poplatku — zobrazí se účastníkům i ve výpisu registrací.",
-    "contentPageDesc": "Tyto texty jsou zobrazeny účastníkům při registraci na soutěž — tři sekce dle WDSF CRS standardu.",
-    "generalDesc": "1. Obecný popis akce",
-    "generalDescSub": "Základní informace o soutěži — místo, program, organizátor.",
-    "feesInfo": "2. Informace o poplatcích",
-    "feesInfoSub": "Výše poplatků, způsob výpočtu, slevy.",
     "paymentMethodsSection": "3. Platební metody",
-    "paymentMethodsSub": "Jak a kam zaplatit — bankovní převod, hotovost, online platba.",
-    "analyticsAfterEnd": "Analytika bude dostupná po skončení soutěže.",
     "error": "Chyba",
     "unknownError": "Neznámá chyba",
     "exportName": "Název",
@@ -1053,7 +1030,6 @@
     "bulkEmailSend": "Odeslat email",
     "detailsCard": "Detaily soutěže"
   },
-
   "ageCategory": {
     "CHILDREN_I": "Děti I (do 10 let)",
     "CHILDREN_II": "Děti II (11–12 let)",
@@ -1066,7 +1042,6 @@
     "SENIOR_I": "Senioři I (35+ let)",
     "SENIOR_II": "Senioři II (45+ let)"
   },
-
   "danceStyle": {
     "STANDARD": "Standardní tance",
     "LATIN": "Latinsko-americké tance",
@@ -1074,12 +1049,10 @@
     "COMBINATION": "Kombinace",
     "FORMATION": "Formace"
   },
-
   "competitorType": {
     "AMATEURS": "Amatéři",
     "PROFESSIONALS": "Profesionálové"
   },
-
   "competitionType": {
     "COUPLE": "Párová soutěž",
     "SOLO_STANDARD": "Sólo – standardní tance",
@@ -1088,7 +1061,6 @@
     "FORMATION_LATIN": "Formace – latinsko-americké tance",
     "SHOW": "Show"
   },
-
   "series": {
     "CZECH_CHAMPIONSHIP": "Mistrovství ČR",
     "CZECH_CUP": "Pohár ČR",
@@ -1099,7 +1071,6 @@
     "OPEN": "Open",
     "OTHER": "Ostatní"
   },
-
   "level": {
     "A": "A",
     "B": "B",
@@ -1107,13 +1078,11 @@
     "D": "D",
     "E": "E"
   },
-
   "errors": {
     "generic": "Něco se pokazilo. Zkuste to prosím znovu.",
     "notFound": "Nenalezeno",
     "unauthorized": "Přístup zamítnut"
   },
-
   "schedule": {
     "title": "Rozpis",
     "addSlot": "Přidat slot",
@@ -1138,7 +1107,6 @@
     "final": "Finále",
     "floor": "Parket {{floor}}"
   },
-
   "notifications": {
     "title": "E-mailová oznámení",
     "description": "Odesílání oznámení a aktualizací soutěžícím",
@@ -1163,7 +1131,6 @@
     "subjectRequired": "Předmět je povinný",
     "messageMinLength": "Zpráva musí mít alespoň 10 znaků"
   },
-
   "danceOffs": {
     "title": "Dance-off",
     "description": "Vyřešte shodná umístění pomocí kola dance-off",
@@ -1184,7 +1151,6 @@
     "positionHint": "O jaké umístění se soutěží? (např. 3 = shoda o 3. místo)",
     "createConfirm": "Vytvořit"
   },
-
   "fees": {
     "title": "Startovné a slevy",
     "description": "Nastavení registračních poplatků pro kategorie a slevové kódy",
@@ -1222,7 +1188,6 @@
     "expiresAtLabel": "Platnost do (volitelné)",
     "codeMinLength": "Min. 3 znaky"
   },
-
   "payments": {
     "title": "Faktury a platby",
     "totalInvoices": "Celkem faktur",
@@ -1243,7 +1208,6 @@
     "failedToSend": "Nepodařilo se odeslat",
     "paidCount": "{{paid}} / {{total}}"
   },
-
   "roundResults": {
     "title": "Výsledky — {{type}}",
     "roundNumber": "Kolo {{number}}",
@@ -1260,7 +1224,6 @@
     "advances": "Postupuje",
     "out": "Vyřazen"
   },
-
   "workbook": {
     "dance": "Tanec",
     "pairs": "párů",
@@ -1271,7 +1234,6 @@
     "show": "Zobrazit Skating tabulku",
     "hide": "Skrýt Skating tabulku"
   },
-
   "newSection": {
     "title": "Přidat kategorii",
     "description": "Přidejte soutěžní kategorii k tomuto závodu",
@@ -1301,7 +1263,6 @@
     "submit": "Vytvořit kategorii",
     "required": "Povinné"
   },
-
   "seed": {
     "title": "Seeder",
     "notAvailable": "Není k dispozici v produkci",
@@ -1333,20 +1294,17 @@
     "wipedDesc": "Všechna testovací data byla odstraněna",
     "resetFailed": "Reset selhal"
   },
-
   "notificationCenter": {
     "title": "Oznámenia",
     "markAllRead": "Označiť všetko ako prečítané",
     "noNotifications": "Žiadne oznámenia"
   },
-
   "sessionExpiry": {
     "title": "Relácia čoskoro vyprší",
     "description": "Vaša relácia vyprší za {{count}} minút{{plural}}. Uložte svoju prácu a predĺžte reláciu.",
     "extend": "Predĺžiť reláciu",
     "refreshed": "Relácia obnovená"
   },
-
   "crisis": {
     "withdrawal": "Odstúpenie",
     "withdrawalWarning": "Výsledky budú automaticky prepočítané po odstúpení.",
@@ -1380,7 +1338,6 @@
     "presetReasonRuleViolation": "Porušenie pravidiel",
     "presetReasonOther": "Iné"
   },
-
   "wizard": {
     "step0Label": "Základné info",
     "step1Label": "Termíny",
@@ -1449,7 +1406,6 @@
     "removeNewsFailed": "Nepodarilo sa odstrániť aktualitu",
     "created": "Súťaž vytvorená!"
   },
-
   "judgesActivity": {
     "event": "Udalosť",
     "time": "Čas",

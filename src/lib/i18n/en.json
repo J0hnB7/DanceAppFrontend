@@ -34,7 +34,6 @@
     "required": "Required",
     "note": "Note"
   },
-
   "nav": {
     "competitions": "Competitions",
     "myRegistrations": "My Registrations",
@@ -44,9 +43,9 @@
     "settings": "Settings",
     "logout": "Log out",
     "seeder": "Seeder",
+    "archive": "Archive",
     "accountMenu": "Account"
   },
-
   "status": {
     "DRAFT": "Draft",
     "PUBLISHED": "Published",
@@ -55,7 +54,6 @@
     "COMPLETED": "Completed",
     "CANCELLED": "Cancelled"
   },
-
   "competition": {
     "title": "Competitions",
     "new": "New competition",
@@ -130,7 +128,6 @@
       "publicPageDesc": "View the public-facing competition page."
     }
   },
-
   "section": {
     "title": "Sections",
     "new": "Add section",
@@ -173,7 +170,6 @@
     "presenceNotClosed": "Presence for this section has not been closed yet",
     "presentPairs": "{{present}} present out of {{total}} registered"
   },
-
   "pairs": {
     "title": "Pairs",
     "manage": "Manage pairs",
@@ -252,7 +248,6 @@
     "paymentWaived": "Waived",
     "cyclePaymentTitle": "Click to change payment to: {{next}}"
   },
-
   "judges": {
     "title": "Judge Tokens",
     "description": "Share QR codes with judges. After scanning they log in without registration.",
@@ -315,7 +310,6 @@
     "pinShow": "Show PIN",
     "pinHide": "Hide PIN"
   },
-
   "news": {
     "title": "News",
     "add": "Publish news",
@@ -326,7 +320,6 @@
     "contentLabel": "Content",
     "contentPlaceholder": "News content..."
   },
-
   "publicCompetition": {
     "statusLabels": {
       "DRAFT": "Draft",
@@ -390,7 +383,6 @@
     "pairsRegisteredCount": "({{count}} registered)",
     "registrationDeadlineLabel": "Deadline:"
   },
-
   "publicRegister": {
     "backToCompetition": "Back to competition",
     "locationDate": "{{location}} · {{date}}",
@@ -433,7 +425,6 @@
     },
     "failed": "Registration failed"
   },
-
   "auth": {
     "login": "Log in",
     "register": "Register",
@@ -495,7 +486,6 @@
     "verificationFailedDesc": "The link may have expired.",
     "resendVerification": "Resend verification email"
   },
-
   "publicReg": {
     "competitionNotFound": "Competition not found",
     "invalidLink": "This link may be invalid.",
@@ -533,7 +523,6 @@
     "submit": "Submit registration",
     "organizerLogin": "Organizer login →"
   },
-
   "settings": {
     "title": "Settings",
     "profile": "Profile",
@@ -582,7 +571,6 @@
     "nameLabel": "Name",
     "organizationLabel": "Organization"
   },
-
   "dashboard": {
     "title": "Dashboard",
     "description": "Manage your competitions",
@@ -603,7 +591,6 @@
     "pairsCount": "{{n}} pairs",
     "tabAll": "All"
   },
-
   "analytics": {
     "title": "Analytics",
     "topCompetitions": "Top competitions",
@@ -630,9 +617,22 @@
     "inProgress": "In progress",
     "completed": "Completed",
     "recentActivity": "Recent activity",
-    "pairsLabel": "pairs"
+    "pairsLabel": "pairs",
+    "attendanceTitle": "Registrations vs. Attendance",
+    "attendanceSub": "Completed competitions only",
+    "avgAttendance": "Avg. attendance",
+    "registered": "Registered",
+    "attended": "Attended",
+    "registrationActivityTitle": "Registration Activity",
+    "registrationActivitySub": "Last 14 days",
+    "newPairsTotal": "new pairs total",
+    "financeTitle": "Finance",
+    "financeSub": "Across all competitions",
+    "paidRevenue": "Collected",
+    "pendingRevenue": "Pending",
+    "noFinanceData": "No financial data",
+    "noAttendanceData": "No completed competitions"
   },
-
   "archive": {
     "title": "Archive",
     "description": "All past competitions",
@@ -645,7 +645,6 @@
     "events": "{{count}} events",
     "pairsCount": "{{count}} pairs"
   },
-
   "myRegistrations": {
     "title": "My Registrations",
     "registrations": "Registrations",
@@ -675,7 +674,6 @@
     "paidCount": "Paid",
     "pendingCount": "Pending payment"
   },
-
   "participants": {
     "title": "Participants",
     "description": "{{count}} total pairs across {{competitions}} competitions",
@@ -690,7 +688,6 @@
     "searchPlaceholder": "Search by name, club or number...",
     "noRegistered": "No pairs registered yet"
   },
-
   "round": {
     "openRound": "Open round",
     "closeRound": "Close round",
@@ -723,7 +720,6 @@
     "status": "Status",
     "pending": "Pending"
   },
-
   "results": {
     "title": "Results",
     "calculateSummary": "Calculate summary",
@@ -758,7 +754,6 @@
     "champion": "CHAMPION",
     "presentNavHint": "← → or Space to navigate · Esc to exit"
   },
-
   "diplomas": {
     "title": "Diplomas",
     "sectionsCompleted": "{{completed}} / {{total}} sections completed",
@@ -770,7 +765,6 @@
     "sumLabel": "Sum: {{value}}",
     "print": "Print"
   },
-
   "live": {
     "liveDashboard": "Live dashboard",
     "live": "Live",
@@ -790,7 +784,6 @@
     "newAlerts": "{{count}} new",
     "allClear": "All clear — no alerts"
   },
-
   "presence": {
     "title": "Presence",
     "description": "Check-in of participants on competition day",
@@ -823,7 +816,6 @@
     "unpaidBadge": "unpaid",
     "searchPlaceholder": "Search by name or number..."
   },
-
   "scoreboard": {
     "liveResults": "LIVE RESULTS",
     "loadingResults": "Loading results...",
@@ -839,7 +831,6 @@
     "loadError": "Failed to load results",
     "loadErrorBody": "Try refreshing the page or check your connection."
   },
-
   "moderator": {
     "viewTitle": "Moderator / DJ View",
     "invalidLink": "Invalid moderator link",
@@ -857,7 +848,6 @@
     "dances": "Dances",
     "started": "Started"
   },
-
   "newCompetition": {
     "flowTitle": "Organizer Flow",
     "step1": "Create competition",
@@ -880,7 +870,6 @@
     "roundLabel": "Round {{n}}",
     "pairLabel": "Pair {{n}}"
   },
-
   "competitionDetail": {
     "addPair": "Add pair",
     "addSection": "Add section",
@@ -900,17 +889,13 @@
     "publicRegistrationLink": "Public registration link",
     "copyLink": "Copy",
     "openLink": "Open",
-    "sections": "Sections",
     "noSections": "No sections",
     "rounds": "Rounds",
     "roundsEdit": "Edit rounds",
-    "judges": "Judges",
     "noJudges": "No judges",
     "moreItems": "+ {{count}} more",
     "showPairs": "Show pairs",
-    "addSection": "Add section",
     "editRounds": "Edit rounds",
-    "manageJudges": "Manage judges",
     "totalRegistered": "Total registered",
     "paidLabel": "Paid",
     "pendingPayment": "Pending payment",
@@ -928,7 +913,7 @@
     "paymentMethods": "3. Payment methods",
     "paymentMethodsSub": "How and where to pay — bank transfer, cash, online payment.",
     "paymentMethodLabel": "Payment method",
-    "paymentMethodDesc": "How participants will pay the entry fee.",
+    "paymentMethodDesc": "How and where to pay — bank transfer, cash, online payment.",
     "feeCalculationType": "Fee calculation type",
     "feeCalculationDesc": "Method of fee calculation — displayed to participants and in registration listing.",
     "bankHolder": "Account holder",
@@ -952,10 +937,7 @@
     "otherMethod": "Other method",
     "dancers": "Dancers",
     "paymentStatus": "Payment",
-    "noSections": "No sections",
-    "noJudges": "No judges",
     "judgeLabel": "Judge {{n}}",
-    "moreItems": "+ {{count}} more",
     "roundFinal": "Final",
     "roundPreliminary": "Round {{n}}",
     "roundQualification": "Qualification",
@@ -966,17 +948,8 @@
     "dances": "dances",
     "pairsLabel": "pairs",
     "paymentMethod": "Payment method",
-    "paymentMethodDesc": "How and where to pay — bank transfer, cash, online payment.",
     "feeCalculationLabel": "Entry fee calculation",
-    "feeCalculationDesc": "Method of fee calculation — displayed to participants and in registration listing.",
-    "contentPageDesc": "These texts are displayed to participants during registration — three sections according to the WDSF CRS standard.",
-    "generalDesc": "1. General event description",
-    "generalDescSub": "Basic information about the competition — venue, program, organizer.",
-    "feesInfo": "2. Fee information",
-    "feesInfoSub": "Fee amounts, calculation method, discounts.",
     "paymentMethodsSection": "3. Payment methods",
-    "paymentMethodsSub": "How and where to pay — bank transfer, cash, online payment.",
-    "analyticsAfterEnd": "Analytics will be available after the competition ends.",
     "error": "Error",
     "unknownError": "Unknown error",
     "exportName": "Name",
@@ -1057,7 +1030,6 @@
     "bulkEmailSend": "Send email",
     "detailsCard": "Competition details"
   },
-
   "ageCategory": {
     "CHILDREN_I": "Children I (up to 10)",
     "CHILDREN_II": "Children II (11–12)",
@@ -1070,7 +1042,6 @@
     "SENIOR_I": "Senior I (35+)",
     "SENIOR_II": "Senior II (45+)"
   },
-
   "danceStyle": {
     "STANDARD": "Standard",
     "LATIN": "Latin American",
@@ -1078,12 +1049,10 @@
     "COMBINATION": "Combination",
     "FORMATION": "Formation"
   },
-
   "competitorType": {
     "AMATEURS": "Amateurs",
     "PROFESSIONALS": "Professionals"
   },
-
   "competitionType": {
     "COUPLE": "Couple",
     "SOLO_STANDARD": "Solo – Standard",
@@ -1092,7 +1061,6 @@
     "FORMATION_LATIN": "Formation – Latin American",
     "SHOW": "Show"
   },
-
   "series": {
     "CZECH_CHAMPIONSHIP": "Czech Championship",
     "CZECH_CUP": "Czech Cup",
@@ -1103,7 +1071,6 @@
     "OPEN": "Open",
     "OTHER": "Other"
   },
-
   "level": {
     "A": "A",
     "B": "B",
@@ -1111,13 +1078,11 @@
     "D": "D",
     "E": "E"
   },
-
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "notFound": "Not found",
     "unauthorized": "Unauthorized"
   },
-
   "schedule": {
     "title": "Schedule",
     "addSlot": "Add slot",
@@ -1142,7 +1107,6 @@
     "final": "Final",
     "floor": "Floor {{floor}}"
   },
-
   "notifications": {
     "title": "Email notifications",
     "description": "Send announcements and updates to competitors",
@@ -1167,7 +1131,6 @@
     "subjectRequired": "Subject required",
     "messageMinLength": "Message must be at least 10 characters"
   },
-
   "danceOffs": {
     "title": "Dance-offs",
     "description": "Resolve tied placements using a dance-off round",
@@ -1188,7 +1151,6 @@
     "positionHint": "Which placement is being contested? (e.g. 3 = tied for 3rd place)",
     "createConfirm": "Create"
   },
-
   "fees": {
     "title": "Entry fees & discounts",
     "description": "Configure registration fees per section and discount codes",
@@ -1226,7 +1188,6 @@
     "expiresAtLabel": "Expires at (optional)",
     "codeMinLength": "Min 3 characters"
   },
-
   "payments": {
     "title": "Invoices & Payments",
     "totalInvoices": "Total invoices",
@@ -1247,7 +1208,6 @@
     "failedToSend": "Failed to send",
     "paidCount": "{{paid}} / {{total}}"
   },
-
   "roundResults": {
     "title": "{{type}} Results",
     "roundNumber": "Round {{number}}",
@@ -1264,7 +1224,6 @@
     "advances": "Advances",
     "out": "Out"
   },
-
   "workbook": {
     "dance": "Dance",
     "pairs": "pairs",
@@ -1275,7 +1234,6 @@
     "show": "Show Skating Workbook",
     "hide": "Hide Skating Workbook"
   },
-
   "newSection": {
     "title": "Add section",
     "description": "Add a competition section to this event",
@@ -1305,7 +1263,6 @@
     "submit": "Create section",
     "required": "Required"
   },
-
   "seed": {
     "title": "Seeder",
     "notAvailable": "Not available in production",
@@ -1337,20 +1294,17 @@
     "wipedDesc": "All test data removed",
     "resetFailed": "Reset failed"
   },
-
   "notificationCenter": {
     "title": "Notifications",
     "markAllRead": "Mark all read",
     "noNotifications": "No notifications"
   },
-
   "sessionExpiry": {
     "title": "Session expiring soon",
     "description": "Your session will expire in {{count}} minute{{plural}}. Save your work and extend your session.",
     "extend": "Extend session",
     "refreshed": "Session refreshed"
   },
-
   "crisis": {
     "withdrawal": "Withdrawal",
     "withdrawalWarning": "Results will be automatically recalculated after withdrawal.",
@@ -1384,7 +1338,6 @@
     "presetReasonRuleViolation": "Rule violation",
     "presetReasonOther": "Other"
   },
-
   "wizard": {
     "step0Label": "Basic info",
     "step1Label": "Dates",
@@ -1453,7 +1406,6 @@
     "removeNewsFailed": "Failed to remove article",
     "created": "Competition created!"
   },
-
   "judgesActivity": {
     "event": "Event",
     "time": "Time",
@@ -1463,7 +1415,6 @@
     "scoresSubmitted": "Scores submitted",
     "disconnected": "Disconnected"
   },
-
   "scoring": {
     "title": "Scoring Monitor",
     "received": "Received:",
