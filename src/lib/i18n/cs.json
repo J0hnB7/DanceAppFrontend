@@ -393,7 +393,7 @@
     "notFound": "Soutěž nenalezena",
     "notFoundDesc": "Odkaz může být neplatný nebo soutěž byla odstraněna.",
     "allCompetitions": "Všechny soutěže",
-    "organizerLogin": "Přihlášení organizátora →",
+    "organizerLogin": "Přihlášení →",
     "registrationNotOpen": "Registrace není otevřena",
     "registrationNotOpenDesc": "Registrace momentálně neprobíhá.",
     "basicInfo": "Základní informace",
@@ -418,6 +418,7 @@
     "payBeforeDeadline": "Uhraďte prosím před uzávěrkou přihlášek.",
     "confirmationSent": "Potvrzení bylo odesláno na váš email.",
     "backToPage": "← Zpět na stránku soutěže",
+    "backToAllCompetitions": "← Zpět na přehled soutěží",
     "capacity": "Kapacita",
     "maxPairsOf": "max. {{max}} párů",
     "pairsRegisteredCount": "({{count}} přihlášeno)",
@@ -463,7 +464,9 @@
       "invalidEmail": "Zadejte platný email",
       "gdprRequired": "Souhlas s GDPR je povinný"
     },
-    "failed": "Přihlášení se nezdařilo"
+    "failed": "Přihlášení se nezdařilo",
+    "optional": "volitelné",
+    "requiredForCouple": "povinné pro pár"
   },
   "auth": {
     "login": "Přihlásit se",
@@ -529,7 +532,7 @@
     "backToHome": "← Zpět na hlavní stránku",
     "systemTagline": "Systém pro taneční soutěže",
     "taglineDesc": "Přihlášky, platby, rozhodčí, Skating systém, diplomy — vše na jednom místě.",
-    "copyright": "© 2025 DanceApp. Navrženo pro tanec."
+    "copyright": "© 2026 DanceApp. Navrženo pro tanec."
   },
   "publicReg": {
     "competitionNotFound": "Soutěž nenalezena",
@@ -566,7 +569,7 @@
     "gdprConsent": "Souhlasím se zpracováním osobních údajů za účelem organizace a průběhu soutěže.",
     "privacyPolicy": "Zásady ochrany osobních údajů",
     "submit": "Odeslat přihlášku",
-    "organizerLogin": "Přihlášení organizátora →"
+    "organizerLogin": "Přihlášení →"
   },
   "settings": {
     "title": "Nastavení",
@@ -620,6 +623,7 @@
     "title": "Dashboard",
     "description": "Spravujte své soutěže",
     "newCompetition": "Nová soutěž",
+    "publicCompetitions": "Soutěže",
     "totalCompetitions": "Soutěží",
     "liveNow": "Live",
     "upcoming": "Nadcházející",
@@ -1683,7 +1687,7 @@
     "badge": "Soutěžní kalendář",
     "title": "Kalendář tanečních akcí",
     "subtitle": "Přihlaste se na soutěž a sledujte výsledky.",
-    "organizerLogin": "Přihlášení organizátora →",
+    "organizerLogin": "Přihlášení →",
     "noDate": "Bez data",
     "filterTitle": "Filtrovat soutěže",
     "series": "Seriál",
@@ -1717,7 +1721,27 @@
     "judges": "Porotci",
     "submitted": "odevzdalo"
   },
+  "prelimSchedule": {
+    "settingsTitle": "Nastavení",
+    "startTime": "Čas začátku",
+    "pairsPerHeat": "Max párů na skupinu",
+    "minutesPerDance": "Minut na tanec",
+    "saveAndCompute": "Uložit a vypočítat",
+    "saveError": "Nepodařilo se uložit nastavení",
+    "emptyState": "Zadejte nastavení a spočítejte harmonogram",
+    "noSections": "Žádné sekce",
+    "noRounds": "Žádná kola",
+    "pairs": "párů",
+    "colRound": "Kolo",
+    "colHeats": "Skupin",
+    "colDances": "Tanců",
+    "colDuration": "Délka",
+    "colTime": "Od–Do",
+    "total": "Celkem",
+    "estimatedEnd": "Předpokládaný konec"
+  },
   "schedulePage": {
+    "step0": "Předběžný harmonogram",
     "step1": "Sekce & nastavení",
     "step2": "Harmonogram",
     "step3": "Publikace",
@@ -1805,7 +1829,7 @@
     "heroDesc": "Přihlášky, platby, rozhodčí, Skating systém, diplomy — vše na jednom místě, bez papírů.",
     "ctaStart": "Začít zdarma →",
     "howItWorks": "Jak to funguje",
-    "copyright": "© 2025 DanceApp. Navrženo pro tanec.",
+    "copyright": "© 2026 DanceApp. Navrženo pro tanec.",
     "rolesTag": "Role v systému",
     "rolesTitle1": "Jeden systém,",
     "rolesTitle2": "čtyři perspektivy",

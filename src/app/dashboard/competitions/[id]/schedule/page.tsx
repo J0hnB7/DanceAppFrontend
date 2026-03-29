@@ -13,15 +13,17 @@ import { ScheduleBuilder } from "@/components/schedule/schedule-builder";
 import { CompetitionTimeline } from "@/components/schedule/competition-timeline";
 import { useScheduleStore } from "@/store/schedule-store";
 import { sectionsApi } from "@/lib/api/sections";
+import { PreliminarySchedulePanel } from "@/components/schedule/preliminary-schedule-panel";
 
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/locale-context";
 
-type Step = 1 | 2 | 3;
+type Step = 0 | 1 | 2 | 3;
 
 function StepIndicator({ current, onSelect }: { current: Step; onSelect: (s: Step) => void }) {
   const { t } = useLocale();
   const STEPS = [
+    { id: 0 as Step, label: t("schedulePage.step0"), icon: CalendarDays },
     { id: 1 as Step, label: t("schedulePage.step1"), icon: Users },
     { id: 2 as Step, label: t("schedulePage.step2"), icon: CalendarDays },
     { id: 3 as Step, label: t("schedulePage.step3"), icon: CheckCircle2 },
@@ -137,7 +139,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const { id: competitionId } = use(params);
   const router = useRouter();
   const { t } = useLocale();
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState<Step>(0);
   const [fullscreen, setFullscreen] = useState(false);
   const { loadSchedule, scheduleStatus, slots } = useScheduleStore();
 
@@ -213,6 +215,9 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
             </div>
           </div>
         )}
+
+        {/* Step 0: Preliminary schedule */}
+        {step === 0 && <PreliminarySchedulePanel competitionId={competitionId} />}
 
         {/* Step 1: Sections + Settings */}
         {step === 1 && (

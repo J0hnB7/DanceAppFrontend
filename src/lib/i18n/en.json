@@ -393,7 +393,7 @@
     "notFound": "Competition not found",
     "notFoundDesc": "The link may be invalid or the competition has been removed.",
     "allCompetitions": "All competitions",
-    "organizerLogin": "Organizer login →",
+    "organizerLogin": "Přihlášení →",
     "registrationNotOpen": "Registration is not open",
     "registrationNotOpenDesc": "Registration is not currently active.",
     "basicInfo": "Basic information",
@@ -418,6 +418,7 @@
     "payBeforeDeadline": "Please pay before the registration deadline.",
     "confirmationSent": "Confirmation was sent to your email.",
     "backToPage": "← Back to competition page",
+    "backToAllCompetitions": "← Back to all competitions",
     "capacity": "Capacity",
     "maxPairsOf": "max. {{max}} pairs",
     "pairsRegisteredCount": "({{count}} registered)",
@@ -463,7 +464,9 @@
       "invalidEmail": "Enter a valid email",
       "gdprRequired": "GDPR consent is required"
     },
-    "failed": "Registration failed"
+    "failed": "Registration failed",
+    "optional": "optional",
+    "requiredForCouple": "required for couple"
   },
   "auth": {
     "login": "Log in",
@@ -529,7 +532,7 @@
     "backToHome": "← Back to home",
     "systemTagline": "Dance competition management",
     "taglineDesc": "Registrations, payments, judges, Skating system, diplomas — all in one place.",
-    "copyright": "© 2025 DanceApp. Designed for dance."
+    "copyright": "© 2026 DanceApp. Designed for dance."
   },
   "publicReg": {
     "competitionNotFound": "Competition not found",
@@ -566,7 +569,7 @@
     "gdprConsent": "I consent to processing of personal data for the purpose of organizing and running the competition.",
     "privacyPolicy": "Privacy policy",
     "submit": "Submit registration",
-    "organizerLogin": "Organizer login →"
+    "organizerLogin": "Přihlášení →"
   },
   "settings": {
     "title": "Settings",
@@ -620,6 +623,7 @@
     "title": "Dashboard",
     "description": "Manage your competitions",
     "newCompetition": "New competition",
+    "publicCompetitions": "Competitions",
     "totalCompetitions": "Competitions",
     "liveNow": "Live",
     "upcoming": "Upcoming",
@@ -1683,7 +1687,7 @@
     "badge": "Competition calendar",
     "title": "Dance Events Calendar",
     "subtitle": "Register for a competition and track results.",
-    "organizerLogin": "Organizer login →",
+    "organizerLogin": "Přihlášení →",
     "noDate": "No date",
     "filterTitle": "Filter competitions",
     "series": "Series",
@@ -1717,7 +1721,27 @@
     "judges": "Judges",
     "submitted": "submitted"
   },
+  "prelimSchedule": {
+    "settingsTitle": "Settings",
+    "startTime": "Start time",
+    "pairsPerHeat": "Max pairs per heat",
+    "minutesPerDance": "Minutes per dance",
+    "saveAndCompute": "Save and compute",
+    "saveError": "Failed to save settings",
+    "emptyState": "Enter settings and compute the schedule",
+    "noSections": "No sections",
+    "noRounds": "No rounds",
+    "pairs": "pairs",
+    "colRound": "Round",
+    "colHeats": "Heats",
+    "colDances": "Dances",
+    "colDuration": "Duration",
+    "colTime": "From–To",
+    "total": "Total",
+    "estimatedEnd": "Estimated end"
+  },
   "schedulePage": {
+    "step0": "Preliminary Schedule",
     "step1": "Sections & settings",
     "step2": "Schedule",
     "step3": "Publish",
@@ -1805,7 +1829,7 @@
     "heroDesc": "Registrations, payments, judges, Skating system, diplomas — all in one place, paperless.",
     "ctaStart": "Start for free →",
     "howItWorks": "How it works",
-    "copyright": "© 2025 DanceApp. Designed for dance.",
+    "copyright": "© 2026 DanceApp. Designed for dance.",
     "rolesTag": "Roles in the system",
     "rolesTitle1": "One system,",
     "rolesTitle2": "four perspectives",
