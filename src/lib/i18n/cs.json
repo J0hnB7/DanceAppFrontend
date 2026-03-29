@@ -399,7 +399,7 @@
     "notFound": "Soutěž nenalezena",
     "notFoundDesc": "Odkaz může být neplatný nebo soutěž byla odstraněna.",
     "allCompetitions": "Všechny soutěže",
-    "organizerLogin": "Přihlášení organizátora →",
+    "organizerLogin": "Přihlášení →",
     "registrationNotOpen": "Registrace není otevřena",
     "registrationNotOpenDesc": "Registrace momentálně neprobíhá.",
     "basicInfo": "Základní informace",
@@ -535,7 +535,7 @@
     "backToHome": "← Zpět na hlavní stránku",
     "systemTagline": "Systém pro taneční soutěže",
     "taglineDesc": "Přihlášky, platby, rozhodčí, Skating systém, diplomy — vše na jednom místě.",
-    "copyright": "© 2025 DanceApp. Navrženo pro tanec."
+    "copyright": "© 2026 DanceApp. Navrženo pro tanec."
   },
   "publicReg": {
     "competitionNotFound": "Soutěž nenalezena",
@@ -572,7 +572,7 @@
     "gdprConsent": "Souhlasím se zpracováním osobních údajů za účelem organizace a průběhu soutěže.",
     "privacyPolicy": "Zásady ochrany osobních údajů",
     "submit": "Odeslat přihlášku",
-    "organizerLogin": "Přihlášení organizátora →"
+    "organizerLogin": "Přihlášení →"
   },
   "settings": {
     "title": "Nastavení",
@@ -1689,7 +1689,7 @@
     "badge": "Soutěžní kalendář",
     "title": "Kalendář tanečních akcí",
     "subtitle": "Přihlaste se na soutěž a sledujte výsledky.",
-    "organizerLogin": "Přihlášení organizátora →",
+    "organizerLogin": "Přihlášení →",
     "noDate": "Bez data",
     "filterTitle": "Filtrovat soutěže",
     "series": "Seriál",
@@ -1811,7 +1811,7 @@
     "heroDesc": "Přihlášky, platby, rozhodčí, Skating systém, diplomy — vše na jednom místě, bez papírů.",
     "ctaStart": "Začít zdarma →",
     "howItWorks": "Jak to funguje",
-    "copyright": "© 2025 DanceApp. Navrženo pro tanec.",
+    "copyright": "© 2026 DanceApp. Navrženo pro tanec.",
     "rolesTag": "Role v systému",
     "rolesTitle1": "Jeden systém,",
     "rolesTitle2": "čtyři perspektivy",

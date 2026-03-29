@@ -415,6 +415,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
   };
 
   const activeTokens = tokens?.filter((t) => t.active) ?? [];
+  const sortedActiveTokens = [...activeTokens].sort((a, b) => (a.judgeNumber ?? 0) - (b.judgeNumber ?? 0));
   const getTokenRaw = (tk: JudgeTokenDto) => tk.rawToken ?? tk.token;
 
   // Print view
@@ -426,7 +427,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
           <p className="text-sm text-gray-500">{id}</p>
         </div>
         <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
-          {activeTokens.map((tk) => (
+          {sortedActiveTokens.map((tk) => (
             <JudgeQRCard key={tk.id} token={tk} judgeUrl={judgeBaseUrl} rawToken={getTokenRaw(tk)} />
           ))}
         </div>
@@ -581,13 +582,13 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
       </Card>
 
       {/* QR preview cards */}
-      {activeTokens.length > 0 && (
+      {sortedActiveTokens.length > 0 && (
         <div className="mt-6">
           <p className="mb-3 text-sm font-medium text-[var(--text-secondary)]">
-            {t("judges.qrPreview", { count: activeTokens.length })}
+            {t("judges.qrPreview", { count: sortedActiveTokens.length })}
           </p>
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {activeTokens.map((tk) => (
+            {sortedActiveTokens.map((tk) => (
               <button
                 key={tk.id}
                 onClick={() => setQrToken(tk)}

@@ -399,7 +399,7 @@
     "notFound": "Competition not found",
     "notFoundDesc": "The link may be invalid or the competition has been removed.",
     "allCompetitions": "All competitions",
-    "organizerLogin": "Organizer login →",
+    "organizerLogin": "Login →",
     "registrationNotOpen": "Registration is not open",
     "registrationNotOpenDesc": "Registration is not currently active.",
     "basicInfo": "Basic information",
@@ -535,7 +535,7 @@
     "backToHome": "← Back to home",
     "systemTagline": "Dance competition management",
     "taglineDesc": "Registrations, payments, judges, Skating system, diplomas — all in one place.",
-    "copyright": "© 2025 DanceApp. Designed for dance."
+    "copyright": "© 2026 DanceApp. Designed for dance."
   },
   "publicReg": {
     "competitionNotFound": "Competition not found",
@@ -572,7 +572,7 @@
     "gdprConsent": "I consent to processing of personal data for the purpose of organizing and running the competition.",
     "privacyPolicy": "Privacy policy",
     "submit": "Submit registration",
-    "organizerLogin": "Organizer login →"
+    "organizerLogin": "Login →"
   },
   "settings": {
     "title": "Settings",
@@ -1689,7 +1689,7 @@
     "badge": "Competition calendar",
     "title": "Dance Events Calendar",
     "subtitle": "Register for a competition and track results.",
-    "organizerLogin": "Organizer login →",
+    "organizerLogin": "Login →",
     "noDate": "No date",
     "filterTitle": "Filter competitions",
     "series": "Series",
@@ -1811,7 +1811,7 @@
     "heroDesc": "Registrations, payments, judges, Skating system, diplomas — all in one place, paperless.",
     "ctaStart": "Start for free →",
     "howItWorks": "How it works",
-    "copyright": "© 2025 DanceApp. Designed for dance.",
+    "copyright": "© 2026 DanceApp. Designed for dance.",
     "rolesTag": "Roles in the system",
     "rolesTitle1": "One system,",
     "rolesTitle2": "four perspectives",

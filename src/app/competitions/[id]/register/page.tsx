@@ -109,9 +109,9 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
   if (!competition) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 text-center">
-        <Trophy className="h-12 w-12 text-[var(--text-tertiary)]" />
-        <p className="font-medium text-[var(--text-primary)]">{t("publicReg.competitionNotFound")}</p>
-        <p className="text-sm text-[var(--text-secondary)]">{t("publicReg.invalidLink")}</p>
+        <Trophy className="h-12 w-12 text-[#9CA3AF]" />
+        <p className="font-medium text-[#111827]">{t("publicReg.competitionNotFound")}</p>
+        <p className="text-sm text-[#6B7280]">{t("publicReg.invalidLink")}</p>
         <Link href="/competitions"><Button variant="outline">{t("publicReg.browseCompetitions")}</Button></Link>
       </div>
     );
@@ -119,7 +119,7 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
 
   if (result) {
     return (
-      <div className="min-h-screen bg-[var(--background)]">
+      <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
         <PublicNav />
         <div className="mx-auto max-w-lg p-6">
           <Card className="mb-4 text-center">
@@ -131,12 +131,12 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
               <CardDescription>{competition.name}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <div className="rounded-[var(--radius-lg)] bg-[var(--surface-secondary)] p-4 text-left">
+              <div className="rounded-xl bg-[#F3F4F6] p-4 text-left">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="text-xs text-[var(--text-secondary)]">{t("publicReg.startNumber")}</span>
-                  <span className="text-2xl font-black text-[var(--text-primary)]">#{result.startNumber}</span>
+                  <span className="text-xs text-[#6B7280]">{t("publicReg.startNumber")}</span>
+                  <span className="text-2xl font-black text-[#111827]">#{result.startNumber}</span>
                 </div>
-                <p className="text-sm text-[var(--text-secondary)]">{result.sectionName}</p>
+                <p className="text-sm text-[#6B7280]">{result.sectionName}</p>
               </div>
             </CardContent>
           </Card>
@@ -145,8 +145,8 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
             <Card className="mb-4">
               <CardContent className="pt-4 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-[var(--text-secondary)]">{t("publicReg.entryFee")}</span>
-                  <span className="font-bold text-[var(--text-primary)]">{formatCurrency(result.amountDue, result.currency)}</span>
+                  <span className="text-[#6B7280]">{t("publicReg.entryFee")}</span>
+                  <span className="font-bold text-[#111827]">{formatCurrency(result.amountDue, result.currency)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -163,25 +163,25 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
   const isOpen = competition.registrationOpen === true;
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="min-h-screen bg-[#F9FAFB]">
       <PublicNav />
       <div className="mx-auto max-w-xl px-4 py-8">
         {/* Back link */}
         <Link
           href={`/competitions/${id}`}
-          className="mb-6 flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          className="mb-6 flex items-center gap-1.5 text-sm text-[#6B7280] hover:text-[#111827]"
         >
           <ArrowLeft className="h-4 w-4" /> {t("publicReg.backToCompetitionShort")}
         </Link>
 
         {/* Competition header */}
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">{competition.name}</h1>
-          <p className="text-sm text-[var(--text-secondary)]">
+          <h1 className="text-xl font-bold text-[#111827]">{competition.name}</h1>
+          <p className="text-sm text-[#6B7280]">
             {competition.venue} · {formatDate(competition.eventDate)}
           </p>
           {competition.registrationDeadline && (
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--warning)]">
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-[#F59E0B]">
               <AlertTriangle className="h-3.5 w-3.5" />
               {t("publicReg.deadline")} {formatDate(competition.registrationDeadline)}
             </p>
@@ -190,10 +190,10 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
 
         {/* Contact email */}
         {competition.contactEmail && (
-          <div className="mb-4 flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-            <Mail className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+          <div className="mb-4 flex items-center gap-2 text-sm text-[#6B7280]">
+            <Mail className="h-4 w-4 shrink-0 text-[#4F46E5]" />
             <span>{t("publicReg.contact")} </span>
-            <a href={`mailto:${competition.contactEmail}`} className="text-[var(--accent)] hover:underline">
+            <a href={`mailto:${competition.contactEmail}`} className="text-[#4F46E5] hover:underline">
               {competition.contactEmail}
             </a>
           </div>
@@ -201,13 +201,13 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
 
         {/* Propozice */}
         {competition.propozice && (
-          <div className="mb-6 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
-            <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
-              <FileText className="h-4 w-4 text-[var(--accent)]" />
-              <span className="text-sm font-medium text-[var(--text-primary)]">{t("publicReg.propozice")}</span>
+          <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white">
+            <div className="flex items-center gap-2 border-b border-[#E5E7EB] px-4 py-3">
+              <FileText className="h-4 w-4 text-[#4F46E5]" />
+              <span className="text-sm font-medium text-[#111827]">{t("publicReg.propozice")}</span>
             </div>
             <div className="px-4 py-4">
-              <pre className="whitespace-pre-wrap font-sans text-sm text-[var(--text-secondary)] leading-relaxed">
+              <pre className="whitespace-pre-wrap font-sans text-sm text-[#6B7280] leading-relaxed">
                 {competition.propozice}
               </pre>
             </div>
@@ -217,9 +217,9 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
         {!isOpen ? (
           <Card>
             <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
-              <AlertTriangle className="h-10 w-10 text-[var(--warning)]" />
-              <p className="font-medium text-[var(--text-primary)]">{t("publicReg.registrationClosed")}</p>
-              <p className="text-sm text-[var(--text-secondary)]">
+              <AlertTriangle className="h-10 w-10 text-[#F59E0B]" />
+              <p className="font-medium text-[#111827]">{t("publicReg.registrationClosed")}</p>
+              <p className="text-sm text-[#6B7280]">
                 {t("publicReg.registrationClosedDesc")}
               </p>
               <Link href={`/competitions/${id}`}>
@@ -253,10 +253,10 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
                             type="button"
                             disabled={isFull}
                             onClick={() => !isFull && field.onChange(section.id)}
-                            className={`flex items-start justify-between rounded-[var(--radius-lg)] border p-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                            className={`flex items-start justify-between rounded-xl border p-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                               isSelected
-                                ? "border-[var(--accent)] bg-[var(--accent)]/5"
-                                : "border-[var(--border)] hover:bg-[var(--surface-secondary)]"
+                                ? "border-[#4F46E5] bg-[#4F46E5]/5"
+                                : "border-[#E5E7EB] hover:bg-[#F3F4F6]"
                             }`}
                           >
                             <div className="flex-1">
@@ -265,19 +265,19 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
                                 {isFull && <Badge variant="destructive" className="text-xs">{t("publicReg.full")}</Badge>}
                                 {almostFull && <Badge variant="warning" className="text-xs">{t("publicReg.almostFull")}</Badge>}
                               </div>
-                              <p className="text-xs text-[var(--text-secondary)]">
+                              <p className="text-xs text-[#6B7280]">
                                 {[section.ageCategory, section.level].filter(Boolean).join(" · ")}
                                 {section.dances?.length ? ` · ${section.dances.map((d) => d.danceName).join(", ")}` : ""}
                               </p>
                               {spotsLeft !== null && !isFull && (
-                                <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+                                <p className="mt-0.5 text-xs text-[#9CA3AF]">
                                   {t("publicReg.spotsLeft", { count: spotsLeft })}
                                 </p>
                               )}
                             </div>
                             <div className="ml-3 shrink-0 text-right">
                               {section.entryFee ? (
-                                <p className="text-sm font-bold text-[var(--text-primary)]">
+                                <p className="text-sm font-bold text-[#111827]">
                                   {formatCurrency(section.entryFee, section.entryFeeCurrency ?? "EUR")}
                                 </p>
                               ) : (
@@ -296,12 +296,12 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
 
                 {/* Fee summary for selected section */}
                 {selectedSection?.entryFee && (
-                  <div className="mt-3 rounded-[var(--radius-lg)] bg-[var(--accent)]/5 px-3 py-2 text-sm">
-                    <span className="text-[var(--text-secondary)]">Startovné: </span>
-                    <span className="font-semibold text-[var(--text-primary)]">
+                  <div className="mt-3 rounded-xl bg-[#4F46E5]/5 px-3 py-2 text-sm">
+                    <span className="text-[#6B7280]">Startovné: </span>
+                    <span className="font-semibold text-[#111827]">
                       {formatCurrency(selectedSection.entryFee, selectedSection.entryFeeCurrency ?? "EUR")}
                     </span>
-                    <span className="text-xs text-[var(--text-tertiary)]"> {t("publicReg.perPair")}</span>
+                    <span className="text-xs text-[#9CA3AF]"> {t("publicReg.perPair")}</span>
                   </div>
                 )}
               </CardContent>
@@ -313,15 +313,15 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
                 <CardTitle className="text-sm">{t("publicReg.stepDancers")}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <p className="text-xs font-semibold text-[var(--text-tertiary)]">{t("publicReg.dancer1")}</p>
+                <p className="text-xs font-semibold text-[#9CA3AF]">{t("publicReg.dancer1")}</p>
                 <div className="grid grid-cols-2 gap-3">
                   <Input label={t("publicReg.firstName")} placeholder="Jana" error={errors.dancer1FirstName?.message} {...register("dancer1FirstName")} />
                   <Input label={t("publicReg.lastName")} placeholder="Nováková" error={errors.dancer1LastName?.message} {...register("dancer1LastName")} />
                 </div>
                 <Input label={t("publicReg.club")} placeholder="Taneční klub Bratislava" {...register("dancer1Club")} />
 
-                <div className="border-t border-[var(--border)] pt-4">
-                  <p className="mb-3 text-xs font-semibold text-[var(--text-tertiary)]">{t("publicReg.dancer2")}</p>
+                <div className="border-t border-[#E5E7EB] pt-4">
+                  <p className="mb-3 text-xs font-semibold text-[#9CA3AF]">{t("publicReg.dancer2")}</p>
                   <div className="grid grid-cols-2 gap-3">
                     <Input label={t("publicReg.firstName")} placeholder="Peter" {...register("dancer2FirstName")} />
                     <Input label={t("publicReg.lastName")} placeholder="Kováč" {...register("dancer2LastName")} />
@@ -354,7 +354,7 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
             </Card>
 
             {/* GDPR */}
-            <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div className="flex items-start gap-3 rounded-xl border border-[#E5E7EB] bg-white p-4">
               <Controller
                 control={control}
                 name="gdpr"
@@ -362,15 +362,15 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
                   <input
                     type="checkbox"
                     id="gdpr"
-                    className="mt-0.5 h-4 w-4 rounded border-[var(--border)] accent-[var(--accent)]"
+                    className="mt-0.5 h-4 w-4 rounded border-[#E5E7EB] accent-[#4F46E5]"
                     checked={field.value === true}
                     onChange={(e) => field.onChange(e.target.checked ? true : undefined)}
                   />
                 )}
               />
-              <label htmlFor="gdpr" className="cursor-pointer text-sm text-[var(--text-secondary)]">
+              <label htmlFor="gdpr" className="cursor-pointer text-sm text-[#6B7280]">
                 {t("publicReg.gdprConsent")}{" "}
-                <Link href="/privacy" className="text-[var(--accent)] hover:underline">
+                <Link href="/privacy" className="text-[#4F46E5] hover:underline">
                   {t("publicReg.privacyPolicy")}
                 </Link>
                 .
@@ -393,13 +393,13 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
 function PublicNav() {
   const t = getT();
   return (
-    <nav className="border-b border-[var(--border)] bg-[var(--surface)]">
+    <nav className="border-b border-[#E5E7EB] bg-white">
       <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
-          <Trophy className="h-5 w-5 text-[var(--accent)]" />
+        <Link href="/" className="flex items-center gap-2 font-semibold text-[#111827]">
+          <Trophy className="h-5 w-5 text-[#4F46E5]" />
           DanceApp
         </Link>
-        <Link href="/login" className="text-sm text-[var(--accent)] hover:underline">
+        <Link href="/login" className="text-sm text-[#4F46E5] hover:underline">
           {t("publicReg.organizerLogin")}
         </Link>
       </div>
