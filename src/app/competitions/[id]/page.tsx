@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,6 +68,8 @@ const sectionLabel = (icon: string, text: string) => (
 
 /* ── Nav ───────────────────────────────────────────────── */
 function PublicNav({ organizerLogin }: { organizerLogin: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   return (
     <nav style={{
       position: "sticky", top: 0, zIndex: 50,
@@ -81,7 +83,7 @@ function PublicNav({ organizerLogin }: { organizerLogin: string }) {
           <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff" }}>DA</div>
           <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1rem", color: "#111827", letterSpacing: "-.02em" }}>DanceApp</span>
         </Link>
-        <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }} suppressHydrationWarning>{organizerLogin}</Link>
+        {mounted && <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>{organizerLogin}</Link>}
       </div>
     </nav>
   );
