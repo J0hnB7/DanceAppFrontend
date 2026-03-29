@@ -33,7 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { judgeTokensApi, type JudgeTokenDto } from "@/lib/api/judge-tokens";
+import { judgeTokensApi, type JudgeTokenDto, type JudgeTokenCreatedResponse } from "@/lib/api/judge-tokens";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 import QRCode from "qrcode";
@@ -353,6 +353,8 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
   const [printMode, setPrintMode] = useState(false);
   const [fallbackOpen, setFallbackOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [createdTokens, setCreatedTokens] = useState<JudgeTokenCreatedResponse[]>([]);
+  const [newTokensOpen, setNewTokensOpen] = useState(false);
   const qc = useQueryClient();
 
   const judgeBaseUrl =
@@ -369,18 +371,23 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
       const existingNumbers = new Set((tokens ?? []).map((tk) => tk.judgeNumber));
       let judgeNum = 1;
       let created = 0;
+      const results: JudgeTokenCreatedResponse[] = [];
       while (created < n) {
         if (!existingNumbers.has(judgeNum)) {
-          await judgeTokensApi.create(id, { judgeNumber: judgeNum, role: "JUDGE" });
+          const res = await judgeTokensApi.create(id, { judgeNumber: judgeNum, role: "JUDGE" });
+          results.push(res);
           created++;
         }
         judgeNum++;
-        if (judgeNum > 100) break; // safety
+        if (judgeNum > 100) break;
       }
+      return results;
     },
-    onSuccess: () => {
+    onSuccess: (results) => {
+      setCreatedTokens(results);
       qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
       setCreateOpen(false);
+      if (results.length > 0) setNewTokensOpen(true);
       toast({ title: t("judges.createDialog.tokensCreated", { count }), variant: "success" });
     },
   });
@@ -695,6 +702,46 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                 <UserX className="h-4 w-4" />
                 Smazat
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* New tokens dialog — shows raw token/QR/PIN immediately after creation */}
+      {newTokensOpen && createdTokens.length > 0 && (
+        <Dialog open onOpenChange={(v) => !v && setNewTokensOpen(false)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{t("judges.newTokensTitle")}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-[var(--text-secondary)] mb-4">
+              {t("judges.newTokensDesc")}
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-[60vh] overflow-y-auto">
+              {createdTokens.map((ct) => {
+                const fakeToken: JudgeTokenDto = {
+                  id: ct.id,
+                  judgeNumber: ct.judgeNumber,
+                  role: ct.role,
+                  active: true,
+                  rawToken: ct.rawToken,
+                  rawPin: ct.pin,
+                };
+                return (
+                  <JudgeQRCard
+                    key={ct.id}
+                    token={fakeToken}
+                    judgeUrl={judgeBaseUrl}
+                    rawToken={ct.rawToken}
+                  />
+                );
+              })}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handlePrintAll}>
+                <Printer className="h-4 w-4" /> {t("judges.printAll")}
+              </Button>
+              <Button onClick={() => setNewTokensOpen(false)}>{t("common.close")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

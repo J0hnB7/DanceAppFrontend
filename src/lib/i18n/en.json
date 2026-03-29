@@ -348,7 +348,10 @@
       "confirm": "Confirm & mark as proxy entry"
     },
     "pinShow": "Show PIN",
-    "pinHide": "Hide PIN"
+    "pinHide": "Hide PIN",
+    "newTokensTitle": "New judge tokens",
+    "newTokensDesc": "These tokens are only visible now. Print or send QR codes to judges.",
+    "printAll": "Print all"
   },
   "news": {
     "title": "News",

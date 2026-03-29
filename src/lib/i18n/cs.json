@@ -348,7 +348,10 @@
       "confirm": "Potvrdit a označit jako zástupný záznam"
     },
     "pinShow": "Zobrazit PIN",
-    "pinHide": "Skrýt PIN"
+    "pinHide": "Skrýt PIN",
+    "newTokensTitle": "Nové tokeny porotců",
+    "newTokensDesc": "Tyto tokeny jsou viditelné pouze nyní. Vytiskněte nebo zašlete QR kódy porotcům.",
+    "printAll": "Tisknout vše"
   },
   "news": {
     "title": "Aktuality",
