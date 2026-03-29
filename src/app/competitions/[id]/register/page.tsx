@@ -152,9 +152,14 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
             </Card>
           )}
 
-          <Link href={`/competitions/${id}`}>
-            <Button variant="outline" className="w-full">{t("publicReg.backToCompetition")}</Button>
-          </Link>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <a href={`/competitions/${id}`} style={{ display: "block", textAlign: "center", padding: "10px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: ".875rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
+              {t("publicReg.backToCompetition")}
+            </a>
+            <a href="/competitions" style={{ display: "block", textAlign: "center", fontSize: ".8rem", color: "#6B7280", textDecoration: "none" }}>
+              {t("publicCompetition.backToAllCompetitions")}
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -166,13 +171,15 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
     <div className="min-h-screen bg-[var(--background)]">
       <PublicNav />
       <div className="mx-auto max-w-xl px-4 py-8">
-        {/* Back link */}
-        <Link
-          href={`/competitions/${id}`}
-          className="mb-6 flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-        >
-          <ArrowLeft className="h-4 w-4" /> {t("publicReg.backToCompetitionShort")}
-        </Link>
+        {/* Back links */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 24 }}>
+          <a href={`/competitions/${id}`} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".875rem", color: "#4F46E5", fontWeight: 600, textDecoration: "none" }}>
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {t("publicReg.backToCompetitionShort")}
+          </a>
+          <a href="/competitions" style={{ fontSize: ".8rem", color: "#6B7280", textDecoration: "none" }}>
+            {t("publicCompetition.backToAllCompetitions")}
+          </a>
+        </div>
 
         {/* Competition header */}
         <div className="mb-6">
@@ -393,15 +400,16 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
 function PublicNav() {
   const t = getT();
   return (
-    <nav className="border-b border-[var(--border)] bg-[var(--surface)]">
-      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
-          <Trophy className="h-5 w-5 text-[var(--accent)]" />
-          DanceApp
-        </Link>
-        <Link href="/login" className="text-sm text-[var(--accent)] hover:underline">
+    <nav style={{ borderBottom: "1px solid #E5E7EB", background: "#fff", height: 60, display: "flex", alignItems: "center" }}>
+      <div style={{ maxWidth: 896, margin: "0 auto", width: "100%", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <a href="/competitions" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          <Trophy style={{ width: 18, height: 18, color: "#4F46E5" }} />
+          <span style={{ fontWeight: 700, fontSize: ".9rem", color: "#111827" }}>DanceApp</span>
+        </a>
+        <a href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
           {t("publicReg.organizerLogin")}
-        </Link>
+        </a>
       </div>
     </nav>
   );

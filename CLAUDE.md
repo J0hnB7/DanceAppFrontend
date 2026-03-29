@@ -195,7 +195,7 @@ npx tsc --noEmit
 
 ## Hydration (Next.js SSR)
 
-- Locale mismatch: server renders DEFAULT_LOCALE, client reads localStorage → přidej `suppressHydrationWarning` na elementy které renderují `t()` na veřejných stránkách
+- Locale mismatch: server renders DEFAULT_LOCALE, client reads localStorage → `suppressHydrationWarning` **nestačí** pro text nodes. Použij `mounted` guard: `const [mounted, setMounted] = useState(false); useEffect(() => setMounted(true), []);` a renderuj locale-závislý text jen když `mounted === true`.
 
 ## Hotové stránky / endpointy — nezapomeň
 

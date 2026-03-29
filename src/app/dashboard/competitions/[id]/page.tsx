@@ -126,7 +126,9 @@ const statusColors: Record<CompetitionStatus, "default" | "secondary" | "success
 function TabInitializer({ onTab }: { onTab: (tab: string) => void }) {
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab");
-  if (tab) onTab(tab);
+  useEffect(() => {
+    if (tab) onTab(tab);
+  }, [tab, onTab]);
   return null;
 }
 

@@ -88,19 +88,28 @@ export default function DashboardPage() {
             {new Date().toLocaleDateString(locale === "en" ? "en-GB" : "cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
-        <Link
-          href="/dashboard/competitions/new"
-          className="flex shrink-0 items-center gap-2 rounded-lg font-semibold text-white transition-all text-[0.86rem]"
-          style={{
-            background: "var(--accent, #3B82F6)",
-            padding: "10px 20px",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#2563EB"; (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-1px)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--accent, #3B82F6)"; (e.currentTarget as HTMLAnchorElement).style.transform = ""; }}
-        >
-          <Plus className="h-4 w-4" />
-          {t("dashboard.newCompetition")}
-        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          <Link
+            href="/competitions"
+            className="flex items-center gap-1.5 rounded-lg font-semibold transition-all text-[0.86rem]"
+            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)", padding: "9px 16px", background: "transparent" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-primary)"; (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--text-secondary)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-secondary)"; (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; }}
+          >
+            <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
+            {t("dashboard.publicCompetitions")}
+          </Link>
+          <Link
+            href="/dashboard/competitions/new"
+            className="flex items-center gap-2 rounded-lg font-semibold text-white transition-all text-[0.86rem]"
+            style={{ background: "var(--accent, #3B82F6)", padding: "10px 20px" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#2563EB"; (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-1px)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--accent, #3B82F6)"; (e.currentTarget as HTMLAnchorElement).style.transform = ""; }}
+          >
+            <Plus className="h-4 w-4" />
+            {t("dashboard.newCompetition")}
+          </Link>
+        </div>
       </div>
 
       {/* Live banner */}

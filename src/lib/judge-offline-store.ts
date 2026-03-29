@@ -139,7 +139,7 @@ export const judgeOfflineStore = {
           deviceToken: m.deviceToken,
           createdAt: m.createdAt,
         })),
-      }, { params: { judgeTokenId } });
+      }, { headers: { 'X-Judge-Token': judgeTokenId } });
 
       const result: SyncResult = response.data;
       if (result.accepted > 0) {

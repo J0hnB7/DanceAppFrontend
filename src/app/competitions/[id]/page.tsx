@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 
 const schema = z.object({
-  sectionId: z.string().min(1),
+  sectionIds: z.array(z.string()).min(1),
   dancer1FirstName: z.string().min(1),
   dancer1LastName: z.string().min(1),
   dancer1Club: z.string().optional(),
@@ -55,7 +56,10 @@ const sectionLabel = (icon: string, text: string) => (
 );
 
 /* ── Nav ───────────────────────────────────────────────── */
-function PublicNav({ organizerLogin }: { organizerLogin: string }) {
+function PublicNav() {
+  const { t } = useLocale();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   return (
     <nav style={{
       position: "sticky", top: 0, zIndex: 50,
@@ -69,7 +73,7 @@ function PublicNav({ organizerLogin }: { organizerLogin: string }) {
           <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff" }}>DA</div>
           <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1rem", color: "#111827", letterSpacing: "-.02em" }}>DanceApp</span>
         </Link>
-        <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>{organizerLogin}</Link>
+        <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>{mounted ? t("publicCompetition.organizerLogin") : ""}</Link>
       </div>
     </nav>
   );
@@ -79,6 +83,7 @@ function PublicNav({ organizerLogin }: { organizerLogin: string }) {
 export default function PublicCompetitionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { t } = useLocale();
+  const router = useRouter();
   const [result, setResult] = useState<RegistrationResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -101,18 +106,34 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
     refetchInterval: 10_000,
   });
 
-  const { register, control, handleSubmit, watch, formState: { errors } } = useForm<RegisterForm>({
+  const { register, control, handleSubmit, watch, trigger, setError, reset, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(schema),
     defaultValues: {
-      sectionId: "", dancer1FirstName: "", dancer1LastName: "", dancer1Club: "",
+      sectionIds: [], dancer1FirstName: "", dancer1LastName: "", dancer1Club: "",
       dancer2FirstName: "", dancer2LastName: "", dancer2Club: "", discountCode: "", email: "", gdpr: undefined,
     },
   });
 
-  const selectedSectionId = watch("sectionId");
-  const selectedSection = sections.find((s) => s.id === selectedSectionId);
+  const selectedSectionIds = watch("sectionIds");
+  const selectedSections = sections.filter((s) => selectedSectionIds.includes(s.id));
+  const totalFee = selectedSections.reduce((sum, s) => sum + (s.entryFee ?? 0), 0);
+  const totalCurrency = selectedSections[0]?.entryFeeCurrency ?? "EUR";
+  const isCouple = selectedSections.some((s) => s.competitionType === "COUPLE");
+
 
   const onSubmit = async (values: RegisterForm) => {
+    if (isCouple) {
+      let hasError = false;
+      if (!values.dancer2FirstName?.trim()) {
+        setError("dancer2FirstName", { message: t("publicRegister.validation.required") });
+        hasError = true;
+      }
+      if (!values.dancer2LastName?.trim()) {
+        setError("dancer2LastName", { message: t("publicRegister.validation.required") });
+        hasError = true;
+      }
+      if (hasError) return;
+    }
     setSubmitting(true);
     try {
       const res = await apiClient.post<RegistrationResult>(`/competitions/${id}/pairs/public-registration`, values);
@@ -130,7 +151,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   if (isLoading) {
     return (
       <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
-        <PublicNav organizerLogin={t("publicCompetition.organizerLogin")} />
+        <PublicNav />
         <div style={{ height: 240, background: "#0A1628" }} />
         <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
           <Skeleton className="h-12" /><Skeleton className="h-40" /><Skeleton className="h-40" />
@@ -143,7 +164,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   if (!competition) {
     return (
       <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
-        <PublicNav organizerLogin={t("publicCompetition.organizerLogin")} />
+        <PublicNav />
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "96px 24px", textAlign: "center" }}>
           <div style={{ width: 64, height: 64, borderRadius: 16, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.75rem" }}>🏆</div>
           <p style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.1rem", color: "#111827" }}>{t("publicCompetition.notFound")}</p>
@@ -171,7 +192,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   if (result) {
     return (
       <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
-        <PublicNav organizerLogin={t("publicCompetition.organizerLogin")} />
+        <PublicNav />
         <div style={{ maxWidth: 480, margin: "0 auto", padding: "64px 24px", textAlign: "center" }}>
           <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#059669,#10B981)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", margin: "0 auto 20px" }}>✓</div>
           <h1 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.4rem", color: "#111827", marginBottom: 6 }}>{t("publicCompetition.registrationConfirmed")}</h1>
@@ -195,9 +216,9 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
           )}
 
           <p style={{ fontSize: ".85rem", color: "#9CA3AF", marginBottom: 20 }}>{t("publicCompetition.confirmationSent")}</p>
-          <button onClick={() => setResult(null)} style={{ fontSize: ".875rem", color: "#4F46E5", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
-            {t("publicCompetition.backToPage")}
-          </button>
+          <a href="/competitions" style={{ fontSize: ".875rem", color: "#4F46E5", fontWeight: 600, textDecoration: "none" }}>
+            {t("publicCompetition.backToAllCompetitions")}
+          </a>
         </div>
       </div>
     );
@@ -213,7 +234,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
-        <PublicNav organizerLogin={t("publicCompetition.organizerLogin")} />
+        <PublicNav />
 
         {/* ── HERO ── */}
         <div style={{ background: "#0A1628", position: "relative", overflow: "hidden", padding: "52px 24px 56px" }}>
@@ -385,16 +406,23 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
               <div style={cardStyle}>
                 {sectionLabel("🏅", t("publicCompetition.selectCategory"))}
                 <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <Controller control={control} name="sectionId" render={({ field }) => (
+                  <Controller control={control} name="sectionIds" render={({ field }) => (
                     <>
                       {sections.map((section) => {
                         const sl = section.maxPairs ? section.maxPairs - (section.registeredPairsCount ?? 0) : null;
                         const isFull = sl !== null && sl <= 0;
                         const almostFull = sl !== null && sl > 0 && sl <= 5;
-                        const isSelected = field.value === section.id;
+                        const isSelected = field.value.includes(section.id);
+                        const toggle = () => {
+                          if (isFull) return;
+                          field.onChange(isSelected
+                            ? field.value.filter((id: string) => id !== section.id)
+                            : [...field.value, section.id]);
+                        };
                         return (
                           <button key={section.id} type="button" disabled={isFull}
-                            onClick={() => !isFull && field.onChange(section.id)}
+                            onClick={toggle}
+                            aria-pressed={isSelected}
                             className="sec-btn"
                             style={{
                               display: "flex", alignItems: "flex-start", justifyContent: "space-between",
@@ -403,19 +431,29 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                               padding: "12px 14px", textAlign: "left", cursor: isFull ? "not-allowed" : "pointer",
                               opacity: isFull ? .5 : 1,
                             }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
-                                <p style={{ fontSize: ".9rem", fontWeight: 600, color: "#111827" }}>{section.name}</p>
-                                {isFull && <span style={{ fontSize: ".65rem", fontWeight: 700, color: "#DC2626", background: "#FEF2F2", padding: "1px 7px", borderRadius: 100 }}>{t("publicCompetition.full")}</span>}
-                                {almostFull && <span style={{ fontSize: ".65rem", fontWeight: 700, color: "#D97706", background: "#FFFBEB", padding: "1px 7px", borderRadius: 100 }}>{t("publicCompetition.almostFull")}</span>}
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: 1 }}>
+                              <div style={{
+                                width: 18, height: 18, borderRadius: 5, flexShrink: 0, marginTop: 2,
+                                border: isSelected ? "none" : "1.5px solid #D1D5DB",
+                                background: isSelected ? "#4F46E5" : "#fff",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                              }}>
+                                {isSelected && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                               </div>
-                              <p style={{ fontSize: ".78rem", color: "#6B7280" }}>
-                                {section.ageCategory} · {section.level} · {section.dances.map((d) => d.name).join(", ")}
-                              </p>
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+                                  <p style={{ fontSize: ".9rem", fontWeight: 600, color: "#111827" }}>{section.name}</p>
+                                  {isFull && <span style={{ fontSize: ".65rem", fontWeight: 700, color: "#DC2626", background: "#FEF2F2", padding: "1px 7px", borderRadius: 100 }}>{t("publicCompetition.full")}</span>}
+                                  {almostFull && <span style={{ fontSize: ".65rem", fontWeight: 700, color: "#D97706", background: "#FFFBEB", padding: "1px 7px", borderRadius: 100 }}>{t("publicCompetition.almostFull")}</span>}
+                                </div>
+                                <p style={{ fontSize: ".78rem", color: "#6B7280" }}>
+                                  {section.ageCategory} · {section.level} · {section.dances.map((d) => d.name).join(", ")}
+                                </p>
+                              </div>
                             </div>
                             <div style={{ marginLeft: 12, textAlign: "right", flexShrink: 0 }}>
                               {section.entryFee
-                                ? <p style={{ fontSize: ".9rem", fontWeight: 700, color: "#4F46E5" }}>{formatCurrency(section.entryFee, section.entryFeeCurrency ?? "EUR")}</p>
+                                ? <p style={{ fontSize: ".9rem", fontWeight: 700, color: isSelected ? "#4F46E5" : "#6B7280" }}>{formatCurrency(section.entryFee, section.entryFeeCurrency ?? "EUR")}</p>
                                 : <span style={{ fontSize: ".78rem", color: "#9CA3AF" }}>{section.registeredPairsCount} párů</span>
                               }
                             </div>
@@ -424,14 +462,19 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                       })}
                     </>
                   )} />
-                  {errors.sectionId && (
+                  {errors.sectionIds && (
                     <p style={{ fontSize: ".78rem", color: "#DC2626" }}>{t("publicRegister.validation.selectCategory")}</p>
                   )}
-                  {selectedSection?.entryFee && (
+                  {selectedSectionIds.length > 0 && (
                     <div style={{ borderRadius: 9, background: "#EEF2FF", border: "1px solid rgba(79,70,229,.2)", padding: "10px 14px", fontSize: ".875rem" }}>
                       <span style={{ color: "#6B7280" }}>{t("publicCompetition.entryFeeDisplay")} </span>
-                      <span style={{ fontWeight: 700, color: "#4F46E5" }}>{formatCurrency(selectedSection.entryFee, selectedSection.entryFeeCurrency ?? "EUR")}</span>
+                      <span style={{ fontWeight: 700, color: "#4F46E5" }}>{formatCurrency(totalFee, totalCurrency)}</span>
                       <span style={{ fontSize: ".78rem", color: "#9CA3AF" }}> {t("publicCompetition.perPair")}</span>
+                      {selectedSectionIds.length > 1 && (
+                        <span style={{ fontSize: ".75rem", color: "#6B7280", display: "block", marginTop: 3 }}>
+                          {selectedSections.map((s) => s.entryFee ? `${s.name}: ${formatCurrency(s.entryFee, s.entryFeeCurrency ?? "EUR")}` : s.name).join(" + ")}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -481,10 +524,10 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
               )}
 
               {/* 5c — dancer info */}
-              <div style={cardStyle}>
+              <div style={{ ...cardStyle, ["--surface" as string]: "#fff", ["--text-primary" as string]: "#111827", ["--text-secondary" as string]: "#374151", ["--text-tertiary" as string]: "#6B7280", ["--border" as string]: "#E5E7EB", ["--accent" as string]: "#4F46E5", ["--radius-md" as string]: "8px", ["--destructive" as string]: "#DC2626" }}>
                 {sectionLabel("💃", t("publicCompetition.dancerInfo"))}
                 <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
-                  <p style={{ fontSize: ".71rem", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".08em" }}>{t("publicCompetition.firstDancer")}</p>
+                  <p style={{ fontSize: ".71rem", fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".08em" }}>{t("publicCompetition.firstDancer")}</p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <Input label={t("publicRegister.firstNameLabel")} placeholder="Jana" error={errors.dancer1FirstName?.message} {...register("dancer1FirstName")} />
                     <Input label={t("publicRegister.lastNameLabel")} placeholder="Nováková" error={errors.dancer1LastName?.message} {...register("dancer1LastName")} />
@@ -492,10 +535,27 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                   <Input label={t("publicRegister.clubLabel")} placeholder="Taneční klub Praha" {...register("dancer1Club")} />
 
                   <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
-                    <p style={{ fontSize: ".71rem", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 14 }}>{t("publicCompetition.partner")}</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                      <p style={{ fontSize: ".71rem", fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".08em" }}>
+                        {t("publicCompetition.partner")}
+                        {isCouple
+                          ? <span style={{ color: "#DC2626", marginLeft: 4 }}>*</span>
+                          : <span style={{ fontWeight: 400, color: "#9CA3AF", marginLeft: 6, textTransform: "none", letterSpacing: 0, fontSize: ".7rem" }}>({t("publicRegister.optional")})</span>
+                        }
+                      </p>
+                      {isCouple && (
+                        <span style={{ fontSize: ".68rem", fontWeight: 600, color: "#4F46E5", background: "#EEF2FF", padding: "2px 8px", borderRadius: 100 }}>
+                          {t("publicRegister.requiredForCouple")}
+                        </span>
+                      )}
+                    </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                      <Input label={t("publicRegister.firstNameLabel")} placeholder="Peter" {...register("dancer2FirstName")} />
-                      <Input label={t("publicRegister.lastNameLabel")} placeholder="Kováč" {...register("dancer2LastName")} />
+                      <Input label={t("publicRegister.firstNameLabel")} placeholder="Peter"
+                        error={errors.dancer2FirstName?.message}
+                        {...register("dancer2FirstName")} />
+                      <Input label={t("publicRegister.lastNameLabel")} placeholder="Kováč"
+                        error={errors.dancer2LastName?.message}
+                        {...register("dancer2LastName")} />
                     </div>
                     <Input label={t("publicRegister.clubLabel")} placeholder="Taneční klub Praha" {...register("dancer2Club")} />
                   </div>
@@ -561,7 +621,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
             <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>DA</div>
             <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".9rem", color: "#111827" }}>DanceApp</span>
           </Link>
-          <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2025 DanceApp. Navrženo pro tanec.</p>
+          <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2026 DanceApp. Navrženo pro tanec.</p>
         </div>
       </div>
     </>

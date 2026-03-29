@@ -57,6 +57,6 @@ export const liveApi = {
 
   getJudgeCallbacks: (roundId: string, judgeTokenId: string) =>
     apiClient
-      .get<string[]>(`/rounds/${roundId}/callbacks`, { params: { judgeTokenId } })
+      .get<string[]>(`/rounds/${roundId}/callbacks`, { headers: { 'X-Judge-Token': judgeTokenId } })
       .then((r) => r.data),
 }

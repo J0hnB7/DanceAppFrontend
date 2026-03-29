@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { judgeTokensApi, type JudgeTokenDto } from "@/lib/api/judge-tokens";
+import { judgeTokensApi, type JudgeTokenDto, type JudgeTokenCreatedResponse } from "@/lib/api/judge-tokens";
 import { liveApi } from "@/lib/api/live";
 import { useLiveStore } from "@/store/live-store";
 import { useSSE } from "@/hooks/use-sse";
@@ -155,10 +155,73 @@ function OnlineDot({ online }: { online: boolean }) {
   );
 }
 
+function NewTokensDialog({ tokens, judgeBaseUrl, onClose }: {
+  tokens: JudgeTokenCreatedResponse[];
+  judgeBaseUrl: string;
+  onClose: () => void;
+}) {
+  const { t } = useLocale();
+  const [visiblePins, setVisiblePins] = useState<Record<number, boolean>>({});
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t("judges.newTokensDialog.title")}</DialogTitle>
+        </DialogHeader>
+        <div className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-4 py-3 text-sm text-[var(--warning)]">
+          {t("judges.newTokensDialog.warning")}
+        </div>
+        <div className="space-y-3">
+          {tokens.map((tok, idx) => {
+            const url = `${judgeBaseUrl}/${tok.rawToken}`;
+            const pinVisible = visiblePins[idx] ?? true;
+            return (
+              <div key={tok.id} className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                <QRCanvas url={url} size={80} />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <p className="font-semibold text-sm text-[var(--text-primary)]">
+                    {t("judges.judgeNumber", { number: String(tok.judgeNumber ?? idx + 1) })}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--text-tertiary)]">PIN:</span>
+                    <code className="rounded bg-[var(--surface-secondary)] px-2 py-0.5 text-sm font-bold tracking-widest">
+                      {pinVisible ? tok.pin : "••••"}
+                    </code>
+                    <button
+                      onClick={() => setVisiblePins((p) => ({ ...p, [idx]: !pinVisible }))}
+                      className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                    >
+                      {pinVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--text-tertiary)] truncate max-w-[260px]">{url}</span>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(url); toast({ title: t("judges.linkCopied") }); }}
+                      className="shrink-0 text-[var(--text-tertiary)] hover:text-[var(--accent)]"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <Button onClick={onClose}>{t("common.close")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function JudgesTab({ competitionId }: { competitionId: string }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [count, setCount] = useState("5");
   const [qrToken, setQrToken] = useState<JudgeTokenDto | null>(null);
+  const [newTokens, setNewTokens] = useState<JudgeTokenCreatedResponse[]>([]);
   const [printMode, setPrintMode] = useState(false);
   const [fallbackOpen, setFallbackOpen] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, { name: string; country: string }>>({});
@@ -198,14 +261,17 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
     mutationFn: async () => {
       const n = parseInt(count) || 1;
       const existingMax = tokens?.reduce((max, tok) => Math.max(max, tok.judgeNumber ?? 0), 0) ?? 0;
+      const results: JudgeTokenCreatedResponse[] = [];
       for (let i = 1; i <= n; i++) {
-        await judgeTokensApi.create(competitionId, { judgeNumber: existingMax + i, role: "JUDGE" });
+        const created = await judgeTokensApi.create(competitionId, { judgeNumber: existingMax + i, role: "JUDGE" });
+        results.push(created);
       }
+      return results;
     },
-    onSuccess: () => {
+    onSuccess: (results) => {
       qc.invalidateQueries({ queryKey: ["judge-tokens", competitionId] });
       setCreateOpen(false);
-      toast({ title: t("judges.createDialog.tokensCreated", { count }), variant: "success" });
+      setNewTokens(results);
     },
   });
 
@@ -309,17 +375,27 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
 
       {/* Tokens table */}
       <Card>
-        <Table>
+        <Table className="table-fixed">
+          <colgroup>
+            <col style={{ width: "6%" }} />   {/* Porotce */}
+            <col style={{ width: "14%" }} />  {/* Jméno */}
+            <col style={{ width: "7%" }} />   {/* Země */}
+            <col style={{ width: "18%" }} />  {/* Token */}
+            <col style={{ width: "10%" }} />  {/* PIN */}
+            <col style={{ width: "10%" }} />  {/* Status */}
+            <col style={{ width: "7%" }} />   {/* Online */}
+            <col style={{ width: "10%" }} />  {/* Akce */}
+          </colgroup>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-20">{t("judges.table.judge")}</TableHead>
+              <TableHead>{t("judges.table.judge")}</TableHead>
+              <TableHead>Jméno</TableHead>
+              <TableHead>Země</TableHead>
               <TableHead>{t("judges.table.token")}</TableHead>
               <TableHead>{t("judgesActivity.pin")}</TableHead>
               <TableHead>{t("judges.table.status")}</TableHead>
-              <TableHead>Jméno</TableHead>
-              <TableHead>Země</TableHead>
-              <TableHead className="w-16">Online</TableHead>
-              <TableHead className="w-36">{t("judges.table.actions")}</TableHead>
+              <TableHead>Online</TableHead>
+              <TableHead>{t("judges.table.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -329,12 +405,9 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
             {tokens?.map((tok) => (
               <TableRow key={tok.id}>
                 <TableCell className="font-bold">#{tok.judgeNumber}</TableCell>
-                <TableCell><code className="rounded bg-[var(--surface-secondary)] px-2 py-0.5 text-xs">{(tok.rawToken ?? tok.token ?? "").slice(0, 16)}…</code></TableCell>
-                <TableCell><PinCell pin={tok.rawPin ?? tok.pin} /></TableCell>
-                <TableCell><Badge variant={tok.active ? "success" : "secondary"}>{tok.active ? t("judges.active") : t("judges.revoked")}</Badge></TableCell>
                 <TableCell>
                   <input
-                    className="h-7 w-32 rounded border border-[var(--border)] bg-[var(--surface)] px-2 text-xs focus:border-[var(--accent)] focus:outline-none"
+                    className="h-7 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-2 text-xs focus:border-[var(--accent)] focus:outline-none"
                     placeholder="Jméno"
                     value={getEditVal(tok).name}
                     onChange={(e) => setEditValues((prev) => ({ ...prev, [tok.id]: { ...getEditVal(tok), name: e.target.value } }))}
@@ -343,7 +416,7 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
                 </TableCell>
                 <TableCell>
                   <input
-                    className="h-7 w-14 rounded border border-[var(--border)] bg-[var(--surface)] px-2 text-xs uppercase focus:border-[var(--accent)] focus:outline-none"
+                    className="h-7 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-2 text-xs uppercase focus:border-[var(--accent)] focus:outline-none"
                     placeholder="CZE"
                     maxLength={3}
                     value={getEditVal(tok).country}
@@ -351,6 +424,9 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
                     onBlur={(e) => handleBlurSave(tok, getEditVal(tok).name, e.target.value)}
                   />
                 </TableCell>
+                <TableCell><code className="rounded bg-[var(--surface-secondary)] px-2 py-0.5 text-xs">{(tok.rawToken ?? tok.token ?? "").slice(0, 16)}…</code></TableCell>
+                <TableCell><PinCell pin={tok.rawPin ?? tok.pin} /></TableCell>
+                <TableCell><Badge variant={tok.active ? "success" : "secondary"}>{tok.active ? t("judges.active") : t("judges.revoked")}</Badge></TableCell>
                 <TableCell>
                   <div className="flex items-center justify-center">
                     <OnlineDot online={tok.connected ?? false} />
@@ -406,6 +482,9 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
       )}
 
       {/* Modals */}
+      {newTokens.length > 0 && (
+        <NewTokensDialog tokens={newTokens} judgeBaseUrl={judgeBaseUrl} onClose={() => setNewTokens([])} />
+      )}
       {qrToken && <QRModal token={qrToken} judgeUrl={judgeBaseUrl} onClose={() => setQrToken(null)} />}
       {fallbackOpen && <FallbackScoringModal tokens={tokens ?? []} onClose={() => setFallbackOpen(false)} />}
 

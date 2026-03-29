@@ -57,18 +57,18 @@ export interface SectionFinalSummaryResponse {
 }
 
 export const scoringApi = {
-  /** judgeTokenId is required as query param by backend */
+  /** judgeTokenId is sent as X-Judge-Token header (not query param — tokens must not appear in logs/URLs) */
   submitCallbacks: (roundId: string, judgeTokenId: string, data: SubmitCallbacksRequest) =>
-    apiClient.post(`/rounds/${roundId}/callbacks`, data, { params: { judgeTokenId } }).then((r) => r.data),
+    apiClient.post(`/rounds/${roundId}/callbacks`, data, { headers: { 'X-Judge-Token': judgeTokenId } }).then((r) => r.data),
 
   getCallbacks: (roundId: string, judgeTokenId: string) =>
-    apiClient.get(`/rounds/${roundId}/callbacks`, { params: { judgeTokenId } }).then((r) => r.data),
+    apiClient.get(`/rounds/${roundId}/callbacks`, { headers: { 'X-Judge-Token': judgeTokenId } }).then((r) => r.data),
 
   submitPlacements: (roundId: string, danceId: string, judgeTokenId: string, data: SubmitPlacementsRequest) =>
-    apiClient.post(`/rounds/${roundId}/placements/${danceId}`, data, { params: { judgeTokenId } }).then((r) => r.data),
+    apiClient.post(`/rounds/${roundId}/placements/${danceId}`, data, { headers: { 'X-Judge-Token': judgeTokenId } }).then((r) => r.data),
 
   getPlacements: (roundId: string, danceId: string, judgeTokenId: string) =>
-    apiClient.get(`/rounds/${roundId}/placements/${danceId}`, { params: { judgeTokenId } }).then((r) => r.data),
+    apiClient.get(`/rounds/${roundId}/placements/${danceId}`, { headers: { 'X-Judge-Token': judgeTokenId } }).then((r) => r.data),
 
   getSectionSummary: (sectionId: string) =>
     apiClient.get<SectionFinalSummaryResponse>(`/sections/${sectionId}/final-summary`).then((r) => r.data),

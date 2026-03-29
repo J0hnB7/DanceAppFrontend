@@ -152,7 +152,7 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
           recalls,
           deviceToken,
         },
-        { params: { judgeTokenId: adjudicatorId } }
+        { headers: { 'X-Judge-Token': adjudicatorId } }
       );
       // Mark as synced
       await judgeOfflineStore.markAsSynced(
@@ -208,7 +208,7 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
           apiClient.post(
             `/rounds/${currentRound.id}/placements/${danceId}`,
             { placements: Object.entries(pairPlacements).map(([pairId, placement]) => ({ pairId, placement })), deviceToken },
-            { params: { judgeTokenId: adjudicatorId } }
+            { headers: { 'X-Judge-Token': adjudicatorId } }
           )
         )
       );

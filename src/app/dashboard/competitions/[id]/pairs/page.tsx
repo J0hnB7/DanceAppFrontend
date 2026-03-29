@@ -469,21 +469,26 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
   });
 
   const onSubmit = async (values: AddPairForm) => {
-    await createPair.mutateAsync({
-      sectionId: values.sectionId,
-      startNumber: values.startNumber ? Number(values.startNumber) : 0,
-      dancer1Name: `${values.dancer1FirstName} ${values.dancer1LastName}`,
-      dancer2Name: values.dancer2FirstName ? `${values.dancer2FirstName} ${values.dancer2LastName ?? ""}`.trim() : undefined,
-      dancer1FirstName: values.dancer1FirstName,
-      dancer1LastName: values.dancer1LastName,
-      dancer1Club: values.dancer1Club,
-      dancer2FirstName: values.dancer2FirstName,
-      dancer2LastName: values.dancer2LastName,
-      dancer2Club: values.dancer2Club,
-    });
-    toast({ title: t("pairs.added"), variant: "success" });
-    reset();
-    setDialogOpen(false);
+    try {
+      await createPair.mutateAsync({
+        sectionId: values.sectionId,
+        startNumber: values.startNumber ? Number(values.startNumber) : undefined,
+        dancer1Name: `${values.dancer1FirstName} ${values.dancer1LastName}`,
+        dancer2Name: values.dancer2FirstName ? `${values.dancer2FirstName} ${values.dancer2LastName ?? ""}`.trim() : undefined,
+        dancer1FirstName: values.dancer1FirstName,
+        dancer1LastName: values.dancer1LastName,
+        dancer1Club: values.dancer1Club,
+        dancer2FirstName: values.dancer2FirstName,
+        dancer2LastName: values.dancer2LastName,
+        dancer2Club: values.dancer2Club,
+      });
+      toast({ title: t("pairs.added"), variant: "success" });
+      reset();
+      setDialogOpen(false);
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast({ title: msg ?? t("common.error"), variant: "destructive" });
+    }
   };
 
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -506,46 +511,78 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
     try {
       const { default: readXlsxFile } = await import("read-excel-file/browser");
       const rows = await readXlsxFile(file);
-      const dataRows = rows.slice(1).filter((r) => r[4]);
+      if (rows.length < 2) {
+        setXlsxResult({ imported: 0, skipped: 0, errors: ["Soubor neobsahuje žádná data."] });
+        return;
+      }
+
+      // Detect column positions from header row so any column order works
+      const HEADER_MAP: Record<string, string> = {
+        "Startovní číslo": "startNum", "Kategorie": "category",
+        "Jméno 1": "firstName1", "Příjmení 1": "lastName1",
+        "Jméno 2": "firstName2", "Příjmení 2": "lastName2",
+        "Země": "country", "Klub": "club",
+        "ID competitora": "externalId",
+        "Startovné/os": "feePerPerson", "Startovné celkem": "feeTotal",
+        "Startuje": "starts",
+      };
+      // Positional fallback for files without our headers
+      const colIdx: Record<string, number> = {
+        startNum: 0, category: 1, firstName1: 2, lastName1: 3,
+        firstName2: 4, lastName2: 5, country: 6, club: 7,
+        externalId: 8, feePerPerson: 10, feeTotal: 11, starts: 12,
+      };
+      const headerRow = rows[0];
+      if (headerRow.some((h) => Object.keys(HEADER_MAP).includes(String(h ?? "").trim()))) {
+        headerRow.forEach((cell, idx) => {
+          const field = HEADER_MAP[String(cell ?? "").trim()];
+          if (field) colIdx[field] = idx;
+        });
+      }
+
+      // Read a cell as string — returns "" for Date objects (date in a text column = bad data)
+      const str = (val: string | number | Date | boolean | undefined | null): string => {
+        if (val == null || val instanceof Date) return "";
+        return String(val).trim();
+      };
+
+      const dataRows = rows.slice(1).filter((r) => r[colIdx.firstName1] || r[colIdx.lastName1]);
 
       const batch: Record<string, unknown>[] = [];
       for (const row of dataRows) {
-        const r = row as (string | number | undefined)[];
-        const externalSectionId = String(r[0] ?? "");
-        const externalCompetitorId = String(r[1] ?? "");
-        const sectionName = String(r[3] ?? "");
-        const firstName1 = String(r[4] ?? "").trim();
-        const lastName1 = String(r[5] ?? "").trim();
-        const firstName2 = String(r[6] ?? "").trim();
-        const lastName2 = String(r[7] ?? "").trim();
-        const country = String(r[8] ?? "").trim();
-        const club = String(r[9] ?? "").trim();
-        const feePerPerson = r[14] != null ? Number(r[14]) : undefined;
-        const feeTotal = r[15] != null ? Number(r[15]) : undefined;
-        const starts = String(r[16]) === "1";
-        const startType = String(r[18] ?? "").trim() || undefined;
-        const startsFromRound = r[19] != null ? Number(r[19]) : undefined;
-        const classValue = String(r[20] ?? "").trim() || undefined;
+        const r = row as (string | number | Date | boolean | undefined | null)[];
+        const sectionName = str(r[colIdx.category]);
+        const firstName1 = str(r[colIdx.firstName1]);
+        const lastName1 = str(r[colIdx.lastName1]);
+        const firstName2 = str(r[colIdx.firstName2]);
+        const lastName2 = str(r[colIdx.lastName2]);
+        const country = str(r[colIdx.country]);
+        const club = str(r[colIdx.club]);
+        const rawExternalId = r[colIdx.externalId];
+        const externalCompetitorId = rawExternalId != null && !(rawExternalId instanceof Date)
+          ? String(rawExternalId) : undefined;
+        const rawFeePerPerson = r[colIdx.feePerPerson];
+        const feePerPerson = typeof rawFeePerPerson === "number" ? rawFeePerPerson : undefined;
+        const rawFeeTotal = r[colIdx.feeTotal];
+        const feeTotal = typeof rawFeeTotal === "number" ? rawFeeTotal : undefined;
+        const startsVal = r[colIdx.starts];
+        const starts = startsVal === 1 || startsVal === true || String(startsVal) === "1";
         if (!firstName1 || !lastName1) { skipped++; continue; }
-        const section = sections?.find((s) => s.name === sectionName || s.externalId === externalSectionId);
+        const section = sections?.find((s) => s.name === sectionName);
         batch.push({
           sectionId: section?.id ?? "",
-          dancer1Name: `${firstName1} ${lastName1}`,
+          dancer1Name: `${firstName1} ${lastName1}`.trim(),
           dancer1FirstName: firstName1,
           dancer1LastName: lastName1,
-          dancer2Name: firstName2 ? `${firstName2} ${lastName2}` : undefined,
+          dancer2Name: firstName2 ? `${firstName2} ${lastName2}`.trim() : undefined,
           dancer2FirstName: firstName2 || undefined,
           dancer2LastName: lastName2 || undefined,
           club: club || undefined,
           country: country || undefined,
           externalId: externalCompetitorId,
-          externalSectionId,
           feePerPerson,
           feeTotal,
           starts,
-          startType,
-          startsFromRound,
-          classValue,
         });
       }
 

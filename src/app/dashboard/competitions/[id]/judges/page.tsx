@@ -33,7 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { judgeTokensApi, type JudgeTokenDto } from "@/lib/api/judge-tokens";
+import { judgeTokensApi, type JudgeTokenDto, type JudgeTokenCreatedResponse } from "@/lib/api/judge-tokens";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 import QRCode from "qrcode";
@@ -350,6 +350,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
   const [createOpen, setCreateOpen] = useState(false);
   const [count, setCount] = useState("5");
   const [qrToken, setQrToken] = useState<JudgeTokenDto | null>(null);
+  const [newTokens, setNewTokens] = useState<JudgeTokenCreatedResponse[] | null>(null);
   const [printMode, setPrintMode] = useState(false);
   const [fallbackOpen, setFallbackOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -364,24 +365,40 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
   });
 
   const createTokens = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<JudgeTokenCreatedResponse[]> => {
       const n = parseInt(count) || 1;
       const existingNumbers = new Set((tokens ?? []).map((tk) => tk.judgeNumber));
       let judgeNum = 1;
       let created = 0;
+      const results: JudgeTokenCreatedResponse[] = [];
       while (created < n) {
         if (!existingNumbers.has(judgeNum)) {
-          await judgeTokensApi.create(id, { judgeNumber: judgeNum, role: "JUDGE" });
+          const result = await judgeTokensApi.create(id, { judgeNumber: judgeNum, role: "JUDGE" });
+          results.push(result);
           created++;
         }
         judgeNum++;
         if (judgeNum > 100) break; // safety
       }
+      return results;
     },
-    onSuccess: () => {
+    onSuccess: (results) => {
+      // Immediately add new tokens to the cache so they're visible before the refetch completes
+      qc.setQueryData<JudgeTokenDto[]>(["judge-tokens", id], (old) => [
+        ...(old ?? []),
+        ...results.map((r) => ({
+          id: r.id,
+          judgeNumber: r.judgeNumber,
+          role: r.role,
+          active: true,
+          rawToken: r.rawToken,
+          rawPin: r.pin,
+        } as JudgeTokenDto)),
+      ]);
+      // Background refetch for full consistency (connectedAt, name, etc.)
       qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
       setCreateOpen(false);
-      toast({ title: t("judges.createDialog.tokensCreated", { count }), variant: "success" });
+      setNewTokens(results);
     },
   });
 
@@ -495,8 +512,10 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                     initialValue={tk.name}
                     placeholder="Jméno porotce"
                     onSave={(name) =>
-                      judgeTokensApi.update(id, tk.id, { name, country: tk.country }).then(() => {
-                        qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
+                      judgeTokensApi.update(id, tk.id, { name, country: tk.country }).then((updated) => {
+                        qc.setQueryData<JudgeTokenDto[]>(["judge-tokens", id], (old) =>
+                          old?.map((t) => (t.id === tk.id ? { ...t, ...updated } : t)) ?? []
+                        );
                       })
                     }
                   />
@@ -506,8 +525,10 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                     initialValue={tk.country}
                     placeholder="CZE"
                     onSave={(country) =>
-                      judgeTokensApi.update(id, tk.id, { name: tk.name, country }).then(() => {
-                        qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
+                      judgeTokensApi.update(id, tk.id, { name: tk.name, country }).then((updated) => {
+                        qc.setQueryData<JudgeTokenDto[]>(["judge-tokens", id], (old) =>
+                          old?.map((t) => (t.id === tk.id ? { ...t, ...updated } : t)) ?? []
+                        );
                       })
                     }
                   />
@@ -695,6 +716,37 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                 <UserX className="h-4 w-4" />
                 Smazat
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* New tokens result dialog */}
+      {newTokens && (
+        <Dialog open onOpenChange={(v) => !v && setNewTokens(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t("judges.createDialog.tokensCreated", { count: String(newTokens.length) })}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {newTokens.map((tk) => (
+                <div key={tk.id} className="flex flex-col items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center">
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">
+                    {t("judges.judgeNumber", { number: tk.judgeNumber ?? 0 })}
+                  </p>
+                  <QRCanvas url={`${judgeBaseUrl}/${tk.rawToken}`} size={120} />
+                  <div className="mt-1 space-y-1 w-full">
+                    <p className="text-xs text-[var(--text-tertiary)]">PIN</p>
+                    <p className="font-mono text-lg font-bold tracking-widest">{tk.pin}</p>
+                    <code className="block rounded bg-[var(--surface-secondary)] px-2 py-0.5 text-xs text-[var(--text-secondary)] truncate">
+                      {tk.rawToken?.slice(0, 16)}…
+                    </code>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setNewTokens(null)}>{t("common.close")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

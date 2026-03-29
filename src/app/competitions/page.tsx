@@ -456,7 +456,7 @@ export default function PublicCompetitionsPage() {
             <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>DA</div>
             <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".9rem", color: "#111827" }}>DanceApp</span>
           </Link>
-          <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2025 DanceApp. {t("publicCompetitions.footer")}</p>
+          <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2026 DanceApp. {t("publicCompetitions.footer")}</p>
         </div>
 
       </div>

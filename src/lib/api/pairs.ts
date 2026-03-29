@@ -55,7 +55,7 @@ export interface PairDto {
 }
 
 export interface CreatePairRequest {
-  startNumber: number;
+  startNumber?: number;
   dancer1Name: string;
   dancer2Name?: string;
   club?: string;

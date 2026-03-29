@@ -201,7 +201,8 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     if (!competitionId) { router.push(`/judge/${token}`); return; }
     apiClient
       .get<ActiveRoundResponse>("/judge/active-round", {
-        params: { competitionId, ...(adjudicatorId ? { judgeTokenId: adjudicatorId } : {}) },
+        params: { competitionId },
+        ...(adjudicatorId ? { headers: { 'X-Judge-Token': adjudicatorId } } : {}),
       })
       .then((r) => {
         setRound(r.data.round);
@@ -378,7 +379,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         await apiClient.post(
           `/rounds/${round.id}/callbacks`,
           { selectedPairIds, dance: activeDance?.name ?? 'UNKNOWN' },
-          { params: { judgeTokenId: adjudicatorId, dance: activeDance?.name } }
+          { params: { dance: activeDance?.name }, headers: { 'X-Judge-Token': adjudicatorId } }
         );
         await judgeOfflineStore.markAsSynced(pairs.map((p) => `${adjudicatorId}-${round.id}-${p.id}`));
       } catch { /* saved offline */ }
