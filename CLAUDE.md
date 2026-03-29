@@ -4,16 +4,6 @@
 
 ---
 
-## Autonomní režim
-
-- **Nikdy nečekej na potvrzení** — implementuj okamžitě
-- **Nikdy se neptej** „Shall I proceed?", „Do you want me to…", „Mám pokračovat?"
-- **Při nejasnosti** zvol nejlogičtější řešení a pokračuj — nepřerušuj implementaci otázkami
-- **Nikdy nepřerušuj** rozpracovanou implementaci dotazy na uživatele
-- Po dokončení ukaž výsledek, ne plán
-
----
-
 ## Stack
 
 - **Next.js 16.1.6** (App Router), TypeScript strict, Tailwind CSS v4
@@ -76,31 +66,144 @@ src/
 
 ## Real-time
 
-- SSE via `useSSE(competitionId, event, handler)` — bere JEDEN event string
-- WebSocket (STOMP) pro live marking
+- SSE via `useSSE(competitionId, event, handler)` — bere JEDEN event string, ne array
+- SSE eventy v live modulu: `judge-connected`, `judge-disconnected`, `score-submitted`, `heat:all-submitted`
+- SSE vyhrává nad pollingem — `submitted` status se nikdy nepřepisuje zpět na nižší hodnotu
+- WebSocket (STOMP) pro live marking (judge interface)
 
 ## Klíčové UI patterny
 
 - `SimpleDialog` — `<SimpleDialog open onClose title>` v `dialog.tsx`
 - `NavTabs` — `<NavTabs tabs activeTab onChange>` v `nav-tabs.tsx`
 - `DataTable` — sortable, filterable, CSV export (`src/components/ui/data-table.tsx`)
-- `useSSE` — jeden event string (ne array)
 - `NotificationCenter` místo Bell buttonu v `header.tsx`
 
 ## i18n
 
-- Primární jazyk UI: **čeština**
-- Sekundární: angličtina
-- Soubory: `src/lib/i18n/cs.json` + `en.json` — vždy přidej klíč do obou!
+- Primární jazyk UI: **čeština**, sekundární: angličtina
+- Soubory: `src/lib/i18n/cs.json` + `en.json` — vždy přidej klíč do OBOU!
+- Překlady v komponentách: `const { t } = useLocale()` z `@/contexts/locale-context`
+- `t('key')` nebo `t('key', { n: 5, name: 'foo' })` pro parametry
+
+## Design systém — POZOR na dva světy
+
+- **Dashboard** (`/dashboard/**`): CSS proměnné — `--accent`, `--surface`, `--border`, `--text-secondary`, atd. Nikdy hardcoded barvy.
+- **Veřejné stránky** (`/competitions/**`): přímé hodnoty — `#4F46E5`, `#111827`, `#F9FAFB`. CSS proměnné tam **nefungují**.
+- Veřejné stránky: hero header `#0A1628` + animované orby + wave SVG divider (sdílený pattern)
+- Font: `var(--font-sora)` = nadpisy + důležité hodnoty; Inter = tělo textu
+- Konkrétní nahrazení: `--background`→`#F9FAFB`, `--text-primary`→`#111827`, `--text-secondary`→`#6B7280`, `--text-tertiary`→`#9CA3AF`, `--border`→`#E5E7EB`, `--surface`→`#FFFFFF`, `--accent`→`#4F46E5`, `--warning`→`#F59E0B`
+
+## Zustand stores
+
+| Store | Soubor | Co drží |
+|-------|--------|---------|
+| `useLiveStore` | `store/live-store.ts` | `selectedRoundId/DanceId/HeatId`, `judgeStatuses`, `judgeOnline`, `danceConfirmations`, `heatResults`, `incidents`, `presMode`, `roundClosed`, `lastSentAt` |
+| `useScheduleStore` | `store/schedule-store.ts` | `slots: ScheduleSlot[]`, `scheduleStatus`, `loadSchedule(competitionId)` |
+| `useAuthStore` | `store/auth-store.ts` | JWT token v paměti, `user`, `setLocale()` |
+| `useAlertsStore` | `store/alerts-store.ts` | notifikace, `addAlert()` |
+| `useJudgeStore` | `store/judge-store.ts` | stav judge interface |
+
+## Live modul — kritické gotchas
+
+### Syntetická ID vs reálná UUID
+Heaty na frontendu mají syntetická ID: `${slotId}-h${heatNumber}` (např. `abc123-h1`).
+Jakékoli volání backendu vyžaduje **reálné UUID** přes `heatIdMap`:
+```ts
+const realHeatId = heatIdMap[syntheticHeatId]  // VŽDY takhle
+```
+`heatIdMap` se buildí asynchronně po resolve `activeRoundId` — může být prázdný při prvním renderu.
+
+### Polling architektura
+- **8s** — judge statusy (v `use-judge-status-polling.ts`, spustí se když je `activeRoundId`)
+- **30s** — connectivity poll online/offline (v `use-judge-connectivity.ts`, heartbeat fallback za SSE)
+- Polling nikdy nepřepíše `submitted` zpět na nižší status
+
+### Custom hooks (`src/hooks/`)
+- `use-judge-status-polling.ts` — 8s polling judge statusů, nikdy nepřepíše `submitted`
+- `use-round-control.ts` — `handleSend`, `handleCloseRound`, `handleResolveTie`, SSE result handlery
+- `use-judge-connectivity.ts` — SSE primary + 30s heartbeat fallback (online/offline stav)
+
+### `danceConfirmations` flow
+`page.tsx` → `setDanceConfirmation(danceId, submitted, total)` → `live-store` → `LiveControlDashboard` (allDancesConfirmed) + `DanceSelector` (zelená fajfka)
+
+### Live komponenty (`src/components/live/`)
+`LiveControlDashboard` — hlavní kontejner, orchestruje vše (~320 řádků po refaktoru 2026-03-29)
+`LiveBottomBar` — Send + Close round buttons (spodní lišta)
+`LiveHelpModal` — keyboard shortcuts modal
+`CloseRoundDialog` — potvrzení zavření kola
+`TieResolutionDialog` — dialog pro tie resolution
+`RoundResultsOverlay` — overlay výsledků po zavření kola
+`IncidentModal` — wrapper incidentního modalu
+`RoundSelector` / `DanceSelector` / `HeatSelector` — výběr
+`JudgePanel` / `JudgeCard` — stav porotců
+`LiveStatusBar` — horní lišta
+`LiveSidebar` — pravý panel se stats
+`HeatResults` — výsledky skupiny
+`IncidentPanel` — incidenty
+`PresentationOverlay` — fullscreen prezentační mód
+
+## Judge API — X-Judge-Token header
+
+- Judge endpointy (scoring, sync, active-round) používají `X-Judge-Token: <judgeTokenId>` header — **ne query param**
+- Frontend: `headers: { 'X-Judge-Token': judgeTokenId }` v axios calls (scoring.ts, live.ts, judge-store.ts, judge-offline-store.ts)
+- Backend: `@RequestHeader("X-Judge-Token")` v ScoringController, JudgeAccessController, SyncController
+
+## UI/UX — povinné patterny
+
+- **inputCls musí mít `text-base` (16px)**, ne `text-sm` — iOS Safari auto-zoomuje na inputs < 16px
+- **Icon-only buttons** (Trash2, X, ...): vždy `min-h-[44px] min-w-[44px] flex items-center justify-center` — min. touch target
+- **`<button>` elementy** v Tailwind nemají `cursor-pointer` defaultně — přidávej explicitně
+- **Labels + inputs** — každý `<label>` musí mít `htmlFor`, každý `<input>`/`<textarea>` musí mít `id`. Pro dynamické listy: `id={\`field-${idx}-name\`}`
+- **Decorative icons** (Lucide): vždy `aria-hidden="true"` na ikonách vedle textu
+
+## Accessibility — povinné pre judge interface (`/judge/**`)
+
+- Touch targets: **min 44×44px** — `min-h-[44px] min-w-[44px]` (Tailwind)
+- Focus: `outline-none focus-visible:ring-2 focus-visible:ring-{color} focus-visible:ring-offset-2`
+- Toggle/selection buttons: `aria-pressed={boolean}`
+- Icon-only buttons: `aria-label="..."` povinné
+- Dekoratívne ikony: `aria-hidden="true"`
+
+## TypeScript build
+
+PostToolUse hook automaticky spustí `tsc --noEmit` po každém editu `.ts`/`.tsx` souboru (viz `.claude/settings.json`). Manuálně:
+```bash
+#!/bin/zsh
+export PATH="/Users/janbystriansky/node/bin:$PATH"
+npx tsc --noEmit
+```
+
+## Sentry
+
+- Config: `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
+- DSN: `process.env.NEXT_PUBLIC_SENTRY_DSN`
+- Instrumentace: `src/instrumentation.ts` + `src/instrumentation-client.ts`
+- Pro prod errory: `/seer` command nebo Sentry MCP přímo
 
 ## Backend API
 
-- Base URL: `http://localhost:8080/api/v1/`
+- Backend: `http://localhost:8080`, Frontend dev: `http://localhost:3000`
 - Všechny endpointy mají prefix `/api/v1/`
+- API moduly: `src/lib/api/` — `competitions`, `rounds`, `sections`, `pairs`, `live`, `schedule`, `judge-tokens`, `scoring`, `auth`, `payments`, `gdpr`, atd.
+
+## Wizard — nová soutěž (`/dashboard/competitions/new`)
+
+- 3 kroky: **Základní info → Šablona → Sekce**
+- Krok 2: 4 šablony (Ballroom Championship / Latin Bronze / Začátečníci / Prázdná) — prefillují sekce přes `replace()` z `useFieldArray`
+- Krok 3: každá sekce má `numberOfJudges` + `maxFinalPairs`, live majority display: `floor(n/2)+1`
+- Šablona musí být vybrána pro pokračování (button `disabled` dokud `selectedTemplate === null`)
+
+## Hydration (Next.js SSR)
+
+- Locale mismatch: server renders DEFAULT_LOCALE, client reads localStorage → přidej `suppressHydrationWarning` na elementy které renderují `t()` na veřejných stránkách
+
+## Hotové stránky / endpointy — nezapomeň
+
+- `/checkin/[token]/page.tsx` — frontend stránka již existuje; backend: CheckinTokenController + CheckinTokenService + entita CheckinToken + V050 migration (přidáno 2026-03-29)
+- Přidej `/api/v1/checkin-tokens/**` do `permitAll()` v SecurityConfig (backend)
 
 ## Spec soubory
 
 - **Schedule modul:** `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`
-  - Implementace: nové tabulky `competition_schedules` + `schedule_block_items`
   - Frontend route: `/dashboard/competitions/[id]/schedule`
   - Drag & drop: `@dnd-kit/core`
