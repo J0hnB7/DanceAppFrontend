@@ -469,21 +469,27 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
   });
 
   const onSubmit = async (values: AddPairForm) => {
-    await createPair.mutateAsync({
-      sectionId: values.sectionId,
-      startNumber: values.startNumber ? Number(values.startNumber) : 0,
-      dancer1Name: `${values.dancer1FirstName} ${values.dancer1LastName}`,
-      dancer2Name: values.dancer2FirstName ? `${values.dancer2FirstName} ${values.dancer2LastName ?? ""}`.trim() : undefined,
-      dancer1FirstName: values.dancer1FirstName,
-      dancer1LastName: values.dancer1LastName,
-      dancer1Club: values.dancer1Club,
-      dancer2FirstName: values.dancer2FirstName,
-      dancer2LastName: values.dancer2LastName,
-      dancer2Club: values.dancer2Club,
-    });
-    toast({ title: t("pairs.added"), variant: "success" });
-    reset();
-    setDialogOpen(false);
+    try {
+      await createPair.mutateAsync({
+        sectionId: values.sectionId,
+        startNumber: values.startNumber ? Number(values.startNumber) : 0,
+        dancer1Name: `${values.dancer1FirstName} ${values.dancer1LastName}`,
+        dancer2Name: values.dancer2FirstName ? `${values.dancer2FirstName} ${values.dancer2LastName ?? ""}`.trim() : undefined,
+        dancer1FirstName: values.dancer1FirstName,
+        dancer1LastName: values.dancer1LastName,
+        dancer1Club: values.dancer1Club,
+        dancer2FirstName: values.dancer2FirstName,
+        dancer2LastName: values.dancer2LastName,
+        dancer2Club: values.dancer2Club,
+      });
+      toast({ title: t("pairs.added"), variant: "success" });
+      reset();
+      setDialogOpen(false);
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? t("common.errorUnexpected");
+      toast({ title: t("pairs.addFailed"), description: message, variant: "destructive" });
+    }
   };
 
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -796,7 +802,17 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                         variant="ghost"
                         size="icon-sm"
                         className="text-[var(--text-tertiary)] hover:text-[var(--destructive)]"
-                        onClick={() => { if (confirm(t("pairs.deleteConfirm"))) deletePair.mutate(pair.id); }}
+                        onClick={async () => {
+                          if (confirm(t("pairs.deleteConfirm"))) {
+                            try {
+                              await deletePair.mutateAsync(pair.id);
+                            } catch (err) {
+                              const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+                                ?? t("common.errorUnexpected");
+                              toast({ title: t("pairs.deleteFailed"), description: message, variant: "destructive" });
+                            }
+                          }
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
