@@ -572,7 +572,12 @@
     "gdprConsent": "I consent to processing of personal data for the purpose of organizing and running the competition.",
     "privacyPolicy": "Privacy policy",
     "submit": "Submit registration",
-    "organizerLogin": "Login →"
+    "organizerLogin": "Login →",
+    "deadlinePassed": "Registration deadline has passed",
+    "partnerRequired": "Partner is required for couple competitions",
+    "partnerRequiredLabel": "PARTNER (REQUIRED)",
+    "partnerOptionalLabel": "PARTNER (OPTIONAL)",
+    "filterByBirthYear": "Birth year:"
   },
   "settings": {
     "title": "Settings",

@@ -572,7 +572,12 @@
     "gdprConsent": "Souhlasím se zpracováním osobních údajů za účelem organizace a průběhu soutěže.",
     "privacyPolicy": "Zásady ochrany osobních údajů",
     "submit": "Odeslat přihlášku",
-    "organizerLogin": "Přihlášení →"
+    "organizerLogin": "Přihlášení →",
+    "deadlinePassed": "Uzávěrka přihlášek vypršela",
+    "partnerRequired": "Partner je povinný pro párové soutěže",
+    "partnerRequiredLabel": "PARTNER (POVINNÝ)",
+    "partnerOptionalLabel": "PARTNER (VOLITELNÝ)",
+    "filterByBirthYear": "Rok narození:"
   },
   "settings": {
     "title": "Nastavení",

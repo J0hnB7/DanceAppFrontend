@@ -38,6 +38,18 @@ interface RegistrationResult {
   currency: string;
 }
 
+function isAgeEligible(ageCategory: string | undefined, age: number): boolean {
+  if (!ageCategory) return true;
+  const ranges: Record<string, [number, number]> = {
+    JUVENILE_I: [8, 9], JUVENILE_II: [10, 11], JUNIOR_I: [12, 13], JUNIOR_II: [14, 15],
+    YOUTH: [16, 18], U21: [16, 20], ADULT: [19, 99],
+    SENIOR_I: [35, 99], SENIOR_II: [45, 99], SENIOR_III: [55, 99], SENIOR_IV: [65, 99], SENIOR_V: [75, 99],
+  };
+  const range = ranges[ageCategory];
+  if (!range) return true;
+  return age >= range[0] && age <= range[1];
+}
+
 /* ── shared style helpers ──────────────────────────────── */
 const cardStyle: React.CSSProperties = {
   background: "#fff",
@@ -81,6 +93,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   const { t } = useLocale();
   const [result, setResult] = useState<RegistrationResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [birthYear, setBirthYear] = useState("");
 
   const { data: competition, isLoading } = useQuery({
     queryKey: competitionKeys.detail(id),
@@ -101,7 +114,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
     refetchInterval: 10_000,
   });
 
-  const { register, control, handleSubmit, watch, formState: { errors } } = useForm<RegisterForm>({
+  const { register, control, handleSubmit, watch, setError, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(schema),
     defaultValues: {
       sectionId: "", dancer1FirstName: "", dancer1LastName: "", dancer1Club: "",
@@ -109,10 +122,25 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
     },
   });
 
-  const selectedSectionId = watch("sectionId");
-  const selectedSection = sections.find((s) => s.id === selectedSectionId);
+  const deadlinePassed = competition?.registrationDeadline
+    ? new Date(competition.registrationDeadline) < new Date()
+    : false;
+  const canRegister = (competition?.registrationOpen === true) && !deadlinePassed;
+  const watchedSectionId = watch("sectionId") as string | undefined;
+  const selectedSection = sections.find(s => s.id === watchedSectionId);
+  const isPairCompetition = selectedSection?.competitionType === "COUPLE";
+  const currentYear = new Date().getFullYear();
+  const filterAge = birthYear ? currentYear - Number(birthYear) : null;
+  const displaySections = filterAge !== null
+    ? sections.filter(s => isAgeEligible(s.ageCategory, filterAge))
+    : sections;
 
   const onSubmit = async (values: RegisterForm) => {
+    if (isPairCompetition && (!values.dancer2FirstName?.trim() || !values.dancer2LastName?.trim())) {
+      setError("dancer2FirstName", { message: t("publicReg.partnerRequired") });
+      setError("dancer2LastName", { message: t("publicReg.partnerRequired") });
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await apiClient.post<RegistrationResult>(`/competitions/${id}/pairs/public-registration`, values);
@@ -161,7 +189,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
     CANCELLED: t("publicCompetition.statusLabels.CANCELLED"),
   };
 
-  const isOpen = competition.registrationOpen === true;
+  const isOpen = canRegister;
   const isLive = competition.status === "IN_PROGRESS";
   const capacityPct = competition.maxPairs
     ? Math.round(((competition.registeredPairsCount ?? 0) / competition.maxPairs) * 100) : null;
@@ -385,9 +413,16 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
               <div style={cardStyle}>
                 {sectionLabel("🏅", t("publicCompetition.selectCategory"))}
                 <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <span style={{ fontSize: ".8rem", color: "#6B7280", whiteSpace: "nowrap" }}>{t("publicReg.filterByBirthYear")}</span>
+                    <input type="number" placeholder={String(currentYear - 18)} value={birthYear}
+                      onChange={e => setBirthYear(e.target.value)}
+                      style={{ width: 90, padding: "4px 8px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: ".875rem", color: "#111827" }} />
+                    {birthYear && <button onClick={() => setBirthYear("")} style={{ color: "#6B7280", background: "none", border: "none", cursor: "pointer", fontSize: ".875rem" }}>×</button>}
+                  </div>
                   <Controller control={control} name="sectionId" render={({ field }) => (
                     <>
-                      {sections.map((section) => {
+                      {displaySections.map((section) => {
                         const sl = section.maxPairs ? section.maxPairs - (section.registeredPairsCount ?? 0) : null;
                         const isFull = sl !== null && sl <= 0;
                         const almostFull = sl !== null && sl > 0 && sl <= 5;
@@ -492,10 +527,10 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                   <Input label={t("publicRegister.clubLabel")} placeholder="Taneční klub Praha" {...register("dancer1Club")} />
 
                   <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
-                    <p style={{ fontSize: ".71rem", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 14 }}>{t("publicCompetition.partner")}</p>
+                    <p style={{ fontSize: ".71rem", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 14 }}>{isPairCompetition ? t("publicReg.partnerRequiredLabel") : t("publicReg.partnerOptionalLabel")}</p>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                      <Input label={t("publicRegister.firstNameLabel")} placeholder="Peter" {...register("dancer2FirstName")} />
-                      <Input label={t("publicRegister.lastNameLabel")} placeholder="Kováč" {...register("dancer2LastName")} />
+                      <Input label={t("publicRegister.firstNameLabel")} placeholder="Peter" error={errors.dancer2FirstName?.message} {...register("dancer2FirstName")} />
+                      <Input label={t("publicRegister.lastNameLabel")} placeholder="Kováč" error={errors.dancer2LastName?.message} {...register("dancer2LastName")} />
                     </div>
                     <Input label={t("publicRegister.clubLabel")} placeholder="Taneční klub Praha" {...register("dancer2Club")} />
                   </div>
