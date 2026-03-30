@@ -84,6 +84,21 @@ export interface DiplomaData {
   club?: string;
 }
 
+export interface MergedDiplomaResult {
+  sectionName: string;
+  placement: number; // 1, 2, or 3
+}
+
+export interface MergedDiplomaData {
+  competitionName: string;
+  competitionDate: string;
+  competitionLocation: string;
+  dancer1Name: string;
+  dancer2Name?: string;
+  club?: string;
+  results: MergedDiplomaResult[]; // ordered by placement asc, then sectionName
+}
+
 function placementOrdinalCz(p: number): string {
   return `${p}. místo`;
 }
@@ -154,7 +169,7 @@ function wrapInDocument(bodyContent: string, multiPage: boolean): string {
   const pageBreakCss = multiPage
     ? ".page{page-break-after:always;}.page:last-child{page-break-after:auto;}"
     : "";
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;700&display=swap"/><style>*{margin:0;padding:0;box-sizing:border-box;}@page{size:210mm 297mm;margin:0;}body{margin:0;}${pageBreakCss}</style></head><body>${bodyContent}</body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;700&display=swap"/><style>*{margin:0;padding:0;box-sizing:border-box;}@page{size:210mm 297mm;margin:0;}body{margin:0;}${pageBreakCss}@media print{@page{size:210mm 297mm portrait;margin:0;}body{margin:0;}html{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}</style></head><body>${bodyContent}</body></html>`;
 }
 
 function openAndPrint(html: string) {
@@ -167,6 +182,43 @@ function openAndPrint(html: string) {
   setTimeout(() => win.print(), 600);
 }
 
+function buildMergedDiplomaPage(data: MergedDiplomaData): string {
+  const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+  const dancerLine = data.dancer2Name
+    ? `${escapeHtml(data.dancer1Name)} &amp; ${escapeHtml(data.dancer2Name)}`
+    : escapeHtml(data.dancer1Name);
+
+  const useColumns = data.results.length >= 5;
+  const resultFontSize = data.results.length >= 6 ? '10pt' : '12pt';
+
+  const styleForPlacement = (p: number) =>
+    p === 1
+      ? `font-weight:700;color:#c9a84c;font-size:${data.results.length >= 6 ? '11pt' : '13pt'};`
+      : `font-weight:400;color:#555;font-size:${resultFontSize};`;
+
+  const resultRows = data.results.map(r =>
+    `<li style="list-style:none;padding:1.5mm 3mm;${styleForPlacement(r.placement)}">
+      ${medals[r.placement]} ${r.placement}. místo &mdash; ${escapeHtml(r.sectionName)}
+    </li>`
+  ).join('');
+
+  const listStyle = useColumns ? 'columns:2;column-gap:8mm;' : '';
+
+  return `<div style="width:210mm;height:297mm;padding:18mm 16mm;border:6px solid #c9a84c;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5mm;box-sizing:border-box;background:#fff;font-family:'Inter',sans-serif;">
+  <div style="position:absolute;inset:4mm;border:1px solid #e8d5a3;pointer-events:none;"></div>
+  <p style="font-size:10pt;letter-spacing:3px;text-transform:uppercase;color:#888;">Diplom</p>
+  <h1 style="font-family:'Playfair Display',serif;font-size:24pt;font-weight:700;color:#1a1a1a;text-align:center;">${dancerLine}</h1>
+  ${data.club ? `<p style="font-size:9pt;color:#aaa;">${escapeHtml(data.club)}</p>` : ''}
+  <div style="width:60mm;height:1px;background:linear-gradient(to right,transparent,#c9a84c,transparent);"></div>
+  <p style="font-size:10pt;color:#888;letter-spacing:1px;">za tato umístění</p>
+  <ul style="padding:0;margin:0;text-align:center;width:100%;${listStyle}">
+    ${resultRows}
+  </ul>
+  <div style="width:60mm;height:1px;background:linear-gradient(to right,transparent,#c9a84c,transparent);"></div>
+  <div style="font-size:9pt;color:#aaa;text-align:center;">${escapeHtml(data.competitionName)}<br/>${escapeHtml(data.competitionLocation)} &bull; ${escapeHtml(data.competitionDate)}</div>
+</div>`;
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export function printDiploma(data: DiplomaData, template?: DiplomaTemplate | null) {
@@ -174,6 +226,19 @@ export function printDiploma(data: DiplomaData, template?: DiplomaTemplate | nul
     ? buildDiplomaPage(template, data)
     : buildFallbackPage(data);
   openAndPrint(wrapInDocument(page, false));
+}
+
+export function printMergedDiploma(data: MergedDiplomaData): void {
+  const page = buildMergedDiplomaPage(data);
+  openAndPrint(wrapInDocument(page, false));
+}
+
+export function printAllMergedDiplomas(pairs: MergedDiplomaData[]): void {
+  if (pairs.length === 0) return;
+  const pages = pairs
+    .map(d => `<div class="page">${buildMergedDiplomaPage(d)}</div>`)
+    .join('\n');
+  openAndPrint(wrapInDocument(pages, true));
 }
 
 export function printAllDiplomas(
