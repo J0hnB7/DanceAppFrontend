@@ -674,7 +674,7 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
                 onClick={() => printAllMergedDiplomas(mergedList)}
               >
                 <Printer className="h-3.5 w-3.5" aria-hidden="true" />
-                Tisknout vše ({mergedList.length})
+                {t("diplomas.mergedPrintAll", { count: mergedList.length })}
               </Button>
             </Card>
 
@@ -708,7 +708,7 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
                       onClick={() => printMergedDiploma(data)}
                     >
                       <Printer className="h-3 w-3" aria-hidden="true" />
-                      {t("diplomas.print")}
+                      {t("diplomas.mergedPrint")}
                     </Button>
                   </Card>
                 ))}

@@ -856,6 +856,7 @@
     "mergedTab": "Sloučené",
     "mergedTitle": "Sloučené diplomy",
     "mergedDescription": "Jeden diplom na pár se všemi top-3 umístěními",
+    "mergedPrint": "Tisknout",
     "mergedPrintAll": "Tisknout vše ({count})",
     "mergedNoResults": "Žádný pár nemá top-3 umístění"
   },

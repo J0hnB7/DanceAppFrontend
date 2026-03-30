@@ -856,6 +856,7 @@
     "mergedTab": "Merged",
     "mergedTitle": "Merged diplomas",
     "mergedDescription": "One diploma per pair with all top-3 placements",
+    "mergedPrint": "Print",
     "mergedPrintAll": "Print all ({count})",
     "mergedNoResults": "No pair has a top-3 placement"
   },
