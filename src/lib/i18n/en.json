@@ -72,7 +72,21 @@
     "payments": "Payments",
     "budget": "Budget",
     "openMenu": "Open menu",
-    "competitionNav": "Competition navigation"
+    "competitionNav": "Competition navigation",
+    "templates": "Templates"
+  },
+  "templates": {
+    "title": "Competition Templates",
+    "addButton": "Add Template",
+    "editDialog": {
+      "title": "Edit Template"
+    },
+    "createDialog": {
+      "title": "New Template"
+    },
+    "inactive": "Inactive",
+    "deleteConfirm": "Delete template \"{name}\"?",
+    "loadError": "Failed to load templates"
   },
   "status": {
     "DRAFT": "Draft",

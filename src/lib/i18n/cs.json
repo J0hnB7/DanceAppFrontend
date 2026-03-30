@@ -72,7 +72,21 @@
     "payments": "Platby",
     "budget": "Rozpočet",
     "openMenu": "Otevřít menu",
-    "competitionNav": "Navigace soutěže"
+    "competitionNav": "Navigace soutěže",
+    "templates": "Šablony"
+  },
+  "templates": {
+    "title": "Šablony soutěží",
+    "addButton": "Přidat šablonu",
+    "editDialog": {
+      "title": "Upravit šablonu"
+    },
+    "createDialog": {
+      "title": "Nová šablona"
+    },
+    "inactive": "Neaktivní",
+    "deleteConfirm": "Opravdu smazat šablonu \"{name}\"?",
+    "loadError": "Nepodařilo se načíst šablony"
   },
   "status": {
     "DRAFT": "Koncept",
