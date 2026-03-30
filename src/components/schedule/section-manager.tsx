@@ -327,12 +327,11 @@ export function SectionManager({ competitionId }: SectionManagerProps) {
     newOrder.splice(newIndex, 0, String(active.id));
     setLocalOrder(newOrder);
 
-    // Persist orderIndex for each section
-    newOrder.forEach((id, index) => {
-      sectionsApi.update(competitionId, id, { orderIndex: index }).catch(() => {
-        toast({ title: "Chyba při ukládání pořadí", variant: "destructive" });
-        qc.invalidateQueries({ queryKey: ["sections", competitionId] });
-      });
+    // Persist new order with a single batch request
+    sectionsApi.reorder(competitionId, newOrder).catch(() => {
+      toast({ title: "Chyba při ukládání pořadí", variant: "destructive" });
+      setLocalOrder(ids);
+      qc.invalidateQueries({ queryKey: ["sections", competitionId] });
     });
   };
 

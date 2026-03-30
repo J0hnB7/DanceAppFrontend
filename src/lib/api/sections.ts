@@ -92,4 +92,7 @@ export const sectionsApi = {
 
   updateDances: (competitionId: string, sectionId: string, dances: string[]) =>
     apiClient.patch<SectionDto>(`/competitions/${competitionId}/sections/${sectionId}/dances`, { dances }).then((r) => r.data),
+
+  reorder: (competitionId: string, sectionIds: string[]) =>
+    apiClient.patch(`/competitions/${competitionId}/sections/reorder`, { sectionIds }),
 };

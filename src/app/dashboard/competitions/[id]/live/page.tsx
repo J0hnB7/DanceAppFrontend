@@ -130,10 +130,22 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
     setSectionId(slot.sectionId ?? null);
 
     if (slot.sectionId && slot.roundNumber) {
+      const sectionId = slot.sectionId;
+      const roundNumber = slot.roundNumber;
       apiClient.get<{ id: string; roundNumber: number; status: string }[]>(
-        `/competitions/${competitionId}/sections/${slot.sectionId}/rounds`
-      ).then((res) => {
-        setActiveRoundId(res.data.find((r) => r.roundNumber === slot.roundNumber)?.id ?? null);
+        `/competitions/${competitionId}/sections/${sectionId}/rounds`
+      ).then(async (res) => {
+        const found = res.data.find((r) => r.roundNumber === roundNumber);
+        if (found) {
+          setActiveRoundId(found.id);
+        } else {
+          // Round entity doesn't exist yet — auto-activate the slot to create it
+          await scheduleApi.activateSlot(competitionId, selectedRoundId);
+          const res2 = await apiClient.get<{ id: string; roundNumber: number; status: string }[]>(
+            `/competitions/${competitionId}/sections/${sectionId}/rounds`
+          );
+          setActiveRoundId(res2.data.find((r) => r.roundNumber === roundNumber)?.id ?? null);
+        }
       }).catch(() => setActiveRoundId(null));
     }
   }, [selectedRoundId, slots, competitionId]);

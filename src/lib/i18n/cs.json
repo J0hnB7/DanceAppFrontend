@@ -1914,5 +1914,80 @@
     "footerFeatures": "Funkce",
     "footerDocs": "Dokumentace",
     "footerContact": "Kontakt"
+  },
+  "dancer": {
+    "register": {
+      "title": "Registrace tančíře",
+      "subtitle": "Vytvořte si účet a přihlašujte se na soutěže",
+      "firstName": "Jméno",
+      "lastName": "Příjmení",
+      "continueWithGoogle": "Pokračovat přes Google",
+      "gdprText": "Souhlasím se zpracováním osobních údajů podle",
+      "gdprLink": "Zásad ochrany soukromí",
+      "submit": "Vytvořit účet",
+      "creating": "Vytváření...",
+      "failed": "Registrace se nezdařila",
+      "successTitle": "Zkontrolujte svůj e-mail",
+      "successDesc": "Na váš e-mail byl odeslán ověřovací odkaz. Po potvrzení se můžete přihlásit."
+    },
+    "onboarding": {
+      "titleProfile": "Dokončete svůj profil",
+      "subtitleProfile": "Vyplňte základní informace o sobě",
+      "titlePartner": "Váš partner/ka",
+      "subtitlePartner": "Nepovinné — partnera/ku můžete propojit kdykoli později",
+      "birthYear": "Rok narození",
+      "club": "Taneční klub",
+      "clubPlaceholder": "např. TK Praha",
+      "partnerHint": "Pokud váš partner/ka má účet v DanceApp, propojte se pomocí odkazu na profilu. Zde můžete zadat jméno jako textový záznam.",
+      "partnerNameText": "Jméno partnera/ky (nepovinné)",
+      "partnerNamePlaceholder": "Petr Novák",
+      "saving": "Ukládám...",
+      "submit": "Dokončit profil",
+      "error": "Uložení se nezdařilo"
+    },
+    "profile": {
+      "navProfile": "Profil",
+      "navCompetitions": "Moje soutěže",
+      "sectionProfile": "Osobní údaje",
+      "sectionPartner": "Partner/ka",
+      "partnerLinked": "Propojený účet",
+      "partnerAccount": "Propojený přes DanceApp",
+      "partnerManual": "Manuální záznam",
+      "noPartner": "Zatím nemáte propojeného partnera/ku.",
+      "generateInvite": "Vytvořit pozvánku",
+      "generatingInvite": "Vytváření...",
+      "inviteLinkReady": "Odkaz je připraven",
+      "inviteExpires": "Platnost do",
+      "copied": "Zkopírováno!",
+      "unlinkPartner": "Zrušit propojení",
+      "unlink": "Zrušit propojení",
+      "unlinkConfirm": "Opravdu chcete zrušit propojení s partnerem/kou?",
+      "saving": "Ukládám...",
+      "saveError": "Uložení se nezdařilo"
+    },
+    "competitions": {
+      "title": "Moje soutěže",
+      "subtitle": "Přehled soutěží a výsledků",
+      "sectionCount": "kategorií",
+      "placement": "Pořadí",
+      "emptyTitle": "Žádné soutěže",
+      "emptyDesc": "Zatím jste se nezúčastnili žádné soutěže.",
+      "loadError": "Nepodařilo se načíst soutěže"
+    },
+    "partnerInvite": {
+      "title": "Pozvánka k propojení",
+      "subtitle": "vás zve k propojení jako partner/ka v DanceApp.",
+      "loginPrompt": "Pro přijetí pozvánky se přihlaste nebo vytvořte účet.",
+      "accept": "Přijmout pozvánku",
+      "accepting": "Přijímám...",
+      "acceptedTitle": "Propojení úspěšné!",
+      "acceptedDesc": "Nyní jste propojeni s {name} jako partneři.",
+      "goToProfile": "Přejít na profil",
+      "registerLink": "Registrovat se jako tančíř/ka",
+      "notDancer": "Tato funkce je dostupná pouze pro tančíře.",
+      "acceptError": "Přijetí pozvánky se nezdařilo",
+      "invalidToken": "Pozvánka je neplatná, vypršela nebo již byla použita.",
+      "invalidTitle": "Neplatná pozvánka"
+    }
   }
 }

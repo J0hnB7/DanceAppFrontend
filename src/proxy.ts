@@ -6,10 +6,13 @@ const PUBLIC_PATHS = [
   "/verify-email",
   "/forgot-password",
   "/reset-password",
-  "/judge",         // /judge/[token] — public judge access
-  "/checkin",       // /checkin/[token] — public entrance check-in
-  "/competitions",  // public competition listing
-  "/results",       // public results
+  "/judge",           // /judge/[token] — public judge access
+  "/checkin",         // /checkin/[token] — public entrance check-in
+  "/competitions",    // public competition listing
+  "/results",         // public results
+  "/auth/callback",   // OAuth2 callback — must be public (no session yet)
+  "/onboarding",      // dancer onboarding — auth handled inside page
+  "/partner-invite",  // /partner-invite/[token] — public invite preview
 ];
 
 const ORGANIZER_PATHS = ["/dashboard", "/competitions/new", "/competitions/[id]/edit"];

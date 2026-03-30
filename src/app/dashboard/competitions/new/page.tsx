@@ -29,9 +29,9 @@ import type { AgeCategory, Level, DanceStyle, CompetitorType, CompetitionType, S
 
 const categorySchema = z.object({
   name: z.string().min(2, "Minimálně 2 znaky"),
-  ageCategory: z.string().min(1, "Povinné"),
-  level: z.string().min(1, "Povinné"),
-  danceStyle: z.string().min(1, "Povinné"),
+  ageCategory: z.string().optional(),
+  level: z.string().optional(),
+  danceStyle: z.string().optional(),
   numberOfJudges: z.number().int().min(1).max(15).default(5),
   maxFinalPairs: z.number().int().min(2).max(24).default(6),
   competitorType: z.string().optional(),
@@ -285,13 +285,13 @@ export default function NewCompetitionPage() {
         const fee = cat.entryFee ? parseFloat(cat.entryFee.replace(",", ".")) : undefined;
         await sectionsApi.create(createdId!, {
           name: cat.name,
-          danceStyle: cat.danceStyle as DanceStyle,
+          danceStyle: (cat.danceStyle || undefined) as DanceStyle | undefined,
           numberOfJudges: cat.numberOfJudges ?? 5,
           maxFinalPairs: cat.maxFinalPairs ?? 6,
           orderIndex: idx,
           dances: [],
-          ageCategory: cat.ageCategory as AgeCategory,
-          level: cat.level as Level,
+          ageCategory: (cat.ageCategory || undefined) as AgeCategory | undefined,
+          level: (cat.level || undefined) as Level | undefined,
           competitorType: cat.competitorType as CompetitorType | undefined,
           competitionType: cat.competitionType as CompetitionType | undefined,
           series: cat.series as Series | undefined,

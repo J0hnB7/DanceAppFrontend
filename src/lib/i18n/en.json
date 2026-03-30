@@ -1914,5 +1914,80 @@
     "footerFeatures": "Features",
     "footerDocs": "Documentation",
     "footerContact": "Contact"
+  },
+  "dancer": {
+    "register": {
+      "title": "Dancer Registration",
+      "subtitle": "Create an account and register for competitions",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "continueWithGoogle": "Continue with Google",
+      "gdprText": "I agree to the processing of personal data per the",
+      "gdprLink": "Privacy Policy",
+      "submit": "Create account",
+      "creating": "Creating...",
+      "failed": "Registration failed",
+      "successTitle": "Check your email",
+      "successDesc": "A verification link has been sent to your email. You can log in after confirming."
+    },
+    "onboarding": {
+      "titleProfile": "Complete your profile",
+      "subtitleProfile": "Fill in your basic information",
+      "titlePartner": "Your partner",
+      "subtitlePartner": "Optional — you can link your partner any time later",
+      "birthYear": "Birth year",
+      "club": "Dance club",
+      "clubPlaceholder": "e.g. Dance Club Prague",
+      "partnerHint": "If your partner has a DanceApp account, you can link via the invite on your profile. You can enter a name as a text record here.",
+      "partnerNameText": "Partner name (optional)",
+      "partnerNamePlaceholder": "John Smith",
+      "saving": "Saving...",
+      "submit": "Complete profile",
+      "error": "Failed to save"
+    },
+    "profile": {
+      "navProfile": "Profile",
+      "navCompetitions": "My Competitions",
+      "sectionProfile": "Personal details",
+      "sectionPartner": "Partner",
+      "partnerLinked": "Linked account",
+      "partnerAccount": "Linked via DanceApp",
+      "partnerManual": "Manual record",
+      "noPartner": "You have no linked partner yet.",
+      "generateInvite": "Create invite link",
+      "generatingInvite": "Generating...",
+      "inviteLinkReady": "Link is ready",
+      "inviteExpires": "Expires",
+      "copied": "Copied!",
+      "unlinkPartner": "Unlink partner",
+      "unlink": "Unlink",
+      "unlinkConfirm": "Are you sure you want to unlink your partner?",
+      "saving": "Saving...",
+      "saveError": "Failed to save"
+    },
+    "competitions": {
+      "title": "My Competitions",
+      "subtitle": "Competition history and results",
+      "sectionCount": "categories",
+      "placement": "Placement",
+      "emptyTitle": "No competitions",
+      "emptyDesc": "You haven't participated in any competitions yet.",
+      "loadError": "Failed to load competitions"
+    },
+    "partnerInvite": {
+      "title": "Partner invite",
+      "subtitle": "is inviting you to link as a partner in DanceApp.",
+      "loginPrompt": "Log in or create an account to accept the invite.",
+      "accept": "Accept invite",
+      "accepting": "Accepting...",
+      "acceptedTitle": "Linked successfully!",
+      "acceptedDesc": "You are now linked with {name} as partners.",
+      "goToProfile": "Go to profile",
+      "registerLink": "Register as a dancer",
+      "notDancer": "This feature is only available for dancers.",
+      "acceptError": "Failed to accept invite",
+      "invalidToken": "The invite is invalid, expired, or already used.",
+      "invalidTitle": "Invalid invite"
+    }
   }
 }

@@ -238,7 +238,11 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
               <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.4s]" />
             </div>
 
-            {pendingCount > 0 && (
+            <div className="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium" style={{ background: "rgba(48,209,88,0.1)", color: "#30d158" }}>
+              <div className="h-2 w-2 rounded-full bg-[#30d158]" />
+              {t("judge.waiting_for_admin", locale)}
+            </div>
+            {!isOnline && pendingCount > 0 && (
               <div className="flex items-center gap-2 rounded-full bg-[var(--warning)]/10 px-3 py-1.5 text-xs font-medium text-[var(--warning)]">
                 <Clock className="h-3.5 w-3.5" />
                 {pendingCount} {t("judge.offline_marks", locale)}

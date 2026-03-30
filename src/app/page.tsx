@@ -102,6 +102,8 @@ export default function Home() {
   const navLight = useScrollNav(heroRef);
   useReveal();
   const { t } = useLocale();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <>
@@ -144,7 +146,7 @@ export default function Home() {
           DanceApp
         </Link>
         <ul className="nav-links-hide" style={{ display: "flex", gap: 28, listStyle: "none" }}>
-          {[["#roles", t("landing.navRoles")],["#scoring", t("landing.navScoring")],["#security", t("landing.navSecurity")]].map(([href, label]) => (
+          {[["#roles", mounted ? t("landing.navRoles") : ""],["#scoring", mounted ? t("landing.navScoring") : ""],["#security", mounted ? t("landing.navSecurity") : ""]].map(([href, label]) => (
             <li key={href}>
               <a href={href} style={{ fontSize: ".875rem", textDecoration: "none", fontWeight: 500, color: navLight ? "#4B5563" : "rgba(255,255,255,.65)", transition: "color .2s" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "#4F46E5")}

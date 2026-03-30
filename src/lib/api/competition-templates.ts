@@ -2,9 +2,9 @@ import apiClient from "@/lib/api-client";
 
 export interface SectionTemplateItem {
   name: string;
-  ageCategory: string;
-  level: string;
-  danceStyle: string;
+  ageCategory?: string;
+  level?: string;
+  danceStyle?: string;
   numberOfJudges: number;
   maxFinalPairs: number;
   competitorType?: string;

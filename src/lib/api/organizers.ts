@@ -7,6 +7,7 @@ export interface OrganizerUser {
   organizationName?: string;
   role: string;
   emailVerified: boolean;
+  pending: boolean;
 }
 
 export interface InviteOrganizerRequest {

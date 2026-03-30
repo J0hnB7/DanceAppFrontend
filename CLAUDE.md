@@ -89,6 +89,7 @@ src/
 
 - **Dashboard** (`/dashboard/**`): CSS proměnné — `--accent`, `--surface`, `--border`, `--text-secondary`, atd. Nikdy hardcoded barvy.
 - **Veřejné stránky** (`/competitions/**`): přímé hodnoty — `#4F46E5`, `#111827`, `#F9FAFB`. CSS proměnné tam **nefungují**.
+- **Auth stránky** (`/login`, `/register`, ...): používají inline styly s přímými hodnotami. Pokud použiješ `Input` komponentu (která bere CSS proměnné), obal formulář třídou `.auth-light` definovanou v `<style>` tagu stránky — redefinuje proměnné na světlé hodnoty: `--surface:#fff; --border:#E5E7EB; --text-primary:#111827; ...`
 - Veřejné stránky: hero header `#0A1628` + animované orby + wave SVG divider (sdílený pattern)
 - Font: `var(--font-sora)` = nadpisy + důležité hodnoty; Inter = tělo textu
 - Konkrétní nahrazení: `--background`→`#F9FAFB`, `--text-primary`→`#111827`, `--text-secondary`→`#6B7280`, `--text-tertiary`→`#9CA3AF`, `--border`→`#E5E7EB`, `--surface`→`#FFFFFF`, `--accent`→`#4F46E5`, `--warning`→`#F59E0B`
@@ -201,6 +202,17 @@ npx tsc --noEmit
 
 - `/checkin/[token]/page.tsx` — frontend stránka již existuje; backend: CheckinTokenController + CheckinTokenService + entita CheckinToken + V050 migration (přidáno 2026-03-29)
 - Přidej `/api/v1/checkin-tokens/**` do `permitAll()` v SecurityConfig (backend)
+
+### Dancer platform (Spec A — A6+A7, přidáno 2026-03-30)
+- `src/lib/api/dancer.ts` — dancer API modul (register, onboarding, profile, partner invite, my-competitions)
+- `/register` — registrace tančíře + Google OAuth tlačítko (`/register/dancer` redirectuje sem)
+- **Organizátoři se neregistrují sami** — pouze přes pozvánku od admina. Stránka `/register` je výhradně pro tanečníky.
+- `/auth/callback` — OAuth2 callback; volá `POST /auth/refresh` z HttpOnly cookie → hydratuje store → redirect na `/onboarding` nebo `/profile`
+- `/onboarding` — 2-krokový form (profil → partner); v proxy.ts přidáno jako public path
+- `/profile` — profil + partner invite flow (generování linku, copy, unlink)
+- `/profile/my-competitions` — competition history dashboard
+- `/partner-invite/[token]` — public invite stránka; přidána do proxy.ts public paths
+- **proxy.ts public paths**: `/auth/callback`, `/onboarding`, `/partner-invite` přidány
 
 ## Spec soubory
 

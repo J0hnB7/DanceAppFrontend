@@ -28,7 +28,8 @@ function getNowMs(): number {
 
 type DisplaySegment =
   | { kind: "category"; sectionId: string; startMs: number; endMs: number; state: "done" | "running" | "future" }
-  | { kind: "break"; startMs: number; endMs: number };
+  | { kind: "break"; startMs: number; endMs: number }
+  | { kind: "ceremony"; label: string; startMs: number; endMs: number };
 
 /**
  * Merge all rounds of the same section into one category block.
@@ -76,6 +77,13 @@ function buildDisplaySegments(slots: ScheduleSlot[]): DisplaySegment[] {
         (seg) => seg.kind === "category" && seg.startMs <= startMs && seg.endMs >= endMs
       );
       if (!absorbed) result.push({ kind: "break", startMs, endMs });
+      continue;
+    }
+
+    if (sl.type === "AWARD_CEREMONY" || sl.type === "CUSTOM") {
+      const startMs = msOf(sl.startTime);
+      const endMs   = startMs + sl.durationMinutes * 60_000;
+      result.push({ kind: "ceremony", label: sl.label, startMs, endMs });
       continue;
     }
 
@@ -201,6 +209,31 @@ function BreakSeg({ widthPct }: { widthPct: number }) {
   );
 }
 
+function CeremonySeg({ widthPct, label, startMs, endMs }: { widthPct: number; label: string; startMs: number; endMs: number }) {
+  return (
+    <div
+      title={`${toHHMM(startMs)} – ${toHHMM(endMs)} · ${label}`}
+      className="relative flex-shrink-0 overflow-hidden"
+      style={{
+        width: `${widthPct}%`,
+        height: "100%",
+        background: "linear-gradient(135deg, rgba(48,209,88,0.25), rgba(48,209,88,0.15))",
+        borderRadius: 6,
+        border: "1px solid rgba(48,209,88,0.4)",
+      }}
+    >
+      {widthPct >= 3 && (
+        <div
+          className="absolute bottom-2 left-2 right-2 overflow-hidden text-ellipsis whitespace-nowrap text-[9px] font-semibold leading-none pointer-events-none"
+          style={{ fontFamily: "var(--font-sora)", color: "rgba(48,209,88,0.9)" }}
+        >
+          {label}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function CompetitionTimeline({ slots, sectionIds, sectionNames }: Props) {
@@ -230,6 +263,9 @@ export function CompetitionTimeline({ slots, sectionIds, sectionNames }: Props) 
     .filter((s): s is Extract<DisplaySegment, { kind: "category" }> => s.kind === "category")
     .map((s) => s.sectionId);
 
+  const hasBreak    = segments.some((s) => s.kind === "break");
+  const hasCeremony = segments.some((s) => s.kind === "ceremony");
+
   return (
     <div className="px-5 pt-4 pb-5 space-y-3">
       {/* Header */}
@@ -254,6 +290,7 @@ export function CompetitionTimeline({ slots, sectionIds, sectionNames }: Props) 
           {segments.map((seg, i) => {
             const widthPct = ((seg.endMs - seg.startMs) / totalMs) * 100;
             if (seg.kind === "break") return <BreakSeg key={i} widthPct={widthPct} />;
+            if (seg.kind === "ceremony") return <CeremonySeg key={i} widthPct={widthPct} label={seg.label} startMs={seg.startMs} endMs={seg.endMs} />;
             const colorIdx = sectionIds.indexOf(seg.sectionId);
             const name     = sectionNames.get(seg.sectionId) ?? seg.sectionId;
             return (
@@ -336,6 +373,34 @@ export function CompetitionTimeline({ slots, sectionIds, sectionNames }: Props) 
             </div>
           );
         })}
+        {hasBreak && (
+          <div className="flex items-center gap-1.5">
+            <span
+              className="w-2 h-2 rounded-sm shrink-0"
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
+            />
+            <span
+              className="text-[10px] font-medium"
+              style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sora)" }}
+            >
+              Pauza
+            </span>
+          </div>
+        )}
+        {hasCeremony && (
+          <div className="flex items-center gap-1.5">
+            <span
+              className="w-2 h-2 rounded-sm shrink-0"
+              style={{ background: "rgba(48,209,88,0.25)", border: "1px solid rgba(48,209,88,0.4)" }}
+            />
+            <span
+              className="text-[10px] font-medium"
+              style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sora)" }}
+            >
+              Vyhlášení
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

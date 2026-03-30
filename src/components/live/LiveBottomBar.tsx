@@ -12,6 +12,7 @@ interface Props {
   sending: boolean
   ctxLine: string
   lastSentAt: string | null
+  heatSynced: boolean
   onSend: () => void
   onCloseRound: () => void
 }
@@ -25,6 +26,7 @@ export function LiveBottomBar({
   sending,
   ctxLine,
   lastSentAt,
+  heatSynced,
   onSend,
   onCloseRound,
 }: Props) {
@@ -93,8 +95,8 @@ export function LiveBottomBar({
 
         <button
           onClick={onSend}
-          disabled={!selectedHeatId || sending}
-          aria-label={sending ? t('live.sending') : t('live.sendHeat')}
+          disabled={!selectedHeatId || sending || !heatSynced}
+          aria-label={sending ? t('live.sending') : !heatSynced ? t('live.heatNotSynced') : t('live.sendHeat')}
           className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           style={{
             background: 'linear-gradient(135deg, #0a84ff, #0066cc)',

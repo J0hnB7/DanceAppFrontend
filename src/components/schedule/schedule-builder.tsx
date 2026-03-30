@@ -854,6 +854,7 @@ export function ScheduleBuilder({ competitionId, competition, restrictedEdit = f
 
   const handlePublish = async () => {
     await publishSchedule(competitionId);
+    queryClient.invalidateQueries({ queryKey: ["schedule-status", competitionId] });
     toast({ title: t("scheduleBuilder.schedulePublished"), variant: "success" });
   };
 

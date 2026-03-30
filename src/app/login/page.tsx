@@ -74,6 +74,7 @@ function LoginPageInner() {
         .login-link{color:#4F46E5;text-decoration:none;font-weight:500}
         .login-link:hover{text-decoration:underline}
         @media(max-width:860px){.login-left{display:none!important}.login-right{border-radius:0!important;box-shadow:none!important}}
+        .auth-light{--surface:#fff;--border:#E5E7EB;--text-primary:#111827;--text-secondary:#6B7280;--text-tertiary:#9CA3AF;--background:#F9FAFB;--radius-md:8px}
       `}</style>
 
       <div style={{
@@ -162,7 +163,7 @@ function LoginPageInner() {
                 <p style={{ fontSize: ".85rem", color: "#6B7280", marginTop: 6 }}>{t("auth.signInDesc")}</p>
               </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <form onSubmit={handleSubmit(onSubmit)} className="auth-light" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 <Input
                   label={t("auth.email")}
                   type="email"

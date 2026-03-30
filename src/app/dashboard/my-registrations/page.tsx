@@ -386,7 +386,7 @@ export default function MyRegistrationsPage() {
             ) : (
               registrations.map((r) => (
                 <RegistrationCard
-                  key={r.id}
+                  key={`${r.id}-${r.sectionId ?? "none"}`}
                   reg={r}
                   onCancel={cancelReg}
                   cancelling={cancellingId === r.id}

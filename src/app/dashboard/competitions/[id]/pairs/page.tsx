@@ -159,15 +159,24 @@ function NoteCell({ pair, competitionId }: { pair: PairDto; competitionId: strin
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(pair.adminNote ?? "");
   const qc = useQueryClient();
+  const cancelRef = useRef(false);
 
   const save = useMutation({
     mutationFn: (note: string) => pairsApi.setNote(competitionId, pair.id, note),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pairs", competitionId] });
       setEditing(false);
-      toast({ title: t("pairs.notesSaved"), variant: "success" });
     },
   });
+
+  const handleBlur = () => {
+    if (cancelRef.current) { cancelRef.current = false; return; }
+    if (draft !== (pair.adminNote ?? "")) {
+      save.mutate(draft);
+    } else {
+      setEditing(false);
+    }
+  };
 
   if (editing) {
     return (
@@ -175,15 +184,18 @@ function NoteCell({ pair, competitionId }: { pair: PairDto; competitionId: strin
         <Textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onBlur={handleBlur}
           className="h-16 text-xs"
           autoFocus
         />
         <div className="flex gap-1">
-          <Button size="icon-sm" variant="outline" onClick={() => setEditing(false)}>
+          <Button
+            size="icon-sm"
+            variant="outline"
+            onMouseDown={() => { cancelRef.current = true; }}
+            onClick={() => { setEditing(false); setDraft(pair.adminNote ?? ""); }}
+          >
             <X className="h-3 w-3" />
-          </Button>
-          <Button size="icon-sm" onClick={() => save.mutate(draft)} loading={save.isPending}>
-            <Check className="h-3 w-3" />
           </Button>
         </div>
       </div>

@@ -164,13 +164,13 @@ function OrganizerRow({ organizer }: { organizer: OrganizerUser }) {
           )}
         </div>
       </div>
-      <StatusBadge verified={organizer.emailVerified} t={t} />
+      <StatusBadge pending={organizer.pending} t={t} />
     </div>
   );
 }
 
-function StatusBadge({ verified, t }: { verified: boolean; t: (key: string) => string }) {
-  if (verified) {
+function StatusBadge({ pending, t }: { pending: boolean; t: (key: string) => string }) {
+  if (!pending) {
     return (
       <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-400">
         <CheckCircle2 className="h-3 w-3" aria-hidden="true" />

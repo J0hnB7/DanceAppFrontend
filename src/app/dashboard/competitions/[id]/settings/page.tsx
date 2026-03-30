@@ -65,6 +65,10 @@ export default function SettingsPage({
     },
   });
 
+  const [name, setName] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [venue, setVenue] = useState("");
+  const [registrationDeadline, setRegistrationDeadline] = useState("");
   const [propoziceText, setPropoziceText] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>("PAY_AT_VENUE");
@@ -79,9 +83,15 @@ export default function SettingsPage({
   const [deleting, setDeleting] = useState(false);
   const [showAccessDialog, setShowAccessDialog] = useState(false);
   const [selectedOrganizerId, setSelectedOrganizerId] = useState<string>("");
+  const [showDateConfirmDialog, setShowDateConfirmDialog] = useState(false);
+  const pendingDateRef = useRef<{ eventDate?: string; registrationDeadline?: string } | null>(null);
 
   useEffect(() => {
     if (competition) {
+      setName(competition.name ?? "");
+      setEventDate(competition.eventDate ?? "");
+      setVenue(competition.venue ?? "");
+      setRegistrationDeadline(competition.registrationDeadline ? competition.registrationDeadline.slice(0, 16) : "");
       setPropoziceText(competition.propozice ?? "");
       setContactEmail(competition.contactEmail ?? "");
       setPaymentMethod(competition.paymentMethod ?? "PAY_AT_VENUE");
@@ -130,6 +140,60 @@ export default function SettingsPage({
       />
 
       <div className="flex flex-col gap-4">
+        {/* Basic info */}
+        <Card>
+          <CardContent className="flex flex-col gap-4 pt-5">
+            <div>
+              <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">Název soutěže</p>
+              <Input
+                value={name}
+                onChange={(e) => { setName(e.target.value); scheduleSave({ name: e.target.value }); }}
+                placeholder="Název soutěže"
+              />
+            </div>
+            <Separator />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">Datum konání</p>
+                <input
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => {
+                    const newVal = e.target.value;
+                    pendingDateRef.current = { ...(pendingDateRef.current ?? {}), eventDate: newVal };
+                    setEventDate(newVal);
+                    setShowDateConfirmDialog(true);
+                  }}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">Uzávěrka přihlášek</p>
+                <input
+                  type="datetime-local"
+                  value={registrationDeadline}
+                  onChange={(e) => {
+                    const newVal = e.target.value;
+                    pendingDateRef.current = { ...(pendingDateRef.current ?? {}), registrationDeadline: newVal };
+                    setRegistrationDeadline(newVal);
+                    setShowDateConfirmDialog(true);
+                  }}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                />
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">Místo konání</p>
+              <Input
+                value={venue}
+                onChange={(e) => { setVenue(e.target.value); scheduleSave({ venue: e.target.value }); }}
+                placeholder="Město, sál"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Contact & payment & rules */}
         <Card>
           <CardContent className="flex flex-col gap-4 pt-5">
@@ -444,7 +508,7 @@ export default function SettingsPage({
                   <SelectValue placeholder={t("settings.access.selectPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {organizers.map((org) => (
+                  {organizers.filter((org) => !org.pending).map((org) => (
                     <SelectItem key={org.id} value={org.id}>
                       {org.name} — {org.email}
                     </SelectItem>
@@ -489,6 +553,49 @@ export default function SettingsPage({
                 {t("competition.deleteDialog.confirm")}
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {showDateConfirmDialog && (
+        <Dialog open onOpenChange={(v) => {
+          if (!v) {
+            // revert to saved values
+            setEventDate(competition?.eventDate ?? "");
+            setRegistrationDeadline(competition?.registrationDeadline ? competition.registrationDeadline.slice(0, 16) : "");
+            pendingDateRef.current = null;
+            setShowDateConfirmDialog(false);
+          }
+        }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-[var(--warning,#f59e0b)]" aria-hidden="true" />
+                Změna termínů soutěže
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Opravdu chcete změnit datum nebo uzávěrku přihlášek? Tato změna se zobrazí účastníkům na veřejné stránce.
+            </p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setEventDate(competition?.eventDate ?? "");
+                setRegistrationDeadline(competition?.registrationDeadline ? competition.registrationDeadline.slice(0, 16) : "");
+                pendingDateRef.current = null;
+                setShowDateConfirmDialog(false);
+              }}>
+                Zrušit
+              </Button>
+              <Button onClick={() => {
+                if (pendingDateRef.current) {
+                  scheduleSave(pendingDateRef.current);
+                  pendingDateRef.current = null;
+                }
+                setShowDateConfirmDialog(false);
+              }}>
+                Uložit
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}

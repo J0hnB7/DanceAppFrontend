@@ -26,6 +26,7 @@ const T = {
   "judge.login_button": { cs: "Přihlásit se", en: "Sign in" },
   "judge.connecting": { cs: "Přihlašuji...", en: "Connecting..." },
   "judge.offline_marks": { cs: "marks offline", en: "marks offline" },
+  "judge.waiting_for_admin": { cs: "Čekám na instrukce od administrátora", en: "Waiting for instructions from administrator" },
   "judge.lobby_waiting": { cs: "Čekám na zahájení kola...", en: "Waiting for round to start..." },
   "judge.lobby_round_ready": { cs: "Kolo je připraveno!", en: "Round is ready!" },
   "judge.lobby_go": { cs: "Jít hodnotit", en: "Go to scoring" },

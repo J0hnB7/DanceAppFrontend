@@ -28,6 +28,7 @@ import {
   Settings,
   Mail,
   Send,
+  Pencil,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
@@ -80,6 +81,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 import { LaunchCompetitionDialog } from "@/components/competition/launch-competition-dialog";
+import { SimpleDialog } from "@/components/ui/dialog";
 import { notificationsApi } from "@/lib/api/notifications";
 import { fetchActivityFeed, type ActivityEvent } from "@/lib/api/activity";
 
@@ -340,6 +342,11 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
   const [propoziceText, setPropoziceText] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEventDate, setEditEventDate] = useState("");
+  const [editVenue, setEditVenue] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
   const [contentDescription, setContentDescription] = useState("");
   const [contentSaved, setContentSaved] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>("PAY_AT_VENUE");
@@ -456,6 +463,29 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
       contentSavedTimerRef.current = setTimeout(() => setContentSaved(false), 2000);
     }, 400);
   }
+
+  const handleEditSave = async () => {
+    try {
+      await updateCompetition.mutateAsync({
+        name: editName || undefined,
+        eventDate: editEventDate || undefined,
+        venue: editVenue || undefined,
+        registrationDeadline: editDeadline || undefined,
+      });
+      setShowEditDialog(false);
+      toast({ title: "Základní info aktualizováno", variant: "success" });
+    } catch {
+      toast({ title: "Chyba při ukládání", variant: "destructive" });
+    }
+  };
+
+  const openEditDialog = () => {
+    setEditName(competition?.name ?? "");
+    setEditEventDate(competition?.eventDate ?? "");
+    setEditVenue(competition?.venue ?? "");
+    setEditDeadline(competition?.registrationDeadline ? competition.registrationDeadline.slice(0, 16) : "");
+    setShowEditDialog(true);
+  };
 
   const [deleting, setDeleting] = useState(false);
   const handleDelete = async () => {
@@ -768,6 +798,35 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
         onCancel={() => setShowDeleteDialog(false)}
       />
 
+      <SimpleDialog
+        open={showEditDialog}
+        onClose={() => setShowEditDialog(false)}
+        title="Upravit základní info"
+      >
+        <div className="space-y-4 pt-1">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]" htmlFor="edit-name">Název soutěže</label>
+            <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]" htmlFor="edit-date">Datum konání</label>
+            <input id="edit-date" type="date" value={editEventDate} onChange={(e) => setEditEventDate(e.target.value)} className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]" htmlFor="edit-venue">Místo konání</label>
+            <Input id="edit-venue" value={editVenue} onChange={(e) => setEditVenue(e.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]" htmlFor="edit-deadline">Uzávěrka přihlášek</label>
+            <input id="edit-deadline" type="datetime-local" value={editDeadline} min={new Date().toISOString().slice(0, 16)} onChange={(e) => setEditDeadline(e.target.value)} className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Zrušit</Button>
+            <Button onClick={handleEditSave} loading={updateCompetition.isPending}>Uložit</Button>
+          </div>
+        </div>
+      </SimpleDialog>
+
       <LaunchCompetitionDialog
         competitionId={id}
         open={launchDialogOpen}
@@ -784,9 +843,18 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
             {/* Title row + badge */}
             <div className="mb-5 flex items-start justify-between gap-4 max-md:flex-col max-md:gap-3">
               <div>
-                <h1 className="mb-1.5 text-[22px] font-bold text-[#F1F5F9] max-md:text-lg" style={{ fontFamily: "var(--font-sora)" }}>
-                  {competition.name}
-                </h1>
+                <div className="mb-1.5 flex items-center gap-2">
+                  <h1 className="text-[22px] font-bold text-[#F1F5F9] max-md:text-lg" style={{ fontFamily: "var(--font-sora)" }}>
+                    {competition.name}
+                  </h1>
+                  <button
+                    onClick={openEditDialog}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/10 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                    aria-label="Upravit základní info soutěže"
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </div>
                 {/* Meta items with SVG icons */}
                 <div className="flex flex-wrap gap-3 text-[13px] text-white/50">
                   {competition.venue && (

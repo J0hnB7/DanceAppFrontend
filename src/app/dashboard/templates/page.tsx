@@ -28,9 +28,9 @@ import { useLocale } from "@/contexts/locale-context";
 
 const sectionSchema = z.object({
   name: z.string().min(1, "Povinné"),
-  ageCategory: z.string().min(1, "Povinné"),
-  level: z.string().min(1, "Povinné"),
-  danceStyle: z.string().min(1, "Povinné"),
+  ageCategory: z.string().optional(),
+  level: z.string().optional(),
+  danceStyle: z.string().optional(),
   numberOfJudges: z.number().int().min(1).max(15).default(5),
   maxFinalPairs: z.number().int().min(2).max(24).default(6),
   competitorType: z.string().optional(),
@@ -252,9 +252,9 @@ export default function TemplatesPage() {
         displayOrder: data.displayOrder,
         sections: (data.sections ?? []).map((s) => ({
           name: s.name,
-          ageCategory: s.ageCategory,
-          level: s.level,
-          danceStyle: s.danceStyle,
+          ageCategory: s.ageCategory || undefined,
+          level: s.level || undefined,
+          danceStyle: s.danceStyle || undefined,
           numberOfJudges: s.numberOfJudges,
           maxFinalPairs: s.maxFinalPairs,
           competitorType: s.competitorType || undefined,
@@ -285,9 +285,9 @@ export default function TemplatesPage() {
         displayOrder: data.displayOrder,
         sections: (data.sections ?? []).map((s) => ({
           name: s.name,
-          ageCategory: s.ageCategory,
-          level: s.level,
-          danceStyle: s.danceStyle,
+          ageCategory: s.ageCategory || undefined,
+          level: s.level || undefined,
+          danceStyle: s.danceStyle || undefined,
           numberOfJudges: s.numberOfJudges,
           maxFinalPairs: s.maxFinalPairs,
           competitorType: s.competitorType || undefined,

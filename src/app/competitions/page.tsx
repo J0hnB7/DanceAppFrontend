@@ -61,7 +61,7 @@ export default function PublicCompetitionsPage() {
     queryKey: ["public-competitions"],
     queryFn: async () => {
       try {
-        const r = await apiClient.get("/competitions?size=200");
+        const r = await apiClient.get("/competitions/public-list");
         const data = r.data;
         if (Array.isArray(data)) return data as CompetitionListItem[];
         if (data?.content && Array.isArray(data.content)) return data.content as CompetitionListItem[];
@@ -87,8 +87,14 @@ export default function PublicCompetitionsPage() {
 
   const noDateKey = t("publicCompetitions.noDate");
   const grouped = useMemo(() => {
+    const sorted = [...filtered].sort((a, b) => {
+      if (!a.eventDate && !b.eventDate) return 0;
+      if (!a.eventDate) return 1;
+      if (!b.eventDate) return -1;
+      return a.eventDate.localeCompare(b.eventDate);
+    });
     const map = new Map<string, CompetitionListItem[]>();
-    for (const c of filtered) {
+    for (const c of sorted) {
       const key = getMonthKey(c.eventDate) || noDateKey;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(c);
