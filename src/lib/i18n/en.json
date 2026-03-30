@@ -852,7 +852,12 @@
     "saveTemplate": "Save template",
     "printTop3": "Print top 3",
     "noResults": "no results yet",
-    "print": "Print"
+    "print": "Print",
+    "mergedTab": "Merged",
+    "mergedTitle": "Merged diplomas",
+    "mergedDescription": "One diploma per pair with all top-3 placements",
+    "mergedPrintAll": "Print all ({count})",
+    "mergedNoResults": "No pair has a top-3 placement"
   },
   "live": {
     "liveDashboard": "Live dashboard",

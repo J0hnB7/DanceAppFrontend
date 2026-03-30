@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState, useRef, useCallback, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { Award, Printer, Upload, Trash2, Plus, GripVertical, ArrowLeft, Eye } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
@@ -17,6 +17,8 @@ import { usePairs } from "@/hooks/queries/use-pairs";
 import {
   printDiploma,
   printAllDiplomas,
+  printMergedDiploma,
+  printAllMergedDiplomas,
   loadTemplate,
   saveTemplate,
   resolveVariable,
@@ -26,7 +28,9 @@ import {
   type DiplomaTextField,
   type DiplomaVariable,
   type DiplomaData,
+  type MergedDiplomaData,
 } from "@/lib/diploma";
+import type { SectionFinalSummaryResponse } from "@/lib/api/scoring";
 import { formatDate, cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/locale-context";
 import { useRouter } from "next/navigation";
@@ -484,13 +488,62 @@ function SectionDiplomas({
   );
 }
 
+// ── Merged diploma helpers ───────────────────────────────────────────────────
+
+type PairInfo = { dancer1Name: string; dancer2Name?: string; club?: string };
+
+function buildMergedDiplomaList(
+  sections: { id: string; name: string }[],
+  summaryMap: Map<string, SectionFinalSummaryResponse>,
+  pairLookup: Map<number, PairInfo>,
+  competitionName: string,
+  competitionDate: string,
+  competitionLocation: string,
+): MergedDiplomaData[] {
+  const byPairId = new Map<string, MergedDiplomaData>();
+
+  for (const section of sections) {
+    const summary = summaryMap.get(section.id);
+    if (!summary) continue;
+
+    for (const r of summary.rankings) {
+      if (r.finalPlacement > 3) continue;
+
+      if (!byPairId.has(r.pairId)) {
+        const pair = pairLookup.get(r.startNumber);
+        byPairId.set(r.pairId, {
+          competitionName,
+          competitionDate,
+          competitionLocation,
+          dancer1Name: pair?.dancer1Name ?? `Pár #${r.startNumber}`,
+          dancer2Name: pair?.dancer2Name,
+          club: pair?.club,
+          results: [],
+        });
+      }
+      byPairId.get(r.pairId)!.results.push({
+        sectionName: section.name,
+        placement: r.finalPlacement,
+      });
+    }
+  }
+
+  for (const data of byPairId.values()) {
+    data.results.sort((a, b) => a.placement - b.placement);
+  }
+
+  return [...byPairId.values()].sort((a, b) =>
+    a.dancer1Name.localeCompare(b.dancer1Name)
+  );
+}
+
 // ── Main page ───────────────────────────────────────────────────────────────
 
 export default function DiplomasPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: competitionId } = use(params);
   const router = useRouter();
   const { t } = useLocale();
-  const [tab, setTab] = useState<"generate" | "editor">("generate");
+  const [tab, setTab] = useState<"generate" | "editor" | "sloucene">("generate");
   const [template, setTemplate] = useState<DiplomaTemplate | null>(null);
 
   useEffect(() => {
@@ -506,6 +559,45 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
     queryKey: ["sections", competitionId],
     queryFn: () => sectionsApi.list(competitionId),
   });
+
+  const { data: pairs = [] } = usePairs(competitionId);
+
+  const summaryQueries = useQueries({
+    queries: sections.map((s) => ({
+      queryKey: ["section-summary", s.id],
+      queryFn: () => scoringApi.getSectionSummary(s.id),
+      enabled: sections.length > 0,
+    })),
+  });
+
+  const allSummariesLoaded = summaryQueries.every((q) => !q.isLoading);
+  const summaryMap = new Map<string, SectionFinalSummaryResponse>(
+    sections
+      .map((s, i) => [s.id, summaryQueries[i]?.data] as [string, SectionFinalSummaryResponse | undefined])
+      .filter((entry): entry is [string, SectionFinalSummaryResponse] => entry[1] != null)
+  );
+
+  const pairLookup = new Map<number, PairInfo>();
+  for (const p of pairs) {
+    const name1 = [p.dancer1FirstName, p.dancer1LastName].filter(Boolean).join(" ");
+    const name2 = [p.dancer2FirstName, p.dancer2LastName].filter(Boolean).join(" ");
+    pairLookup.set(p.startNumber, {
+      dancer1Name: name1 || `Pár #${p.startNumber}`,
+      dancer2Name: name2 || undefined,
+      club: p.club,
+    });
+  }
+
+  const mergedList = allSummariesLoaded
+    ? buildMergedDiplomaList(
+        sections,
+        summaryMap,
+        pairLookup,
+        competition?.name ?? "",
+        competition ? formatDate(competition.eventDate) : "",
+        competition?.venue ?? "",
+      )
+    : [];
 
   return (
     <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
@@ -550,9 +642,80 @@ export default function DiplomasPage({ params }: { params: Promise<{ id: string 
             <Eye className="mr-1.5 inline-block h-4 w-4" />
             {t("diplomas.editorTab")}
           </button>
+          <button
+            onClick={() => setTab("sloucene")}
+            className={cn(
+              "flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
+              tab === "sloucene" ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
+            )}
+          >
+            <Award className="mr-1.5 inline-block h-4 w-4" />
+            {t("diplomas.mergedTab")}
+          </button>
         </div>
 
-        {tab === "editor" ? (
+        {tab === "sloucene" ? (
+          <div className="space-y-4">
+            {/* Bulk action card */}
+            <Card className="p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                  {t("diplomas.mergedTitle")}
+                </p>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  {t("diplomas.mergedDescription")}
+                  {mergedList.length > 0 && ` ${mergedList.length} párů má alespoň jedno umístění.`}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="gap-2 shrink-0"
+                disabled={mergedList.length === 0}
+                onClick={() => printAllMergedDiplomas(mergedList)}
+              >
+                <Printer className="h-3.5 w-3.5" aria-hidden="true" />
+                Tisknout vše ({mergedList.length})
+              </Button>
+            </Card>
+
+            {/* Loading / empty / list */}
+            {!allSummariesLoaded ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-14 rounded-xl" />
+                ))}
+              </div>
+            ) : mergedList.length === 0 ? (
+              <Card className="py-16 text-center text-sm text-[var(--text-secondary)]">
+                {t("diplomas.mergedNoResults")}
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {mergedList.map((data, i) => (
+                  <Card key={i} className="p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                        {data.dancer1Name}{data.dancer2Name ? ` & ${data.dancer2Name}` : ""}
+                      </p>
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        {data.results.map((r) => `${r.placement}. — ${r.sectionName}`).join(" · ")}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 shrink-0"
+                      onClick={() => printMergedDiploma(data)}
+                    >
+                      <Printer className="h-3 w-3" aria-hidden="true" />
+                      {t("diplomas.print")}
+                    </Button>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : tab === "editor" ? (
           <TemplateEditor
             competitionId={competitionId}
             competitionName={competition?.name ?? ""}

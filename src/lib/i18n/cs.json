@@ -852,7 +852,12 @@
     "saveTemplate": "Uložit šablonu",
     "printTop3": "Tisknout top 3",
     "noResults": "zatím žádné výsledky",
-    "print": "Tisk"
+    "print": "Tisk",
+    "mergedTab": "Sloučené",
+    "mergedTitle": "Sloučené diplomy",
+    "mergedDescription": "Jeden diplom na pár se všemi top-3 umístěními",
+    "mergedPrintAll": "Tisknout vše ({count})",
+    "mergedNoResults": "Žádný pár nemá top-3 umístění"
   },
   "live": {
     "liveDashboard": "Live dashboard",
