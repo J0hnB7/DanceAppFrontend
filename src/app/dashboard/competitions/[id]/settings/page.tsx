@@ -2,7 +2,8 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Copy, ExternalLink, FileText, Layers, Trash2 } from "lucide-react";
+import { AlertTriangle, Copy, ExternalLink, FileText, Layers, Trash2, UserCheck, UserX, Users } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
@@ -23,11 +24,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { useCompetition, useUpdateCompetition } from "@/hooks/queries/use-competitions";
 import { useSections } from "@/hooks/queries/use-sections";
 import { competitionsApi } from "@/lib/api/competitions";
 import type { PairsVisibility, PaymentMethodType } from "@/lib/api/competitions";
+import { organizersApi } from "@/lib/api/organizers";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 
@@ -40,9 +43,27 @@ export default function SettingsPage({
   const router = useRouter();
   const { t } = useLocale();
 
+  const queryClient = useQueryClient();
   const { data: competition } = useCompetition(id);
   const { data: sections } = useSections(id);
   const updateCompetition = useUpdateCompetition(id);
+
+  const { data: organizers = [] } = useQuery({
+    queryKey: ["admin", "organizers"],
+    queryFn: organizersApi.list,
+  });
+
+  const assignOrganizerMutation = useMutation({
+    mutationFn: (organizerId: string | null) => organizersApi.assignToCompetition(id, organizerId),
+    onSuccess: () => {
+      toast({ title: t("settings.access.assignSuccess") });
+      queryClient.invalidateQueries({ queryKey: ["competition", id] });
+      setShowAccessDialog(false);
+    },
+    onError: () => {
+      toast({ title: t("settings.access.assignError"), variant: "destructive" });
+    },
+  });
 
   const [propoziceText, setPropoziceText] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -56,6 +77,8 @@ export default function SettingsPage({
   const [orgWebsiteUrl, setOrgWebsiteUrl] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showAccessDialog, setShowAccessDialog] = useState(false);
+  const [selectedOrganizerId, setSelectedOrganizerId] = useState<string>("");
 
   useEffect(() => {
     if (competition) {
@@ -319,6 +342,54 @@ export default function SettingsPage({
           </CardContent>
         </Card>
 
+        {/* Access — organizer assignment (ADMIN only) */}
+        <Card>
+          <CardContent className="flex flex-col gap-4 pt-5">
+            <div>
+              <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">
+                <Users className="mr-1 inline-block h-4 w-4" aria-hidden="true" />
+                {t("settings.access.title")}
+              </p>
+              <p className="mb-3 text-xs text-[var(--text-secondary)]">{t("settings.access.description")}</p>
+
+              {competition?.organizerId ? (
+                <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">
+                      {competition.organizerName ?? competition.organizerId}
+                    </p>
+                    <p className="text-xs text-[var(--text-secondary)]">{t("settings.access.assignedLabel")}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setSelectedOrganizerId(competition.organizerId ?? ""); setShowAccessDialog(true); }}>
+                      <UserCheck className="h-4 w-4" aria-hidden="true" />
+                      {t("settings.access.change")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-[var(--destructive)] hover:text-[var(--destructive)]"
+                      onClick={() => assignOrganizerMutation.mutate(null)}
+                      loading={assignOrganizerMutation.isPending}
+                    >
+                      <UserX className="h-4 w-4" aria-hidden="true" />
+                      {t("settings.access.remove")}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-[var(--text-tertiary)]">{t("settings.access.noOrganizer")}</p>
+                  <Button size="sm" variant="outline" onClick={() => { setSelectedOrganizerId(""); setShowAccessDialog(true); }}>
+                    <UserCheck className="h-4 w-4" aria-hidden="true" />
+                    {t("settings.access.assign")}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Technical */}
         <Card>
           <CardContent className="flex flex-col gap-4 pt-5">
@@ -357,6 +428,45 @@ export default function SettingsPage({
           </CardContent>
         </Card>
       </div>
+
+      {showAccessDialog && (
+        <Dialog open onOpenChange={(v) => !v && setShowAccessDialog(false)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>{t("settings.access.dialogTitle")}</DialogTitle>
+            </DialogHeader>
+            <div className="py-1">
+              <label htmlFor="organizer-select" className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+                {t("settings.access.selectOrganizer")}
+              </label>
+              <Select value={selectedOrganizerId} onValueChange={setSelectedOrganizerId}>
+                <SelectTrigger id="organizer-select" className="w-full">
+                  <SelectValue placeholder={t("settings.access.selectPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {organizers.map((org) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      {org.name} — {org.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAccessDialog(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={() => assignOrganizerMutation.mutate(selectedOrganizerId || null)}
+                loading={assignOrganizerMutation.isPending}
+                disabled={!selectedOrganizerId}
+              >
+                {t("settings.access.confirm")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {showDeleteDialog && (
         <Dialog open onOpenChange={(v) => !v && setShowDeleteDialog(false)}>

@@ -73,7 +73,8 @@
     "budget": "Budget",
     "openMenu": "Open menu",
     "competitionNav": "Competition navigation",
-    "templates": "Templates"
+    "templates": "Templates",
+    "organizers": "Organizers"
   },
   "templates": {
     "title": "Competition Templates",
@@ -87,6 +88,24 @@
     "inactive": "Inactive",
     "deleteConfirm": "Delete template \"{name}\"?",
     "loadError": "Failed to load templates"
+  },
+  "organizers": {
+    "title": "Organizers",
+    "description": "Manage organizers and their access to competitions.",
+    "inviteButton": "Invite Organizer",
+    "empty": "No organizers yet.",
+    "statusActive": "Active",
+    "statusPending": "Pending",
+    "statusExpired": "Expired",
+    "inviteSent": "Invitation sent",
+    "inviteError": "Failed to send invitation",
+    "inviteDialog": {
+      "title": "Invite New Organizer",
+      "name": "Name",
+      "namePlaceholder": "John Doe",
+      "email": "Email",
+      "send": "Send Invitation"
+    }
   },
   "status": {
     "DRAFT": "Draft",
@@ -635,7 +654,22 @@
     "deletionRequestedDesc": "We will process your request within 30 days and notify you by email.",
     "requestFailed": "Request failed",
     "nameLabel": "Name",
-    "organizationLabel": "Organization"
+    "organizationLabel": "Organization",
+    "access": {
+      "title": "Organizer Access",
+      "description": "Assign an organizer to manage this competition.",
+      "assignedLabel": "Assigned organizer",
+      "noOrganizer": "No organizer assigned",
+      "assign": "Add Organizer",
+      "change": "Change",
+      "remove": "Remove Access",
+      "assignSuccess": "Organizer assigned",
+      "assignError": "Failed to assign organizer",
+      "dialogTitle": "Assign Organizer",
+      "selectOrganizer": "Select organizer",
+      "selectPlaceholder": "Select...",
+      "confirm": "Confirm"
+    }
   },
   "dashboard": {
     "title": "Dashboard",

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Trophy, Users, BarChart3, Settings,
-  FlaskConical, ClipboardList, Archive, LayoutTemplate,
+  FlaskConical, ClipboardList, Archive, LayoutTemplate, UserCog,
   Bell, CheckCheck, X, AlertCircle, CheckCircle2, Info, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
   { label: "nav.myRegistrations", href: "/dashboard/my-registrations",  icon: ClipboardList,                                            group: "competitions" },
   { label: "nav.participants",    href: "/dashboard/participants",      icon: Users,         roles: ["ORGANIZER", "ADMIN"],              group: "competitions" },
   { label: "nav.templates",        href: "/dashboard/templates",         icon: LayoutTemplate, roles: ["ADMIN"],                         group: "admin" },
+  { label: "nav.organizers",       href: "/dashboard/admin/organizers",  icon: UserCog,        roles: ["ADMIN"],                         group: "admin" },
   { label: "nav.settings",        href: "/dashboard/settings",          icon: Settings,                                                  group: "admin" },
   { label: "nav.seeder",          href: "/dashboard/seed",              icon: FlaskConical,  testModeOnly: true,                         group: "admin" },
 ];

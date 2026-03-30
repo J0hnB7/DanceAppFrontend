@@ -73,7 +73,8 @@
     "budget": "Rozpočet",
     "openMenu": "Otevřít menu",
     "competitionNav": "Navigace soutěže",
-    "templates": "Šablony"
+    "templates": "Šablony",
+    "organizers": "Organizátoři"
   },
   "templates": {
     "title": "Šablony soutěží",
@@ -87,6 +88,24 @@
     "inactive": "Neaktivní",
     "deleteConfirm": "Opravdu smazat šablonu \"{name}\"?",
     "loadError": "Nepodařilo se načíst šablony"
+  },
+  "organizers": {
+    "title": "Organizátoři",
+    "description": "Spravujte organizátory a jejich přístupy k soutěžím.",
+    "inviteButton": "Pozvat organizátora",
+    "empty": "Zatím žádní organizátoři.",
+    "statusActive": "Aktivní",
+    "statusPending": "Čeká na přijetí",
+    "statusExpired": "Vypršelo",
+    "inviteSent": "Pozvánka odeslána",
+    "inviteError": "Nepodařilo se odeslat pozvánku",
+    "inviteDialog": {
+      "title": "Pozvat nového organizátora",
+      "name": "Jméno",
+      "namePlaceholder": "Jan Novák",
+      "email": "E-mail",
+      "send": "Odeslat pozvánku"
+    }
   },
   "status": {
     "DRAFT": "Koncept",
@@ -635,7 +654,22 @@
     "deletionRequestedDesc": "Vaši žádost zpracujeme do 30 dnů a informujeme vás emailem.",
     "requestFailed": "Žádost se nezdařila",
     "nameLabel": "Jméno",
-    "organizationLabel": "Organizace"
+    "organizationLabel": "Organizace",
+    "access": {
+      "title": "Přístup organizátora",
+      "description": "Přiřaďte organizátora ke správě této soutěže.",
+      "assignedLabel": "Přiřazený organizátor",
+      "noOrganizer": "Žádný organizátor přiřazen",
+      "assign": "Přidat organizátora",
+      "change": "Změnit",
+      "remove": "Odebrat přístup",
+      "assignSuccess": "Organizátor přiřazen",
+      "assignError": "Nepodařilo se přiřadit organizátora",
+      "dialogTitle": "Přiřadit organizátora",
+      "selectOrganizer": "Vyberte organizátora",
+      "selectPlaceholder": "Vyberte...",
+      "confirm": "Potvrdit"
+    }
   },
   "dashboard": {
     "title": "Dashboard",
