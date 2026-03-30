@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateCompetition } from "@/hooks/queries/use-competitions";
+import { useCompetitionTemplates } from "@/hooks/queries/use-competition-templates";
 import { sectionsApi } from "@/lib/api/sections";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
@@ -44,7 +45,10 @@ const categorySchema = z.object({
 const schema = z.object({
   name: z.string().min(5, "Minimálně 5 znaků"),
   eventDate: z.string().min(1, "Povinné pole"),
-  registrationDeadline: z.string().min(1, "Povinné pole"),
+  registrationDeadline: z.string().min(1, "Povinné pole").refine(
+    (v) => !v || new Date(v) > new Date(),
+    "Uzávěrka nesmí být v minulosti"
+  ),
   venue: z.string().min(1, "Povinné pole"),
   description: z.string().optional(),
   categories: z.array(categorySchema).optional(),
@@ -53,57 +57,19 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 type CategoryData = z.infer<typeof categorySchema>;
 
-// ─── Templates ───────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-type Template = {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  sections: Omit<CategoryData, "entryFee" | "entryFeeCurrency" | "presenceEnd">[];
-};
-
-const TEMPLATES: Template[] = [
-  {
-    id: "ballroom",
-    name: "Ballroom Championship",
-    description: "5 tanců / 7 rozhodčích / Standard",
-    icon: "🏆",
-    sections: [
-      { name: "Standard D", ageCategory: "ADULT", level: "D", danceStyle: "STANDARD", numberOfJudges: 7, maxFinalPairs: 6, competitorType: "AMATEURS", competitionType: "COUPLE" },
-      { name: "Standard C", ageCategory: "ADULT", level: "C", danceStyle: "STANDARD", numberOfJudges: 7, maxFinalPairs: 6, competitorType: "AMATEURS", competitionType: "COUPLE" },
-      { name: "Latin D", ageCategory: "ADULT", level: "D", danceStyle: "LATIN", numberOfJudges: 7, maxFinalPairs: 6, competitorType: "AMATEURS", competitionType: "COUPLE" },
-    ],
-  },
-  {
-    id: "latin",
-    name: "Latin Bronze",
-    description: "5 tanců / 5 rozhodčích / Latin",
-    icon: "💃",
-    sections: [
-      { name: "Latin D", ageCategory: "ADULT", level: "D", danceStyle: "LATIN", numberOfJudges: 5, maxFinalPairs: 6, competitorType: "AMATEURS", competitionType: "COUPLE" },
-      { name: "Latin C", ageCategory: "ADULT", level: "C", danceStyle: "LATIN", numberOfJudges: 5, maxFinalPairs: 6, competitorType: "AMATEURS", competitionType: "COUPLE" },
-    ],
-  },
-  {
-    id: "beginners",
-    name: "Začátečníci",
-    description: "3 tance / 3 rozhodčí / Junioři",
-    icon: "🌱",
-    sections: [
-      { name: "Standard D Junior I", ageCategory: "JUNIOR_I", level: "D", danceStyle: "STANDARD", numberOfJudges: 3, maxFinalPairs: 6, competitorType: "AMATEURS", competitionType: "COUPLE" },
-      { name: "Latin D Junior I", ageCategory: "JUNIOR_I", level: "D", danceStyle: "LATIN", numberOfJudges: 3, maxFinalPairs: 6, competitorType: "AMATEURS", competitionType: "COUPLE" },
-      { name: "Standard D Junior II", ageCategory: "JUNIOR_II", level: "D", danceStyle: "STANDARD", numberOfJudges: 3, maxFinalPairs: 6, competitorType: "AMATEURS", competitionType: "COUPLE" },
-    ],
-  },
-  {
-    id: "empty",
-    name: "Prázdná šablona",
-    description: "Přidám sekce ručně",
-    icon: "➕",
-    sections: [],
-  },
-];
+function formatRelativeDate(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const rtf = new Intl.RelativeTimeFormat('cs', { numeric: 'auto' });
+  if (days === 0) return 'dnes';
+  if (days < 7) return rtf.format(-days, 'day');
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return rtf.format(-weeks, 'week');
+  const months = Math.floor(days / 30);
+  return rtf.format(-months, 'month');
+}
 
 // ─── Steps ───────────────────────────────────────────────────────────────────
 
@@ -114,8 +80,6 @@ const STEPS = [
 ];
 
 const CURRENCIES = ["CZK", "EUR", "USD", "GBP"];
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const inputCls =
   "w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
@@ -173,6 +137,7 @@ export default function NewCompetitionPage() {
   const { t } = useLocale();
   const router = useRouter();
   const create = useCreateCompetition();
+  const { data: apiTemplates = [], isLoading: templatesLoading, isError: templatesError } = useCompetitionTemplates();
   const [step, setStep] = useState(1);
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -251,6 +216,12 @@ export default function NewCompetitionPage() {
   // Watch judge counts for live majority display
   const watchedCategories = watch("categories") ?? [];
 
+  const allTemplates = [
+    ...apiTemplates,
+    { id: "empty", name: "Prázdná šablona", description: "Přidám sekce ručně",
+      icon: "➕", sections: [], displayOrder: 999, active: true, updatedAt: "" },
+  ];
+
   const handleNextStep1 = async () => {
     setDeadlineError(null);
     const valid = await trigger(["name", "eventDate", "registrationDeadline", "venue"]);
@@ -269,14 +240,18 @@ export default function NewCompetitionPage() {
 
   const handleSelectTemplate = (templateId: string) => {
     setSelectedTemplate(templateId);
-    const tpl = TEMPLATES.find((t) => t.id === templateId);
+    if (templateId === "empty") {
+      replace([]);
+      return;
+    }
+    const tpl = allTemplates.find((t) => t.id === templateId);
     if (!tpl) return;
     replace(
       tpl.sections.map((s) => ({
         ...s,
         entryFee: "",
         entryFeeCurrency: "CZK",
-        presenceEnd: "",
+        presenceEnd: "09:00",
       }))
     );
   };
@@ -400,6 +375,7 @@ export default function NewCompetitionPage() {
                     id="registrationDeadline"
                     type="datetime-local"
                     className={inputCls}
+                    min={new Date().toISOString().slice(0, 16)}
                     {...register("registrationDeadline")}
                   />
                   {(errors.registrationDeadline || deadlineError) && (
@@ -447,43 +423,67 @@ export default function NewCompetitionPage() {
                     Šablona předvyplní sekce — sekce pak upravíte dle potřeby.
                   </p>
                 </div>
+                {templatesError && (
+                  <p className="text-xs text-[var(--destructive)]">Nepodařilo se načíst šablony</p>
+                )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {TEMPLATES.map((tpl) => (
-                    <button
-                      key={tpl.id}
-                      type="button"
-                      onClick={() => handleSelectTemplate(tpl.id)}
-                      aria-pressed={selectedTemplate === tpl.id}
-                      className={`flex flex-col gap-1.5 cursor-pointer rounded-[var(--radius-lg)] border-2 p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-                        selectedTemplate === tpl.id
-                          ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
-                          : "border-[var(--border)] bg-[var(--surface-secondary)] hover:border-[var(--accent)]/50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-2xl" aria-hidden="true">{tpl.icon}</span>
-                        {selectedTemplate === tpl.id && (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)]">
-                            <Check className="h-3 w-3 text-white" aria-hidden="true" />
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-sm font-semibold text-[var(--text-primary)]">{tpl.name}</span>
-                      <span className="text-xs text-[var(--text-secondary)]">{tpl.description}</span>
-                      {tpl.sections.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {tpl.sections.map((s, i) => (
-                            <span
-                              key={i}
-                              className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-xs text-[var(--text-secondary)] border border-[var(--border)]"
-                            >
-                              {s.name}
-                            </span>
-                          ))}
+                  {templatesLoading
+                    ? Array.from({ length: 4 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="flex flex-col gap-2 rounded-[var(--radius-lg)] border-2 border-[var(--border)] bg-[var(--surface-secondary)] p-4 animate-pulse"
+                        >
+                          <div className="h-6 w-8 rounded bg-[var(--border)]" />
+                          <div className="h-4 w-3/4 rounded bg-[var(--border)]" />
+                          <div className="h-3 w-full rounded bg-[var(--border)]" />
+                          <div className="mt-1 flex gap-1">
+                            <div className="h-5 w-16 rounded-full bg-[var(--border)]" />
+                            <div className="h-5 w-16 rounded-full bg-[var(--border)]" />
+                          </div>
                         </div>
-                      )}
-                    </button>
-                  ))}
+                      ))
+                    : allTemplates.map((tpl) => (
+                        <button
+                          key={tpl.id}
+                          type="button"
+                          onClick={() => handleSelectTemplate(tpl.id)}
+                          aria-pressed={selectedTemplate === tpl.id}
+                          className={`flex flex-col gap-1.5 cursor-pointer rounded-[var(--radius-lg)] border-2 p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                            selectedTemplate === tpl.id
+                              ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+                              : "border-[var(--border)] bg-[var(--surface-secondary)] hover:border-[var(--accent)]/50"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-2xl" aria-hidden="true">{tpl.icon}</span>
+                            {selectedTemplate === tpl.id && (
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)]">
+                                <Check className="h-3 w-3 text-white" aria-hidden="true" />
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-sm font-semibold text-[var(--text-primary)]">{tpl.name}</span>
+                          <span className="text-xs text-[var(--text-secondary)]">{tpl.description}</span>
+                          {tpl.sections.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {tpl.sections.map((s, i) => (
+                                <span
+                                  key={i}
+                                  className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-xs text-[var(--text-secondary)] border border-[var(--border)]"
+                                >
+                                  {s.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {tpl.id !== "empty" && tpl.updatedAt && (
+                            <span className="text-[10px] text-[var(--text-tertiary)]">
+                              Aktualizováno {formatRelativeDate(tpl.updatedAt)}
+                            </span>
+                          )}
+                        </button>
+                      ))
+                  }
                 </div>
                 {selectedTemplate === null && (
                   <p className="text-xs text-[var(--text-tertiary)]">Vyberte šablonu pro pokračování.</p>
@@ -589,7 +589,7 @@ export default function NewCompetitionPage() {
 
                           <div>
                             <label className={labelCls} htmlFor={`cat-${idx}-presence`}>Konec prezence</label>
-                            <input id={`cat-${idx}-presence`} type="time" className={`${inputCls} w-36`} {...register(`categories.${idx}.presenceEnd`)} />
+                            <input id={`cat-${idx}-presence`} type="time" max="11:59" className={`${inputCls} w-36`} {...register(`categories.${idx}.presenceEnd`)} />
                           </div>
 
                           <div className="grid grid-cols-2 gap-3">
@@ -699,7 +699,7 @@ export default function NewCompetitionPage() {
                         series: "",
                         entryFee: "",
                         entryFeeCurrency: "CZK",
-                        presenceEnd: "",
+                        presenceEnd: "09:00",
                       })
                     }
                     className="flex w-fit cursor-pointer items-center gap-1 text-sm text-[var(--accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 rounded"
