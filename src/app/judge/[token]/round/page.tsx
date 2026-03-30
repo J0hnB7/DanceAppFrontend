@@ -3,13 +3,14 @@
 import { use, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useOnline } from "@/hooks/use-online";
-import { CheckCircle2, Bell, CloudOff, Wifi, WifiOff, AlertTriangle, Sun, Moon } from "lucide-react";
+import { CheckCircle2, Bell, CloudOff, Wifi, WifiOff, AlertTriangle, Sun, Moon, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
 import { judgeOfflineStore } from "@/lib/judge-offline-store";
 import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
+import { violationsApi, type PenaltyType } from "@/lib/api/violations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -182,6 +183,12 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   const [submitted, setSubmitted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pingAlert, setPingAlert] = useState(false);
+  const [showViolationSheet, setShowViolationSheet] = useState(false);
+  const [violationStep, setViolationStep] = useState<"pair" | "type" | "confirm">("pair");
+  const [violationPairId, setViolationPairId] = useState<string | null>(null);
+  const [violationPenaltyType, setViolationPenaltyType] = useState<PenaltyType | null>(null);
+  const [violationReporting, setViolationReporting] = useState(false);
+  const [violationCooldown, setViolationCooldown] = useState(false);
   const [isDark, setIsDark] = useState(() =>
     typeof document !== "undefined" && document.documentElement.classList.contains("dark")
   );
@@ -274,6 +281,40 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
 
   const activeDance = dances[activeDanceIdx];
   const activeHeat  = heats.length > 0 ? heats[activeHeatIdx] : null;
+
+  // Store real heat UUIDs from SSE/API for violation reporting
+  const [activeHeatUUID, setActiveHeatUUID] = useState<string | null>(null);
+  useEffect(() => {
+    if (!competitionId || !round || !activeHeat) return;
+    // Fetch real heat UUID from the active round heats
+    apiClient.get<{ id: string; heatNumber: number }[]>(`/rounds/${round.id}/heats`)
+      .then((r) => {
+        const h = r.data.find((x) => x.heatNumber === activeHeat.heatNumber);
+        if (h) setActiveHeatUUID(h.id);
+      }).catch(() => {});
+  }, [round?.id, activeHeat?.heatNumber, competitionId]);
+
+  const handleReportViolation = async (penaltyType: PenaltyType) => {
+    if (!deviceToken || !competitionId || !violationPairId || !activeHeatUUID) return;
+    setViolationReporting(true);
+    try {
+      await violationsApi.report(competitionId, {
+        deviceToken,
+        pairId: violationPairId,
+        heatId: activeHeatUUID,
+        penaltyType,
+      });
+      setShowViolationSheet(false);
+      setViolationStep("pair");
+      setViolationPairId(null);
+      setViolationCooldown(true);
+      setTimeout(() => setViolationCooldown(false), 3000);
+    } catch {
+      // silently ignore — judge gets no error detail
+    } finally {
+      setViolationReporting(false);
+    }
+  };
 
   // localStorage key for tentative marks — scoped to judge + round + dance
   const tentativeStorageKey = round && activeDance
@@ -662,6 +703,107 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         onBack={() => setShowConfirm(false)}
         locale={locale}
       />
+
+      {/* Floating violation report button */}
+      {!showViolationSheet && (
+        <button
+          onClick={() => { setViolationStep("pair"); setViolationPairId(null); setShowViolationSheet(true); }}
+          disabled={violationCooldown}
+          aria-label={locale === "cs" ? "Nahlásit porušení pravidel" : "Report violation"}
+          className={cn(
+            "fixed bottom-24 right-4 z-40 flex min-h-[52px] min-w-[52px] items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold shadow-lg transition-all cursor-pointer",
+            violationCooldown
+              ? "bg-green-500 text-white opacity-70"
+              : "bg-amber-500 text-white hover:bg-amber-600 active:scale-95"
+          )}
+        >
+          <TriangleAlert className="h-4 w-4" aria-hidden="true" />
+          <span>{locale === "cs" ? "Hlásit" : "Report"}</span>
+        </button>
+      )}
+
+      {/* Violation bottom sheet */}
+      {showViolationSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60">
+          <div className="w-full max-w-md rounded-t-2xl bg-[var(--surface)] p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-[var(--text-primary)]">
+                {violationStep === "pair" && (locale === "cs" ? "Vyberte pár" : "Select pair")}
+                {violationStep === "type" && (locale === "cs" ? "Typ porušení" : "Violation type")}
+                {violationStep === "confirm" && (locale === "cs" ? "Potvrdit hlášení" : "Confirm report")}
+              </h2>
+              <button
+                onClick={() => { setShowViolationSheet(false); setViolationStep("pair"); }}
+                aria-label="Zavřít"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] cursor-pointer"
+              >✕</button>
+            </div>
+
+            {violationStep === "pair" && (
+              <div className="grid grid-cols-4 gap-2">
+                {pairs.map((pair) => (
+                  <button
+                    key={pair.id}
+                    onClick={() => { setViolationPairId(pair.id); setViolationStep("type"); }}
+                    className="flex min-h-[64px] flex-col items-center justify-center rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-2 text-[20px] font-black hover:border-amber-400 hover:bg-amber-50 active:scale-95 cursor-pointer transition-all"
+                    aria-label={`Pár ${pair.startNumber}`}
+                  >
+                    <span>{pair.startNumber}</span>
+                    {(pair.dancer1LastName || pair.dancer2LastName) && (
+                      <span className="mt-0.5 w-full truncate text-center text-[7px] text-[var(--text-tertiary)]">
+                        {[pair.dancer1LastName, pair.dancer2LastName].filter(Boolean).join("/")}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {violationStep === "type" && (
+              <div className="space-y-2">
+                {(["LIFTING", "FORBIDDEN_FIGURE", "UNSPORTING_BEHAVIOUR"] as PenaltyType[]).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => { setViolationPenaltyType(type); setViolationStep("confirm"); }}
+                    className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 text-left font-semibold hover:border-amber-400 hover:bg-amber-50 active:scale-[0.98] cursor-pointer transition-all"
+                    aria-label={type}
+                  >
+                    {type === "LIFTING" && (locale === "cs" ? "🏋️ Zvedání" : "🏋️ Lifting")}
+                    {type === "FORBIDDEN_FIGURE" && (locale === "cs" ? "🚫 Zakázaná figura" : "🚫 Forbidden figure")}
+                    {type === "UNSPORTING_BEHAVIOUR" && (locale === "cs" ? "😤 Nesportovní chování" : "😤 Unsporting behaviour")}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setViolationStep("pair")}
+                  className="w-full py-2 text-sm text-[var(--text-secondary)] cursor-pointer"
+                >← {locale === "cs" ? "Zpět" : "Back"}</button>
+              </div>
+            )}
+
+            {violationStep === "confirm" && (
+              <div className="space-y-4">
+                <p className="text-sm text-[var(--text-secondary)]">
+                  {locale === "cs"
+                    ? `Opravdu nahlásit porušení pro pár ${pairs.find((p) => p.id === violationPairId)?.startNumber}?`
+                    : `Report violation for pair ${pairs.find((p) => p.id === violationPairId)?.startNumber}?`}
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setViolationStep("type")}>
+                    {locale === "cs" ? "Zpět" : "Back"}
+                  </Button>
+                  <Button
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 font-bold"
+                    disabled={violationReporting || !violationPenaltyType}
+                    onClick={() => { if (violationPenaltyType) handleReportViolation(violationPenaltyType); }}
+                  >
+                    {violationReporting ? <Spinner /> : (locale === "cs" ? "Potvrdit hlášení" : "Confirm report")}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useLocale } from '@/contexts/locale-context'
 import { useLiveStore } from '@/store/live-store'
 import { liveApi, type JudgeStatusDto } from '@/lib/api/live'
+import { violationsApi, type Violation } from '@/lib/api/violations'
 import { useSSE } from '@/hooks/use-sse'
 import { useSSEConnected } from '@/lib/sse-client'
 import { useJudgeStatusPolling } from '@/hooks/use-judge-status-polling'
@@ -80,6 +81,10 @@ export function LiveControlDashboard({
   const [showHelp, setShowHelp] = useState(false)
   const [showIncidentModal, setShowIncidentModal] = useState(false)
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+  const [violations, setViolations] = useState<Violation[]>([])
+  const [reviewingId, setReviewingId] = useState<string | null>(null)
+  const [reviewNote, setReviewNote] = useState('')
+  const audioRef = useRef<AudioContext | null>(null)
 
   const sseConnected = useSSEConnected(competitionId)
 
@@ -104,6 +109,9 @@ export function LiveControlDashboard({
     heatIdMap,
   })
 
+  // Heat is synced when its real backend UUID is available in heatIdMap
+  const heatSynced = !!selectedHeatId && !!heatIdMap[selectedHeatId]
+
   // All dances confirmed = every dance has submitted === total and total > 0
   const danceIds = Object.keys(danceConfirmations)
   const allDancesConfirmed = danceIds.length > 0 && danceIds.every((id) => {
@@ -122,12 +130,31 @@ export function LiveControlDashboard({
   // Judge status polling fallback (SSE is primary)
   useJudgeStatusPolling({ activeRoundId, selectedDanceName, competitionId, resolveRealHeatId })
 
+  // Load pending violations
+  useEffect(() => {
+    violationsApi.list(competitionId, 'PENDING_REVIEW').then(setViolations).catch(() => {})
+  }, [competitionId])
+
+  const pingAudio = () => {
+    try {
+      if (!audioRef.current) audioRef.current = new AudioContext()
+      const osc = audioRef.current.createOscillator()
+      const gain = audioRef.current.createGain()
+      osc.connect(gain); gain.connect(audioRef.current.destination)
+      osc.frequency.value = 880; gain.gain.value = 0.15
+      osc.start(); osc.stop(audioRef.current.currentTime + 0.15)
+    } catch { /* ignore */ }
+  }
+
   // SSE event handlers
   useSSE(competitionId, 'score-submitted', (data: { judgeTokenId: string }) => {
     if (data.judgeTokenId) updateJudgeStatus(data.judgeTokenId, 'submitted')
   })
   useSSE(competitionId, 'results-published', onResultsPublished)
   useSSE(competitionId, 'heat:all-submitted', onAllSubmitted)
+  useSSE(competitionId, 'violation-reported', () => {
+    violationsApi.list(competitionId, 'PENDING_REVIEW').then(v => { setViolations(v); pingAudio() }).catch(() => {})
+  })
 
   // ← → heat navigation
   const navigateHeat = useCallback((dir: -1 | 1) => {
@@ -257,6 +284,54 @@ export function LiveControlDashboard({
             )}
 
             {heatResults && heatResults.length > 0 && <HeatResults results={heatResults} />}
+
+            {/* Violation review queue */}
+            {violations.length > 0 && (
+              <div className="rounded-xl border-2 border-amber-400 bg-amber-50/10 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">{violations.length}</span>
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('live.violationQueue') || 'Hlášení ke schválení'}</h3>
+                </div>
+                {[...violations].sort((a, b) => a.issuedAt.localeCompare(b.issuedAt)).map((v) => (
+                  <div key={v.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2 text-sm">
+                      <div>
+                        <span className="font-semibold">{v.penaltyType}</span>
+                        <span className="ml-2 text-[var(--text-secondary)]">{new Date(v.issuedAt).toLocaleTimeString('cs')}</span>
+                      </div>
+                    </div>
+                    {reviewingId === v.id && v.penaltyType === 'LIFTING' && (
+                      <input
+                        value={reviewNote}
+                        onChange={e => setReviewNote(e.target.value)}
+                        placeholder="Poznámka (povinná u Lifting)"
+                        className="w-full rounded border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-1.5 text-sm"
+                        id={`review-note-${v.id}`}
+                      />
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          setReviewingId(v.id)
+                          if (v.penaltyType === 'LIFTING' && !reviewNote.trim()) return
+                          await violationsApi.review(v.id, { decision: 'CONFIRMED', note: reviewNote, applyDq: v.penaltyType === 'LIFTING' })
+                          setViolations(prev => prev.filter(x => x.id !== v.id))
+                          setReviewingId(null); setReviewNote('')
+                        }}
+                        className="flex-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 cursor-pointer"
+                      >Potvrdit{v.penaltyType === 'LIFTING' ? ' + DQ' : ''}</button>
+                      <button
+                        onClick={async () => {
+                          await violationsApi.review(v.id, { decision: 'DISMISSED', note: '', applyDq: false })
+                          setViolations(prev => prev.filter(x => x.id !== v.id))
+                        }}
+                        className="flex-1 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] cursor-pointer"
+                      >Zamítnout</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <LiveSidebar
@@ -276,6 +351,7 @@ export function LiveControlDashboard({
         sending={sending}
         ctxLine={ctxLine}
         lastSentAt={lastSentAt}
+        heatSynced={heatSynced}
         onSend={handleSend}
         onCloseRound={() => setShowCloseConfirm(true)}
       />
