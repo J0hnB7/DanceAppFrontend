@@ -33,6 +33,11 @@ export interface JudgeConnectResponse {
   accessToken: string;
   expiresIn: number;
   role: JudgeRole;
+  adjudicatorId: string;
+  competitionId: string;
+  competitionName: string;
+  deviceToken: string;
+  judgeName: string | null;
 }
 
 export const judgeTokensApi = {

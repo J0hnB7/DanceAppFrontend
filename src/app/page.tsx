@@ -101,9 +101,10 @@ export default function Home() {
   const heroRef = useRef<HTMLElement>(null);
   const navLight = useScrollNav(heroRef);
   useReveal();
-  const { t } = useLocale();
+  const { t: _t } = useLocale();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const t = (key: string, params?: Record<string, string | number>) => mounted ? _t(key, params) : "";
 
   return (
     <>
@@ -142,11 +143,11 @@ export default function Home() {
           letterSpacing: "-.03em", textDecoration: "none", display: "flex", alignItems: "center", gap: 7,
           color: navLight ? "#111827" : "#fff",
         }}>
-          <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff", letterSpacing: "-.05em" }}>DA</div>
-          DanceApp
+          <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff", letterSpacing: "-.05em" }}>PP</div>
+          ProPodium
         </Link>
         <ul className="nav-links-hide" style={{ display: "flex", gap: 28, listStyle: "none" }}>
-          {[["#roles", mounted ? t("landing.navRoles") : ""],["#scoring", mounted ? t("landing.navScoring") : ""],["#security", mounted ? t("landing.navSecurity") : ""]].map(([href, label]) => (
+          {[["#roles", t("landing.navRoles")],["#scoring", t("landing.navScoring")],["#security", t("landing.navSecurity")]].map(([href, label]) => (
             <li key={href}>
               <a href={href} style={{ fontSize: ".875rem", textDecoration: "none", fontWeight: 500, color: navLight ? "#4B5563" : "rgba(255,255,255,.65)", transition: "color .2s" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "#4F46E5")}
@@ -219,7 +220,7 @@ export default function Home() {
               <div style={{ display: "flex", gap: 5 }}>
                 {["#FF5F57","#FEBC2E","#28C840"].map(c => <span key={c} style={{ width: 11, height: 11, borderRadius: "50%", background: c, display: "inline-block" }} />)}
               </div>
-              <div style={{ flex: 1, textAlign: "center", background: "rgba(255,255,255,.06)", borderRadius: 6, padding: "3px 12px", fontSize: ".7rem", color: "rgba(255,255,255,.38)" }}>danceapp.cz · Jarní pohár 2025 — Správa soutěže</div>
+              <div style={{ flex: 1, textAlign: "center", background: "rgba(255,255,255,.06)", borderRadius: 6, padding: "3px 12px", fontSize: ".7rem", color: "rgba(255,255,255,.38)" }}>propodium.cz · Jarní pohár 2025 — Správa soutěže</div>
             </div>
             {/* body */}
             <div className="pbody-grid" style={{ padding: 18, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
@@ -431,7 +432,7 @@ export default function Home() {
           </p>
           <div style={{ display: "flex", gap: 13, flexWrap: "wrap", justifyContent: "center" }}>
             <Link href="/login" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", background: "#fff", color: "#0A1628", fontWeight: 700, textDecoration: "none", transition: "all .2s" }}>{t("landing.ctaStart")}</Link>
-            <a href="mailto:info@danceapp.cz" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", border: "1px solid rgba(255,255,255,.22)", color: "#fff", fontWeight: 500, textDecoration: "none", background: "rgba(255,255,255,.06)", transition: "all .2s" }}>{t("landing.ctaContact")}</a>
+            <a href="mailto:info@propodium.cz" style={{ padding: "13px 30px", borderRadius: 10, fontSize: ".97rem", border: "1px solid rgba(255,255,255,.22)", color: "#fff", fontWeight: 500, textDecoration: "none", background: "rgba(255,255,255,.06)", transition: "all .2s" }}>{t("landing.ctaContact")}</a>
           </div>
         </div>
       </section>
@@ -440,11 +441,11 @@ export default function Home() {
       <footer style={{ background: "#fff", padding: "44px 5vw", borderTop: "1px solid #E5E7EB" }}>
         <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 18 }}>
           <Link href="/" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.05rem", color: "#111827", display: "flex", alignItems: "center", gap: 7, textDecoration: "none" }}>
-            <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff" }}>DA</div>
-            DanceApp
+            <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff" }}>PP</div>
+            ProPodium
           </Link>
           <ul style={{ display: "flex", gap: 24, listStyle: "none" }}>
-            {[["#", t("landing.footerFeatures")],["#", t("landing.footerDocs")],["mailto:info@danceapp.cz", t("landing.footerContact")],["#security","GDPR"]].map(([href, label]) => (
+            {[["#", t("landing.footerFeatures")],["#", t("landing.footerDocs")],["mailto:info@propodium.cz", t("landing.footerContact")],["#security","GDPR"]].map(([href, label]) => (
               <li key={label}><a href={href} style={{ fontSize: ".8rem", color: "#4B5563", textDecoration: "none" }}>{label}</a></li>
             ))}
           </ul>

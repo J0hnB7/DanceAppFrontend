@@ -25,6 +25,20 @@ import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 import type { AgeCategory, Level, DanceStyle, CompetitorType, CompetitionType, Series } from "@/lib/api/sections";
 
+// ─── Default dances by style ────────────────────────────────────────────────
+
+const STANDARD_DANCES = ["Waltz", "Tango", "Viennese Waltz", "Slowfoxtrot", "Quickstep"];
+const LATIN_DANCES = ["Samba", "Cha-Cha-Cha", "Rumba", "Paso Doble", "Jive"];
+const TEN_DANCE = [...STANDARD_DANCES, ...LATIN_DANCES];
+
+function getDefaultDances(style?: string): string[] {
+  if (!style) return [];
+  if (style === "STANDARD") return STANDARD_DANCES;
+  if (style === "LATIN") return LATIN_DANCES;
+  if (style === "TEN_DANCE") return TEN_DANCE;
+  return [];
+}
+
 // ─── Schema ─────────────────────────────────────────────────────────────────
 
 const categorySchema = z.object({
@@ -36,7 +50,7 @@ const categorySchema = z.object({
   maxFinalPairs: z.number().int().min(2).max(24).default(6),
   competitorType: z.string().optional(),
   competitionType: z.string().optional(),
-  series: z.string().optional(),
+  series: z.string().min(1, "Povinné pole"),
   entryFee: z.string().optional(),
   entryFeeCurrency: z.string().optional(),
   presenceEnd: z.string().optional(),
@@ -249,6 +263,7 @@ export default function NewCompetitionPage() {
     replace(
       tpl.sections.map((s) => ({
         ...s,
+        series: s.series || "OPEN",
         entryFee: "",
         entryFeeCurrency: "CZK",
         presenceEnd: "09:00",
@@ -289,7 +304,7 @@ export default function NewCompetitionPage() {
           numberOfJudges: cat.numberOfJudges ?? 5,
           maxFinalPairs: cat.maxFinalPairs ?? 6,
           orderIndex: idx,
-          dances: [],
+          dances: getDefaultDances(cat.danceStyle),
           ageCategory: (cat.ageCategory || undefined) as AgeCategory | undefined,
           level: (cat.level || undefined) as Level | undefined,
           competitorType: cat.competitorType as CompetitorType | undefined,
@@ -400,16 +415,6 @@ export default function NewCompetitionPage() {
                   {errors.venue && (
                     <p className="mt-1 text-xs text-red-500">{errors.venue.message}</p>
                   )}
-                </div>
-                <div>
-                  <label className={labelCls} htmlFor="description">Popis akce <span className="text-[var(--text-tertiary)] font-normal">(volitelné)</span></label>
-                  <textarea
-                    id="description"
-                    rows={3}
-                    placeholder="Krátký popis soutěže pro veřejnou stránku..."
-                    className={`${inputCls} resize-none`}
-                    {...register("description")}
-                  />
                 </div>
               </div>
             )}
@@ -641,6 +646,7 @@ export default function NewCompetitionPage() {
                               name={`categories.${idx}.series`}
                               options={SERIES_OPTIONS}
                               control={control}
+                              error={catErrors?.series?.message}
                               placeholder={t("newSection.seriesPlaceholder")}
                             />
                           </div>

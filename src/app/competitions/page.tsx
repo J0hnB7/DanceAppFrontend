@@ -138,8 +138,8 @@ export default function PublicCompetitionsPage() {
               </button>
               <span style={{ color: "#E5E7EB" }}>|</span>
               <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-                <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff" }}>DA</div>
-                <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1rem", color: "#111827", letterSpacing: "-.02em" }}>DanceApp</span>
+                <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff" }}>PP</div>
+                <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1rem", color: "#111827", letterSpacing: "-.02em" }}>ProPodium</span>
               </Link>
             </div>
             <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
@@ -459,10 +459,10 @@ export default function PublicCompetitionsPage() {
         {/* Footer strip */}
         <div style={{ borderTop: "1px solid #E5E7EB", background: "#fff", padding: "24px", textAlign: "center" }}>
           <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>DA</div>
-            <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".9rem", color: "#111827" }}>DanceApp</span>
+            <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>PP</div>
+            <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".9rem", color: "#111827" }}>ProPodium</span>
           </Link>
-          <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2026 DanceApp. {t("publicCompetitions.footer")}</p>
+          <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2026 ProPodium. {t("publicCompetitions.footer")}</p>
         </div>
 
       </div>

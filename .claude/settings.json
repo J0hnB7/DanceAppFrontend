@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); FILE=$(echo \"$INPUT\" | python3 -c \"import json,sys; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path',''))\" 2>/dev/null); if [[ \"$FILE\" == *.ts || \"$FILE\" == *.tsx ]]; then export PATH=\"/Users/janbystriansky/node/bin:$PATH\"; cd /Users/janbystriansky/IdeaProjects/frontend && npx tsc --noEmit 2>&1 | head -30; fi",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

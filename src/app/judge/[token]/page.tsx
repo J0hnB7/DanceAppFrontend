@@ -30,11 +30,12 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
 
   useEffect(() => {
     if (!token) return;
-    // Clear any previous session — PIN is always required on fresh login
-    localStorage.removeItem("judge_device_token");
-    localStorage.removeItem("judge_competition_id");
-    localStorage.removeItem("judge_adjudicator_id");
-    localStorage.removeItem("judge_access_token");
+    // Clear any previous session for THIS token — PIN is always required on fresh login
+    localStorage.removeItem(`judge_device_token_${token}`);
+    localStorage.removeItem(`judge_competition_id_${token}`);
+    localStorage.removeItem(`judge_adjudicator_id_${token}`);
+    localStorage.removeItem(`judge_access_token_${token}`);
+    localStorage.removeItem(`judge_name_${token}`);
 
     apiClient
       .post<JudgeSession>("/judge-tokens/validate", { token })
@@ -55,11 +56,12 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
     setPinError(null);
     try {
       const res = await apiClient.post("/judge-access/connect", { token, pin });
-      const { accessToken, adjudicatorId, competitionId, competitionName, deviceToken } = res.data;
-      localStorage.setItem("judge_access_token", accessToken);
-      localStorage.setItem("judge_device_token", deviceToken);
-      localStorage.setItem("judge_competition_id", competitionId);
-      localStorage.setItem("judge_adjudicator_id", adjudicatorId);
+      const { accessToken, adjudicatorId, competitionId, competitionName, deviceToken, judgeName } = res.data;
+      localStorage.setItem(`judge_access_token_${token}`, accessToken);
+      localStorage.setItem(`judge_device_token_${token}`, deviceToken);
+      localStorage.setItem(`judge_competition_id_${token}`, competitionId);
+      localStorage.setItem(`judge_adjudicator_id_${token}`, adjudicatorId);
+      if (judgeName) localStorage.setItem(`judge_name_${token}`, judgeName);
       void competitionName;
       void accessToken;
       void adjudicatorId;

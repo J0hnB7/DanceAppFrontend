@@ -25,6 +25,13 @@ export interface Incident {
 /** Per-dance confirmation status: danceId → { submitted, total } */
 export type DanceConfirmation = Record<string, { submitted: number; total: number }>
 
+export interface DanceStatusEntry {
+  danceName: string
+  status: 'PENDING' | 'SENT' | 'CLOSED'
+  sentAt?: string
+  closedAt?: string
+}
+
 interface LiveState {
   selectedRoundId: string | null
   selectedDanceId: string | null
@@ -41,6 +48,8 @@ interface LiveState {
   danceConfirmations: DanceConfirmation
   /** Whether the current round has been closed/calculated */
   roundClosed: boolean
+  /** Per-dance status from backend (PENDING/SENT/CLOSED) */
+  danceStatuses: DanceStatusEntry[]
 
   selectRound: (id: string) => void
   selectDance: (id: string) => void
@@ -54,6 +63,8 @@ interface LiveState {
   togglePresMode: () => void
   setDanceConfirmation: (danceId: string, submitted: number, total: number) => void
   setRoundClosed: (closed: boolean) => void
+  setDanceStatuses: (statuses: DanceStatusEntry[]) => void
+  allDancesClosed: () => boolean
   reset: () => void
   hydrateFromServer: (competitionId: string, heatId: string, dance?: string | null) => Promise<void>
 }
@@ -72,19 +83,20 @@ const initialState = {
   isHydrating: false,
   danceConfirmations: {} as DanceConfirmation,
   roundClosed: false,
+  danceStatuses: [] as DanceStatusEntry[],
 }
 
 export const useLiveStore = create<LiveState>((set) => ({
   ...initialState,
 
   selectRound: (id) =>
-    set({ selectedRoundId: id, selectedDanceId: null, selectedHeatId: null, heatResults: null, danceConfirmations: {}, roundClosed: false }),
+    set({ selectedRoundId: id, selectedDanceId: null, selectedHeatId: null, heatResults: null, danceConfirmations: {}, roundClosed: false, judgeStatuses: {}, judgeOnline: {} }),
 
   selectDance: (id) =>
-    set({ selectedDanceId: id, selectedHeatId: null, heatResults: null }),
+    set({ selectedDanceId: id, selectedHeatId: null, heatResults: null, judgeStatuses: {}, judgeOnline: {} }),
 
   selectHeat: (id) =>
-    set({ selectedHeatId: id, heatResults: null, judgeStatuses: {}, judgeOnline: {} }),
+    set({ selectedHeatId: id, heatResults: null }),
 
   updateJudgeStatus: (judgeId, status) =>
     set((s) => ({ judgeStatuses: { ...s.judgeStatuses, [judgeId]: status } })),
@@ -110,6 +122,13 @@ export const useLiveStore = create<LiveState>((set) => ({
     })),
 
   setRoundClosed: (closed) => set({ roundClosed: closed }),
+
+  setDanceStatuses: (statuses) => set({ danceStatuses: statuses }),
+
+  allDancesClosed: (): boolean => {
+    const s: LiveState = useLiveStore.getState()
+    return s.danceStatuses.length > 0 && s.danceStatuses.every((d: DanceStatusEntry) => d.status === 'CLOSED')
+  },
 
   reset: () => set(initialState),
 

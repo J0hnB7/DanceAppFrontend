@@ -93,8 +93,8 @@ export default function OnboardingPage() {
         <div style={{ width: "100%", maxWidth: 480 }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32, justifyContent: "center" }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".72rem", fontWeight: 900, color: "#fff" }}>DA</div>
-            <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.1rem", color: "#111827" }}>DanceApp</span>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".72rem", fontWeight: 900, color: "#fff" }}>PP</div>
+            <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.1rem", color: "#111827" }}>ProPodium</span>
           </div>
 
           {/* Progress */}

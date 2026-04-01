@@ -7,6 +7,7 @@ import { X, ChevronLeft, ChevronRight, Trophy, Medal } from "lucide-react";
 import { scoringApi } from "@/lib/api/scoring";
 import { sectionsApi } from "@/lib/api/sections";
 import { pairsApi } from "@/lib/api/pairs";
+import { roundsApi } from "@/lib/api/rounds";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/locale-context";
 
@@ -48,15 +49,43 @@ export default function PresentationPage({
     queryFn: () => scoringApi.getSectionSummary(sectionId),
   });
 
+  const { data: rounds } = useQuery({
+    queryKey: ["rounds", competitionId, sectionId],
+    queryFn: () => roundsApi.list(competitionId, sectionId),
+  });
+
+  // If no final summary, try preliminary results from the latest round
+  const lastRound = rounds?.length ? rounds[rounds.length - 1] : null;
+  const { data: prelimResults } = useQuery({
+    queryKey: ["preliminary-results", lastRound?.id],
+    queryFn: () => roundsApi.getPreliminaryResults(lastRound!.id),
+    enabled: !!lastRound && (!summary || summary.rankings.length === 0),
+  });
+
   const { data: pairs } = useQuery({
     queryKey: ["pairs", competitionId, sectionId],
     queryFn: () => pairsApi.list(competitionId, sectionId),
   });
 
+  // Use final rankings if available, otherwise build from preliminary results
+  const hasFinalRankings = summary && summary.rankings.length > 0;
+  const isPreliminary = !hasFinalRankings && prelimResults && prelimResults.pairs.length > 0;
+
   // Reverse the rankings so we reveal last→first
-  const reversed = summary?.rankings
+  const reversed = hasFinalRankings
     ? [...summary.rankings].sort((a, b) => b.finalPlacement - a.finalPlacement)
-    : [];
+    : isPreliminary
+      ? [...prelimResults.pairs]
+          .sort((a, b) => a.voteCount - b.voteCount || a.startNumber - b.startNumber)
+          .map((p, idx, arr) => ({
+            pairId: p.pairId,
+            startNumber: p.startNumber,
+            totalSum: p.voteCount,
+            finalPlacement: arr.length - idx,
+            tieResolution: "",
+            perDance: {},
+          }))
+      : [];
 
   const total = reversed.length;
   const current = reversed[currentIndex];
@@ -176,7 +205,7 @@ export default function PresentationPage({
 
             {/* Sum detail (subtle) */}
             <p className="mt-3 text-sm text-white/20">
-              {t("results.totalSumOf")} {current.totalSum}
+              {isPreliminary ? t("results.votesCount", { n: String(current.totalSum) }) : `${t("results.totalSumOf")} ${current.totalSum}`}
             </p>
 
             {/* 1st place special message */}

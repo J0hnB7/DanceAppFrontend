@@ -359,6 +359,7 @@ export function SectionEditor({
                   fieldName={fName("series")}
                   options={SERIES_OPTIONS}
                   control={control}
+                  error={catErrors?.series?.message}
                   placeholder={t("newSection.seriesPlaceholder")}
                 />
               </div>

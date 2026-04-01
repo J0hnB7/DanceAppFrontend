@@ -1,14 +1,17 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, AlertCircle, AlertTriangle, Wifi, WifiOff, CloudOff, Sun, Moon } from "lucide-react";
+import { CheckCircle2, Bell, CloudOff, Wifi, WifiOff, AlertTriangle, Sun, Moon, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
+import axios from "axios";
 import { useOnline } from "@/hooks/use-online";
+import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { violationsApi, type PenaltyType } from "@/lib/api/violations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,15 +28,25 @@ interface DanceDto {
   id: string;
   name: string;
   code?: string;
+  danceName?: string;
 }
 
-interface FinalRoundSession {
-  judgeTokenId: string;
-  judgeNumber: number;
-  roundId: string;
-  competitionName: string;
-  pairs: PairDto[];
+interface HeatGroup { heatNumber: number; pairIds: string[]; }
+
+interface RoundInfo {
+  id: string;
+  roundNumber: number;
+  roundType: string;
+  pairsToAdvance?: number | null;
+}
+
+interface ActiveRoundResponse {
+  round: RoundInfo;
   dances: DanceDto[];
+  pairs: PairDto[];
+  heats: HeatGroup[];
+  sectionName?: string;
+  submittedDances?: string[];
 }
 
 // ── Placement row ─────────────────────────────────────────────────────────────
@@ -60,21 +73,19 @@ function PlacementRow({
         : "border-[var(--border)] bg-[var(--surface)]"
     )}>
       {/* Couple info */}
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-[var(--text-primary)]">
-          {pair.dancer1FirstName
-            ? `${pair.dancer1FirstName} ${pair.dancer1LastName}`
-            : `Pár ${pair.startNumber}`}
-        </p>
-        {pair.dancer2FirstName && (
-          <p className="truncate text-xs text-[var(--text-secondary)]">
-            {pair.dancer2FirstName} {pair.dancer2LastName}
+      <div className="min-w-[60px] shrink-0">
+        <span className="text-[22px] font-black tabular-nums text-[var(--text-primary)]">
+          {pair.startNumber}
+        </span>
+        {(pair.dancer1LastName || pair.dancer2LastName) && (
+          <p className="truncate text-[9px] text-[var(--text-tertiary)]">
+            {[pair.dancer1LastName, pair.dancer2LastName].filter(Boolean).join(" / ")}
           </p>
         )}
       </div>
 
       {/* Placement buttons */}
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto">
         {Array.from({ length: maxPlacement }, (_, i) => i + 1).map((p) => {
           const isSelected = current === p;
           const isUsed = assigned.has(p) && !isSelected;
@@ -113,16 +124,33 @@ function PlacementRow({
 export default function JudgeFinalPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const router = useRouter();
+  const [locale, setLocale] = useState<Locale>(() => detectLocale());
+
+  const toggleLocale = () => {
+    const next: Locale = locale === "cs" ? "en" : "cs";
+    setLocale(next);
+    localStorage.setItem("danceapp_locale", next);
+  };
   const isOnline = useOnline();
 
-  const [session, setSession] = useState<FinalRoundSession | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [round, setRound] = useState<RoundInfo | null>(null);
+  const [sectionName, setSectionName] = useState<string | null>(null);
+  const [dances, setDances] = useState<DanceDto[]>([]);
+  const [pairs, setPairs] = useState<PairDto[]>([]);
   const [activeDanceIdx, setActiveDanceIdx] = useState(0);
   // danceId → { pairId → placement }
   const [placements, setPlacements] = useState<Record<string, Record<string, number>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<Set<string>>(new Set());
+  const [submittedDanceNames, setSubmittedDanceNames] = useState<Set<string>>(new Set());
+  const [pingAlert, setPingAlert] = useState(false);
+  const [showViolationSheet, setShowViolationSheet] = useState(false);
+  const [violationStep, setViolationStep] = useState<"pair" | "type" | "confirm">("pair");
+  const [violationPairId, setViolationPairId] = useState<string | null>(null);
+  const [violationPenaltyType, setViolationPenaltyType] = useState<PenaltyType | null>(null);
+  const [violationReporting, setViolationReporting] = useState(false);
+  const [violationCooldown, setViolationCooldown] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(() =>
     typeof document !== "undefined" && document.documentElement.classList.contains("dark")
   );
@@ -132,35 +160,92 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
     document.documentElement.classList.toggle("dark", dark);
   };
 
-  const adjudicatorId = typeof window !== "undefined" ? localStorage.getItem("judge_adjudicator_id") : null;
+  const competitionId = typeof window !== "undefined" ? localStorage.getItem(`judge_competition_id_${token}`) : null;
+  const adjudicatorId = typeof window !== "undefined" ? localStorage.getItem(`judge_adjudicator_id_${token}`) : null;
+  const deviceToken   = typeof window !== "undefined" ? localStorage.getItem(`judge_device_token_${token}`)   : null;
 
-  useEffect(() => {
-    if (!token) return;
-    const competitionId = localStorage.getItem("judge_competition_id");
+  const loadActiveRound = useCallback(() => {
     if (!competitionId) { router.push(`/judge/${token}`); return; }
-
-    // Try active-round first (may be FINAL type), fallback to final-session
     apiClient
-      .get("/judge/active-round", { params: { competitionId } })
+      .get<ActiveRoundResponse>("/judge/active-round", {
+        params: { competitionId },
+        ...(adjudicatorId ? { headers: { 'X-Judge-Token': adjudicatorId } } : {}),
+      })
       .then((r) => {
         const data = r.data;
-        setSession({
-          judgeTokenId: adjudicatorId ?? "",
-          judgeNumber: 0,
-          roundId: data.round.id,
-          competitionName: "",
-          pairs: data.pairs,
-          dances: data.dances ?? [],
-        });
+        setRound(data.round);
+        setSectionName(data.sectionName ?? null);
+        const mappedDances = (data.dances ?? []).map((d) => ({ ...d, name: d.danceName ?? d.name ?? "" }));
+        setDances(mappedDances);
+        setPairs(data.pairs);
+
+        // Track which dances are already submitted
+        const rawSubmitted = new Set(data.submittedDances ?? []);
+        const allSubmitted = rawSubmitted.has("UNKNOWN")
+          ? new Set([...rawSubmitted, ...mappedDances.map((d) => d.name)])
+          : rawSubmitted;
+        setSubmittedDanceNames(allSubmitted);
+
+        // Auto-skip to first unsubmitted dance
+        if (allSubmitted.size > 0 && mappedDances.length > 0) {
+          const firstUnsubmitted = mappedDances.findIndex((d) => !allSubmitted.has(d.name));
+          if (firstUnsubmitted >= 0) {
+            setActiveDanceIdx(firstUnsubmitted);
+          } else {
+            setActiveDanceIdx(mappedDances.length - 1);
+          }
+        }
       })
-      .catch(() => {
-        apiClient
-          .post<FinalRoundSession>("/judge/final-session", { token })
-          .then((r) => setSession(r.data))
-          .catch((e) => setError(e?.message ?? "Invalid token"));
-      })
+      .catch(() => router.push(`/judge/${token}/lobby`))
       .finally(() => setLoading(false));
-  }, [token, adjudicatorId, router]);
+  }, [competitionId, adjudicatorId, token, router]);
+
+  useEffect(() => {
+    loadActiveRound();
+  }, [loadActiveRound]);
+
+  // Refs for SSE callbacks
+  const loadActiveRoundRef = useRef(loadActiveRound);
+  useEffect(() => { loadActiveRoundRef.current = loadActiveRound; }, [loadActiveRound]);
+  const submittedDanceNamesRef = useRef<Set<string>>(new Set());
+  useEffect(() => { submittedDanceNamesRef.current = submittedDanceNames; }, [submittedDanceNames]);
+
+  // SSE: floor-control + judge-ping + dance-closed
+  useEffect(() => {
+    if (!competitionId) return;
+    const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
+    es.addEventListener("floor-control", () => loadActiveRoundRef.current());
+    es.addEventListener("heat-sent", () => loadActiveRoundRef.current());
+    es.onerror = () => console.warn("[judge-final] SSE connection error");
+    es.addEventListener("judge-ping", (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { judgeTokenId: string };
+        if (data.judgeTokenId === adjudicatorId) {
+          setPingAlert(true);
+          setTimeout(() => setPingAlert(false), 4000);
+        }
+      } catch { /* ignore */ }
+    });
+    es.addEventListener("dance-closed", (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { danceName: string };
+        if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
+          setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
+        }
+      } catch { /* ignore */ }
+    });
+    return () => es.close();
+  }, [competitionId, adjudicatorId]);
+
+  // Heartbeat every 20s
+  useEffect(() => {
+    if (!adjudicatorId) return;
+    const sendHeartbeat = () =>
+      apiClient.put(`/judge-access/${adjudicatorId}/heartbeat`).catch(() => {});
+    sendHeartbeat();
+    const id = setInterval(sendHeartbeat, 20_000);
+    return () => clearInterval(id);
+  }, [adjudicatorId]);
 
   const setPlacement = (danceId: string, pairId: string, placement: number) => {
     setPlacements((prev) => ({
@@ -174,199 +259,352 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
   };
 
   const submitDance = async (danceId: string) => {
-    if (!session) return;
+    if (!round) return;
     const dancePlacements = placements[danceId] ?? {};
     const placed = Object.keys(dancePlacements).length;
-    if (placed < session.pairs.length) {
-      toast({ title: `Přiřaď všechna umístění (${placed}/${session.pairs.length})`, variant: "destructive" });
+    if (placed < pairs.length) {
+      toast({ title: `${locale === "cs" ? "Přiřaď všechna umístění" : "Assign all placements"} (${placed}/${pairs.length})`, variant: "destructive" });
       return;
     }
     setSubmitting(true);
     try {
-      await apiClient.post(`/rounds/${session.roundId}/placements/${danceId}`, {
+      await axios.post(`/api/v1/rounds/${round.id}/placements/${danceId}`, {
         pairPlacements: dancePlacements,
+      }, {
+        headers: adjudicatorId ? { 'X-Judge-Token': adjudicatorId } : {},
       });
       setSubmitted((prev) => new Set([...prev, danceId]));
-      toast({ title: "Hodnocení odesláno", variant: "success" });
-      if (activeDanceIdx < session.dances.length - 1) {
-        setActiveDanceIdx((i) => i + 1);
+      const danceName = dances[activeDanceIdx]?.name ?? "UNKNOWN";
+      setSubmittedDanceNames((prev) => new Set([...prev, danceName]));
+      toast({ title: locale === "cs" ? "Hodnocení odesláno" : "Score submitted", variant: "success" });
+      // Don't auto-advance — admin controls when next dance starts
+    } catch (err) {
+      // 409 = already submitted — mark as done silently
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        setSubmitted((prev) => new Set([...prev, danceId]));
+        const danceName = dances[activeDanceIdx]?.name ?? "UNKNOWN";
+        setSubmittedDanceNames((prev) => new Set([...prev, danceName]));
+      } else {
+        toast({ title: locale === "cs" ? "Odeslání selhalo" : "Submission failed", variant: "destructive" });
       }
-    } catch {
-      toast({ title: "Odeslání selhalo", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><Spinner size="lg" /></div>;
-  if (error || !session) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-4 text-center">
-        <AlertCircle className="h-10 w-10 text-[var(--destructive)]" />
-        <p className="font-medium">{error ?? "Session nenalezena"}</p>
-      </div>
-    );
-  }
+  // Store real heat UUID for violation reporting (final round has a single heat)
+  const [activeHeatUUID, setActiveHeatUUID] = useState<string | null>(null);
+  useEffect(() => {
+    if (!round) return;
+    apiClient.get<{ id: string; heatNumber: number }[]>(`/rounds/${round.id}/heats`)
+      .then((r) => { if (r.data.length > 0) setActiveHeatUUID(r.data[0].id); })
+      .catch(() => {});
+  }, [round?.id]);
 
-  const activeDance = session.dances[activeDanceIdx];
+  const handleReportViolation = async (penaltyType: PenaltyType) => {
+    if (!deviceToken || !competitionId || !violationPairId || !activeHeatUUID) return;
+    setViolationReporting(true);
+    try {
+      await violationsApi.report(competitionId, {
+        deviceToken,
+        pairId: violationPairId,
+        heatId: activeHeatUUID,
+        penaltyType,
+      });
+      setShowViolationSheet(false);
+      setViolationStep("pair");
+      setViolationPairId(null);
+      setViolationCooldown(true);
+      setTimeout(() => setViolationCooldown(false), 3000);
+    } catch {
+      // silently ignore
+    } finally {
+      setViolationReporting(false);
+    }
+  };
+
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><Spinner size="lg" /></div>;
+  if (!round) return null;
+
+  const activeDance = dances[activeDanceIdx];
   const activeDanceId = activeDance?.id ?? "";
   const activePlacements = placements[activeDanceId] ?? {};
   const placedCount = Object.keys(activePlacements).length;
-  const allPlaced = placedCount === session.pairs.length;
-  const allSubmitted = session.dances.every((d) => submitted.has(d.id ?? ""));
-  const isDoneThisDance = submitted.has(activeDanceId);
+  const allPlaced = placedCount === pairs.length;
+  const currentDanceAlreadySubmitted = activeDance ? submittedDanceNames.has(activeDance.name) : false;
+  const isDoneThisDance = submitted.has(activeDanceId) || currentDanceAlreadySubmitted;
+  const allDancesSubmitted = dances.length > 0 && dances.every((d) => submittedDanceNames.has(d.name));
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      {/* Offline banner */}
-      {!isOnline && (
-        <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
-          <CloudOff className="h-3.5 w-3.5" />
-          Offline — hodnocení se uloží lokálně
+    <div className="flex min-h-screen flex-col bg-[var(--background)]">
+
+      {/* Ping alert */}
+      {pingAlert && (
+        <div className="flex items-center justify-center gap-2 border-b border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-2.5 text-sm font-semibold text-[var(--accent)]">
+          <Bell className="h-4 w-4" /> {t("prelim.ping_alert", locale)}
         </div>
       )}
 
-      {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-sm">
-        <div className="mx-auto max-w-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-[var(--text-tertiary)]">Finále</p>
-              <h1 className="text-sm font-semibold text-[var(--text-primary)]">
-                {activeDance?.name ?? "—"}
-              </h1>
-            </div>
-            <div className="flex items-center gap-2">
-              {isOnline ? (
-                <Wifi className="h-4 w-4 text-[var(--success)]" aria-hidden="true" />
-              ) : (
-                <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />
-              )}
-              {/* Theme toggle */}
-              <button
-                onClick={toggleTheme}
-                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-              >
-                {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-              </button>
-              {/* Dance dots */}
-              <div className="flex gap-1">
-                {session.dances.map((d, i) => {
-                  const done = submitted.has(d.id ?? "");
-                  return (
-                    <button
-                      key={d.id}
-                      onClick={() => setActiveDanceIdx(i)}
-                      aria-label={`${d.name}${done ? " (submitted)" : i === activeDanceIdx ? " (active)" : ""}`}
-                      aria-pressed={i === activeDanceIdx}
-                      className={cn(
-                        "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[10px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
-                        done
-                          ? "bg-green-600 text-white"
-                          : i === activeDanceIdx
-                          ? "bg-[var(--accent)] text-white"
-                          : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
-                      )}
-                    >
-                      {done ? "✓" : i + 1}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+      {/* Offline banner */}
+      {!isOnline && (
+        <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
+          <CloudOff className="h-3.5 w-3.5" /> {t("prelim.offline_local", locale)}
+        </div>
+      )}
+
+      {/* ── Header ── (matches round page) */}
+      <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2 shadow-sm">
+        {sectionName && (
+          <p className="mx-auto max-w-lg truncate pb-1 text-[11px] font-medium text-[var(--text-tertiary)]">
+            {sectionName}
+          </p>
+        )}
+        <div className="mx-auto max-w-lg flex items-center justify-between gap-2">
+          {/* Dance tabs */}
+          <div className="flex gap-1 overflow-x-auto">
+            {dances.map((d, i) => {
+              const isDone = submittedDanceNames.has(d.name) || submitted.has(d.id);
+              const isActive = i === activeDanceIdx;
+              return (
+                <span
+                  key={d.id}
+                  aria-label={`${d.name}${isDone ? " (submitted)" : ""}`}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors min-h-[44px] flex items-center",
+                    isActive ? "bg-[var(--accent)] text-white" : isDone ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
+                  )}
+                >
+                  {isDone && "✓ "}{d.name}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* Right controls */}
+          <div className="flex shrink-0 items-center gap-2">
+            <button onClick={toggleLocale}
+              aria-label={locale === "cs" ? "Switch to English" : "Přepnout do češtiny"}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] px-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
+              {locale === "cs" ? "EN" : "CZ"}
+            </button>
+            <button onClick={toggleTheme}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
+              {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            </button>
+            {isOnline ? <Wifi className="h-4 w-4 text-[var(--success)]" aria-hidden="true" /> : <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
           </div>
         </div>
       </div>
 
-      {/* Body */}
-      {allSubmitted ? (
-        <div className="flex flex-col items-center gap-4 py-24 text-center px-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
-          </div>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Hodnocení dokončeno</h2>
-          <p className="text-sm text-[var(--text-secondary)]">
-            Všechny {session.dances.length} tance ohodnoceny
-          </p>
-        </div>
-      ) : (
-        <div className="mx-auto max-w-lg p-4 pb-32 space-y-4">
-          {/* Instruction */}
-          {!isDoneThisDance && (
+      {/* ── Body ── */}
+      <div className="mx-auto w-full max-w-lg flex-1 px-4 pt-4 pb-36">
+
+        {allDancesSubmitted ? (
+          <div className="flex flex-col items-center gap-6 py-16 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--success)]/10">
+              <CheckCircle2 className="h-10 w-10 text-[var(--success)]" />
+            </div>
             <div>
-              <p className="text-base font-semibold text-[var(--text-primary)]">Finále</p>
+              <p className="text-xl font-bold text-[var(--text-primary)]">
+                {t("prelim.all_submitted_title", locale)}
+              </p>
+              <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
+                {t("prelim.all_thanks", locale)}
+              </p>
+            </div>
+          </div>
+        ) : isDoneThisDance ? (
+          <div className="flex flex-col items-center gap-6 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success)]/10">
+              <CheckCircle2 className="h-8 w-8 text-[var(--success)]" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-[var(--text-primary)]">
+                {activeDance?.name} {locale === "cs" ? "odesláno" : "submitted"}
+              </p>
+              <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
+                {t("prelim.wait_next", locale)}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)]" />
+              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.2s]" />
+              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.4s]" />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Instruction */}
+            <div className="mb-4 text-center">
+              <p className="text-base font-semibold text-[var(--text-primary)]">
+                {locale === "cs" ? "Finále" : "Final"}
+              </p>
               <p className="text-sm text-[var(--text-secondary)]">
-                Přiřaď umístění (1 – {session.pairs.length})
+                {locale === "cs" ? `Přiřaď umístění (1 – ${pairs.length})` : `Assign placements (1 – ${pairs.length})`}
               </p>
             </div>
-          )}
 
-          {/* Not all placed warning */}
-          {!isDoneThisDance && !allPlaced && placedCount > 0 && (
-            <div className="flex items-center gap-2 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 px-3 py-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--warning)]" />
-              <p className="text-xs text-[var(--warning)]">
-                Přiřaď všechna umístění
-                <span className="ml-1 font-bold tabular-nums">
-                  {Array.from({ length: session.pairs.length }, (_, i) => i + 1)
-                    .filter((p) => !Object.values(activePlacements).includes(p))
-                    .join(" ")}
-                </span>
-              </p>
-            </div>
-          )}
+            {/* Not all placed warning */}
+            {!allPlaced && placedCount > 0 && (
+              <div className="mb-4 flex items-center gap-2 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 px-3 py-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--warning)]" />
+                <p className="text-xs text-[var(--warning)]">
+                  {locale === "cs" ? "Přiřaď všechna umístění" : "Assign all placements"}
+                  <span className="ml-1 font-bold tabular-nums">
+                    {Array.from({ length: pairs.length }, (_, i) => i + 1)
+                      .filter((p) => !Object.values(activePlacements).includes(p))
+                      .join(" ")}
+                  </span>
+                </p>
+              </div>
+            )}
 
-          {/* Placement grid */}
-          {isDoneThisDance ? (
-            <div className="flex flex-col items-center gap-3 py-12 text-center">
-              <CheckCircle2 className="h-10 w-10 text-green-500" />
-              <p className="font-medium text-[var(--text-primary)]">
-                {activeDance?.name} odesláno
-              </p>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Přejdi na další tanec
-              </p>
-            </div>
-          ) : (
+            {/* Placement grid */}
             <div className="space-y-2">
-              {session.pairs.map((pair) => (
+              {pairs.toSorted((a, b) => a.startNumber - b.startNumber).map((pair) => (
                 <PlacementRow
                   key={pair.id}
                   pair={pair}
                   placements={activePlacements}
-                  maxPlacement={session.pairs.length}
+                  maxPlacement={pairs.length}
                   onSet={(pairId, placement) => setPlacement(activeDanceId, pairId, placement)}
                 />
               ))}
             </div>
-          )}
+          </>
+        )}
+      </div>
+
+      {/* ── Bottom bar ── (matches round page) */}
+      {!isDoneThisDance && !allDancesSubmitted && activeDance && (
+        <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--border)] bg-[var(--surface)] px-4 pt-3 pb-4 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
+          <div className="mx-auto max-w-lg space-y-2">
+            <div className="flex gap-2">
+              <Button
+                variant="outline" size="lg" className="shrink-0 px-5 font-semibold"
+                onClick={() => clearDance(activeDanceId)}
+              >
+                {t("judge.clear", locale)}
+              </Button>
+
+              <Button
+                size="lg"
+                className="flex-1 font-bold text-base"
+                onClick={() => submitDance(activeDanceId)}
+                disabled={submitting || !allPlaced}
+                loading={submitting}
+              >
+                {t("prelim.submit_btn", locale)}
+              </Button>
+            </div>
+
+            <p className="text-center text-[11px] text-[var(--text-tertiary)]">
+              {activeDance?.name ?? ""}
+              {` · ${pairs.length} ${locale === "en" ? "pairs" : "párů"}`}
+              {` · ${placedCount} / ${pairs.length} ${locale === "cs" ? "přiřazeno" : "assigned"}`}
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Bottom bar */}
-      {!allSubmitted && !isDoneThisDance && activeDance && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.1)]">
-          <div className="mx-auto flex max-w-lg gap-3">
-            <Button
-              variant="outline"
-              size="lg"
-              className="shrink-0 px-5"
-              onClick={() => clearDance(activeDanceId)}
-            >
-              Smazat
-            </Button>
-            <Button
-              className={cn("flex-1 font-semibold", allPlaced ? "bg-[var(--accent)]" : "bg-[var(--accent)]/60")}
-              size="lg"
-              loading={submitting}
-              disabled={!allPlaced}
-              onClick={() => submitDance(activeDanceId)}
-            >
-              {allPlaced
-                ? "Odeslat"
-                : `${placedCount} / ${session.pairs.length} přiřazeno`}
-            </Button>
+      {/* Floating violation report button */}
+      {!showViolationSheet && (
+        <button
+          onClick={() => { setViolationStep("pair"); setViolationPairId(null); setShowViolationSheet(true); }}
+          disabled={violationCooldown}
+          aria-label={locale === "cs" ? "Nahlásit porušení pravidel" : "Report violation"}
+          className={cn(
+            "fixed bottom-24 right-4 z-40 flex min-h-[52px] min-w-[52px] items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold shadow-lg transition-all cursor-pointer",
+            violationCooldown
+              ? "bg-green-500 text-white opacity-70"
+              : "bg-amber-500 text-white hover:bg-amber-600 active:scale-95"
+          )}
+        >
+          <TriangleAlert className="h-4 w-4" aria-hidden="true" />
+          <span>{locale === "cs" ? "Hlásit" : "Report"}</span>
+        </button>
+      )}
+
+      {/* Violation bottom sheet */}
+      {showViolationSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60">
+          <div className="w-full max-w-md rounded-t-2xl bg-[var(--surface)] p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-[var(--text-primary)]">
+                {violationStep === "pair" && (locale === "cs" ? "Vyberte pár" : "Select pair")}
+                {violationStep === "type" && (locale === "cs" ? "Typ porušení" : "Violation type")}
+                {violationStep === "confirm" && (locale === "cs" ? "Potvrdit hlášení" : "Confirm report")}
+              </h2>
+              <button
+                onClick={() => { setShowViolationSheet(false); setViolationStep("pair"); }}
+                aria-label="Zavřít"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] cursor-pointer"
+              >✕</button>
+            </div>
+
+            {violationStep === "pair" && (
+              <div className="grid grid-cols-4 gap-2">
+                {pairs.map((pair) => (
+                  <button
+                    key={pair.id}
+                    onClick={() => { setViolationPairId(pair.id); setViolationStep("type"); }}
+                    className="flex min-h-[64px] flex-col items-center justify-center rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-2 text-[20px] font-black hover:border-amber-400 hover:bg-amber-50 active:scale-95 cursor-pointer transition-all"
+                    aria-label={`Pár ${pair.startNumber}`}
+                  >
+                    <span>{pair.startNumber}</span>
+                    {(pair.dancer1LastName || pair.dancer2LastName) && (
+                      <span className="mt-0.5 w-full truncate text-center text-[7px] text-[var(--text-tertiary)]">
+                        {[pair.dancer1LastName, pair.dancer2LastName].filter(Boolean).join("/")}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {violationStep === "type" && (
+              <div className="space-y-2">
+                {(["LIFTING", "FORBIDDEN_FIGURE", "UNSPORTING_BEHAVIOUR"] as PenaltyType[]).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => { setViolationPenaltyType(type); setViolationStep("confirm"); }}
+                    className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 text-left font-semibold hover:border-amber-400 hover:bg-amber-50 active:scale-[0.98] cursor-pointer transition-all"
+                    aria-label={type}
+                  >
+                    {type === "LIFTING" && (locale === "cs" ? "🏋️ Zvedání" : "🏋️ Lifting")}
+                    {type === "FORBIDDEN_FIGURE" && (locale === "cs" ? "🚫 Zakázaná figura" : "🚫 Forbidden figure")}
+                    {type === "UNSPORTING_BEHAVIOUR" && (locale === "cs" ? "😤 Nesportovní chování" : "😤 Unsporting behaviour")}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setViolationStep("pair")}
+                  className="w-full py-2 text-sm text-[var(--text-secondary)] cursor-pointer"
+                >← {locale === "cs" ? "Zpět" : "Back"}</button>
+              </div>
+            )}
+
+            {violationStep === "confirm" && (
+              <div className="space-y-4">
+                <p className="text-sm text-[var(--text-secondary)]">
+                  {locale === "cs"
+                    ? `Opravdu nahlásit porušení pro pár ${pairs.find((p) => p.id === violationPairId)?.startNumber}?`
+                    : `Report violation for pair ${pairs.find((p) => p.id === violationPairId)?.startNumber}?`}
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setViolationStep("type")}>
+                    {locale === "cs" ? "Zpět" : "Back"}
+                  </Button>
+                  <Button
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 font-bold"
+                    disabled={violationReporting || !violationPenaltyType}
+                    onClick={() => { if (violationPenaltyType) handleReportViolation(violationPenaltyType); }}
+                  >
+                    {violationReporting ? <Spinner /> : (locale === "cs" ? "Potvrdit hlášení" : "Confirm report")}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

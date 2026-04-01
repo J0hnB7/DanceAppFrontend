@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,15 +21,19 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 function LoginPageInner() {
-  const { t, locale } = useLocale();
+  const { t: _t, locale } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
   const { loginWithTokens } = useAuthStore();
 
+  const [mounted, setMounted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [requireTotp, setRequireTotp] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+  const t = (key: string, params?: Record<string, string | number>) => mounted ? _t(key, params) : "\u00A0";
 
   const {
     register,
@@ -105,8 +109,8 @@ function LoginPageInner() {
 
           {/* logo */}
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", position: "relative", zIndex: 1 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".72rem", fontWeight: 900, color: "#fff", letterSpacing: "-.05em" }}>DA</div>
-            <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.1rem", color: "#fff", letterSpacing: "-.03em" }}>DanceApp</span>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".72rem", fontWeight: 900, color: "#fff", letterSpacing: "-.05em" }}>PP</div>
+            <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.1rem", color: "#fff", letterSpacing: "-.03em" }}>ProPodium</span>
           </Link>
 
           {/* center content */}
@@ -115,8 +119,8 @@ function LoginPageInner() {
               <span className="badge-dot-g" /> {t("auth.systemTagline")}
             </div>
             <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "clamp(1.9rem,2.8vw,2.7rem)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-.04em", color: "#fff", marginBottom: 16 }}>
-              {locale === "en" ? "Organize competitions" : "Organizujte soutěže"}<br />
-              <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 45%,#6ee7b7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{locale === "en" ? "without paperwork." : "bez papírů."}</em>
+              {mounted ? (locale === "en" ? "Organize competitions" : "Organizujte soutěže") : "\u00A0"}<br />
+              <em style={{ fontStyle: "italic", background: "linear-gradient(105deg,#a5b4fc 0%,#67e8f9 45%,#6ee7b7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{mounted ? (locale === "en" ? "without paperwork." : "bez papírů.") : "\u00A0"}</em>
             </h2>
             <p style={{ fontSize: ".97rem", lineHeight: 1.72, color: "rgba(255,255,255,.5)", maxWidth: 400, marginBottom: 40 }}>
               {t("auth.taglineDesc")}
@@ -143,8 +147,8 @@ function LoginPageInner() {
               marginBottom: 32, textAlign: "center",
               flexDirection: "column", alignItems: "center", gap: 8,
             }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".72rem", fontWeight: 900, color: "#fff" }}>DA</div>
-              <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.1rem", color: "#111827" }}>DanceApp</span>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".72rem", fontWeight: 900, color: "#fff" }}>PP</div>
+              <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.1rem", color: "#111827" }}>ProPodium</span>
             </div>
 
             <div className="login-fadein" style={{
@@ -155,7 +159,7 @@ function LoginPageInner() {
               {/* header */}
               <div style={{ marginBottom: 28 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>DA</div>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>PP</div>
                   <h1 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "1.25rem", fontWeight: 800, color: "#111827", letterSpacing: "-.03em" }}>
                     {t("auth.signIn")}
                   </h1>

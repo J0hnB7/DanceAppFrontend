@@ -117,12 +117,14 @@ export const judgeOfflineStore = {
     return result ?? null;
   },
 
-  async syncAll(judgeTokenId: string, deviceToken: string): Promise<SyncResult> {
+  async syncAll(judgeTokenId: string, deviceToken: string, token?: string): Promise<SyncResult> {
     const pending = await judgeOfflineStore.getPendingMarks();
     if (pending.length === 0) return { accepted: 0, rejected: 0, conflicts: [] };
 
     const { default: apiClient } = await import("@/lib/api-client");
-    const competitionId = localStorage.getItem("judge_competition_id");
+    const competitionId = token
+      ? localStorage.getItem(`judge_competition_id_${token}`)
+      : localStorage.getItem("judge_competition_id");
     if (!competitionId) return { accepted: 0, rejected: 0, conflicts: [] };
 
     try {

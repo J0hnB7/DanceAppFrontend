@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Send, Lock, CheckCircle2, Loader2 } from 'lucide-react'
 import { useLocale } from '@/contexts/locale-context'
 
@@ -9,11 +10,15 @@ interface Props {
   roundClosed: boolean
   allDancesConfirmed: boolean
   closing: boolean
+  closingDance: boolean
   sending: boolean
   ctxLine: string
   lastSentAt: string | null
   heatSynced: boolean
+  showCloseDance: boolean
+  canCloseDance: boolean
   onSend: () => void
+  onCloseDance: () => void
   onCloseRound: () => void
 }
 
@@ -23,14 +28,29 @@ export function LiveBottomBar({
   roundClosed,
   allDancesConfirmed,
   closing,
+  closingDance,
   sending,
   ctxLine,
   lastSentAt,
   heatSynced,
+  showCloseDance,
+  canCloseDance,
   onSend,
+  onCloseDance,
   onCloseRound,
 }: Props) {
   const { t } = useLocale()
+  const [visibleSentAt, setVisibleSentAt] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!lastSentAt) {
+      setVisibleSentAt(null)
+      return
+    }
+    setVisibleSentAt(lastSentAt)
+    const timer = setTimeout(() => setVisibleSentAt(null), 5000)
+    return () => clearTimeout(timer)
+  }, [lastSentAt])
 
   return (
     <div
@@ -48,11 +68,11 @@ export function LiveBottomBar({
         >
           {ctxLine}
         </div>
-        {lastSentAt && (
+        {visibleSentAt && (
           <div className="mt-0.5 text-[10px]" style={{ color: 'var(--success)' }}>
             {t('live.sent')}{' '}
             {(() => {
-              const d = new Date(lastSentAt)
+              const d = new Date(visibleSentAt)
               return isFinite(d.getTime())
                 ? d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                 : null
@@ -91,6 +111,26 @@ export function LiveBottomBar({
             <CheckCircle2 className="h-4 w-4" />
             {t('live.roundClosed')}
           </div>
+        )}
+
+        {/* Close dance button — visible when dance is SENT, enabled when all judges submitted */}
+        {showCloseDance && !roundClosed && (
+          <button
+            onClick={onCloseDance}
+            disabled={!canCloseDance || closingDance}
+            title={!canCloseDance ? t('live.allConfirmedRequired') : t('live.close_dance')}
+            aria-label={!canCloseDance ? t('live.allConfirmedRequired') : t('live.close_dance')}
+            className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            style={{
+              background: canCloseDance
+                ? 'linear-gradient(135deg, #ff9f0a, #e08600)'
+                : 'rgba(142,142,147,0.3)',
+              boxShadow: canCloseDance ? '0 4px 16px rgba(255,159,10,.3)' : 'none',
+            }}
+          >
+            {closingDance ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+            {closingDance ? t('live.evaluating') : t('live.close_dance')}
+          </button>
         )}
 
         <button

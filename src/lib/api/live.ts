@@ -59,4 +59,19 @@ export const liveApi = {
     apiClient
       .get<string[]>(`/rounds/${roundId}/callbacks`, { headers: { 'X-Judge-Token': judgeTokenId } })
       .then((r) => r.data),
+
+  closeDance: (roundId: string, danceName: string) =>
+    apiClient.post<DanceStatusDto>(`/rounds/${roundId}/dances/${encodeURIComponent(danceName)}/close`)
+      .then((r) => r.data),
+
+  getDanceStatuses: (roundId: string) =>
+    apiClient.get<DanceStatusDto[]>(`/rounds/${roundId}/dance-statuses`)
+      .then((r) => r.data),
+}
+
+export interface DanceStatusDto {
+  danceName: string
+  status: 'PENDING' | 'SENT' | 'CLOSED'
+  sentAt?: string
+  closedAt?: string
 }

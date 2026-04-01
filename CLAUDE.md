@@ -114,6 +114,12 @@ const realHeatId = heatIdMap[syntheticHeatId]  // VŽDY takhle
 ```
 `heatIdMap` se buildí asynchronně po resolve `activeRoundId` — může být prázdný při prvním renderu.
 
+### Tance v live page — danceStyle pattern (přidáno 2026-04-01)
+- `live/page.tsx` načítá tance **synchronně** z `slot.danceStyle` (z schedule store) — okamžité zobrazení
+- API call na `/sections/{id}` je jen async upgrade (dodá reálná dance UUID pro scoring)
+- `getDanceNames(style)` fallback: "latin" → LATIN_5, "standard" → STANDARD_5, default → STANDARD_5
+- `ScheduleSlot` typ (`schedule.ts`) má `danceStyle: string | null` — plněno z backendu
+
 ### Polling architektura
 - **8s** — judge statusy (v `use-judge-status-polling.ts`, spustí se když je `activeRoundId`)
 - **30s** — connectivity poll online/offline (v `use-judge-connectivity.ts`, heartbeat fallback za SSE)
@@ -142,6 +148,11 @@ const realHeatId = heatIdMap[syntheticHeatId]  // VŽDY takhle
 `HeatResults` — výsledky skupiny
 `IncidentPanel` — incidenty
 `PresentationOverlay` — fullscreen prezentační mód
+
+## Judge scoring — pravidla chování
+
+- **Čísla párů vždy seřazená** od nejmenšího po největší (`startNumber` ascending) — v prelim i final gridu
+- **Po odeslání hodnocení tance se NESMÍ automaticky přejít na další tanec** — to řídí admin. Porotce po odeslání vidí "Hodnocení odesláno, čeká se na další tanec" a zůstává na této obrazovce, dokud admin neotevře další tanec.
 
 ## Judge API — X-Judge-Token header
 
@@ -219,3 +230,19 @@ npx tsc --noEmit
 - **Schedule modul:** `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`
   - Frontend route: `/dashboard/competitions/[id]/schedule`
   - Drag & drop: `@dnd-kit/core`
+
+## Computer Use testy
+
+- **Test 1 (core flows):** `computer-use-prompt.md` — 7 flows: Wizard, Live Control, Judge Scoring (mobile), Public Browsing, Schedule, Settings, Full E2E
+- **Test 2 (full coverage):** `computer-use-prompt-2.md` — 16 flows (A–P): Dashboard pages, Competition Detail tabs (Kategorie, Páry, Porota, Check-in, Harmonogram, Live, Vyhodnocení, Diplomy, Obsah, E-maily, Platby, Rozpočet, Nastavení), Judge mobile, Veřejné stránky, Scoreboard, Dark/Light + Locale
+
+### Výsledky testů (2026-03-31)
+
+23/23 flows PASS. Nalezené bugy:
+
+| Závažnost | Bug | Kde |
+|-----------|-----|-----|
+| **MAJOR** | Wizard silent validation — šablona neprefilluje "Kategorie soutěže" (series), RHF errors se nezobrazí uživateli, tlačítko "Vytvořit" nereaguje | `/dashboard/competitions/new` (krok 3) |
+| **MEDIUM** | Chybějící i18n klíče na stránce Vyhodnocení — `results.hubTitle`, `results.categoriesCompleted`, `results.statusWaiting`, `results.statusInProgress` zobrazují raw klíče | `/dashboard/competitions/[id]/results` |
+| **LOW** | Neúplné EN překlady na stats sub-labels (Účastníci) — "6 soutěží", "52% zaplaceno" zůstávají v CZ při EN locale | `/dashboard/participants` |
+| **LOW** | Hydration mismatch na login — server renderuje EN, klient CZ (známý problém) | `/login` |

@@ -16,7 +16,7 @@ const ToastViewport = React.forwardRef<
     ref={ref}
     aria-label="Notifications"
     className={cn(
-      "fixed bottom-4 right-4 z-[100] flex max-h-screen w-full max-w-[380px] flex-col gap-2",
+      "pointer-events-none fixed bottom-4 right-4 z-[100] flex max-h-screen w-full max-w-[380px] flex-col gap-2",
       className
     )}
     {...props}

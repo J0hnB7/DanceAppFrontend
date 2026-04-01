@@ -177,7 +177,7 @@ export default function CompetitionDisplayPage({
         className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[10px]"
         style={{ color: "rgba(255,255,255,.15)", fontFamily: "var(--font-sora)" }}
       >
-        DanceApp · {competition?.name}
+        ProPodium · {competition?.name}
       </div>
     </div>
   );

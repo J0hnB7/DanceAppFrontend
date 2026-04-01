@@ -38,26 +38,30 @@ export function useSSE<T>(
 export function useJudgeSSERehydration(
   competitionId: string | null | undefined,
   judgeToken: string,
-  skipRehydration = false
+  skipRehydration = false,
+  /** Optional custom rehydration callback — when provided, called instead of default navigation */
+  onRehydrate?: () => void
 ) {
   const router = useRouter();
   const [pollingFallback, setPollingFallback] = useState(false);
 
   const rehydrate = useCallback(async () => {
     if (!competitionId || skipRehydration) return;
+    if (onRehydrate) {
+      onRehydrate();
+      return;
+    }
     try {
       const res = await apiClient.get<{ roundId: string; sectionId: string }>(
         `/competitions/${competitionId}/active-round`
       );
       if (res.data?.roundId) {
-        // Active round found — navigate to scoring
-        // We don't know roundType here, default to round page
         router.push(`/judge/${judgeToken}/round`);
       }
     } catch {
       // 404 = no active round, stay on current page
     }
-  }, [competitionId, judgeToken, router, skipRehydration]);
+  }, [competitionId, judgeToken, router, skipRehydration, onRehydrate]);
 
   useEffect(() => {
     if (!competitionId) return;

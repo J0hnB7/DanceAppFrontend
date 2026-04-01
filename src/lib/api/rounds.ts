@@ -83,7 +83,11 @@ export const roundsApi = {
 
   /** Backend: POST /rounds/{roundId}/preliminary/chairman-resolve — resolve boundary tie */
   resolveChairmanTie: (roundId: string, approvedPairIds: string[]) =>
-    apiClient.post(`/rounds/${roundId}/preliminary/chairman-resolve`, { approvedPairIds }).then((r) => r.data),
+    apiClient.post(`/rounds/${roundId}/preliminary/chairman-resolve`, approvedPairIds).then((r) => r.data),
+
+  /** Backend: GET /rounds/{roundId}/preliminary/export — XLSX audit export */
+  exportPreliminary: (roundId: string) =>
+    apiClient.get(`/rounds/${roundId}/preliminary/export`, { responseType: 'blob' }).then((r) => r.data as Blob),
 
   // Legacy/mock-only endpoints kept for backward compat with mock layer
   get: (roundId: string) =>

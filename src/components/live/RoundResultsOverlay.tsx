@@ -26,7 +26,7 @@ export function RoundResultsOverlay({ closeResult, onClose }: Props) {
           {t('live.roundResultsTitle', { n: closeResult.pairsToAdvance })}
         </div>
         <div className="space-y-2">
-          {closeResult.pairs
+          {(closeResult.pairs ?? [])
             .sort((a, b) => b.voteCount - a.voteCount)
             .map((pair) => (
               <div

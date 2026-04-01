@@ -1,10 +1,12 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLiveStore } from '@/store/live-store'
+import { useScheduleStore } from '@/store/schedule-store'
 import { liveApi } from '@/lib/api/live'
 import { roundsApi, type PreliminaryResultResponse } from '@/lib/api/rounds'
 import { useToast } from '@/hooks/use-toast'
 import { useLocale } from '@/contexts/locale-context'
 import apiClient from '@/lib/api-client'
+import axios from 'axios'
 
 interface Options {
   competitionId: string
@@ -25,16 +27,20 @@ export function useRoundControl({
 }: Options) {
   const { t } = useLocale()
   const { toast } = useToast()
-  const { updateJudgeStatus, updateJudgeOnline, setHeatResults, setLastSentAt, setRoundClosed } = useLiveStore()
+  const { updateJudgeStatus, updateJudgeOnline, setHeatResults, setLastSentAt, setRoundClosed, setDanceStatuses } = useLiveStore()
+  const loadSchedule = useScheduleStore((s) => s.loadSchedule)
 
   const [sending, setSending] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [closingDance, setClosingDance] = useState(false)
   const [closeResult, setCloseResult] = useState<PreliminaryResultResponse | null>(null)
   const [showCollisionDialog, setShowCollisionDialog] = useState(false)
 
   // Resolve real heatId: heatIdMap first, then find RUNNING heat as fallback
+  // Only falls back to API when a heat IS selected but not yet in heatIdMap
   const resolveRealHeatId = useCallback(async (): Promise<string | null> => {
-    const fromMap = selectedHeatId ? heatIdMap[selectedHeatId] : undefined
+    if (!selectedHeatId) return null
+    const fromMap = heatIdMap[selectedHeatId]
     if (fromMap) return fromMap
     if (!activeRoundId) return null
     try {
@@ -71,8 +77,16 @@ export function useRoundControl({
           }
         })
         .catch(() => {})
-    } catch {
-      toast({ title: t('live.heatSendFailed'), variant: 'destructive' })
+    } catch (err) {
+      let title = t('live.heatSendFailed')
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        const msg: string = err.response?.data?.message ?? ''
+        const isJudgesIssue = /judge|heat|assignment|draw/i.test(msg)
+        title = isJudgesIssue
+          ? t('live.heatSendForbiddenJudges')
+          : t('live.heatSendForbiddenAuth')
+      }
+      toast({ title, variant: 'destructive' })
     } finally {
       setSending(false)
     }
@@ -83,13 +97,14 @@ export function useRoundControl({
     setClosing(true)
     try {
       await roundsApi.close(activeRoundId)
-      const result = await roundsApi.calculateResults(activeRoundId) as PreliminaryResultResponse
+      const result = await roundsApi.getPreliminaryResults(activeRoundId)
       setCloseResult(result)
       if (result.tieAtBoundary && result.tiedPairsAtBoundary?.length > 0) {
         setShowCollisionDialog(true)
       } else {
         setRoundClosed(true)
         toast({ title: t('live.roundClosedToast') })
+        loadSchedule(competitionId)
       }
     } catch (err) {
       console.error('[useRoundControl] close round failed', err)
@@ -97,24 +112,64 @@ export function useRoundControl({
     } finally {
       setClosing(false)
     }
-  }, [activeRoundId, sectionId, setRoundClosed, toast, t])
+  }, [activeRoundId, sectionId, setRoundClosed, toast, t, loadSchedule, competitionId])
 
   const handleResolveTie = useCallback(async (choice: 'more' | 'less') => {
-    if (!activeRoundId) return
+    if (!activeRoundId || !closeResult) return
     setClosing(true)
     try {
-      const result = await roundsApi.resolveTie(activeRoundId, choice) as PreliminaryResultResponse
-      setCloseResult(result)
+      // Derive advancing pair IDs from pairs list (backend doesn't return advancedPairIds separately)
+      const advancingIds = closeResult.pairs.filter((p) => p.advances).map((p) => p.pairId)
+      // 'more' = advance tied pairs too; 'less' = exclude them
+      const approvedPairIds = choice === 'more'
+        ? [...advancingIds, ...(closeResult.tiedPairsAtBoundary ?? [])]
+        : [...advancingIds]
+      const result = await roundsApi.resolveChairmanTie(activeRoundId, approvedPairIds)
+      setCloseResult(result as PreliminaryResultResponse)
       setShowCollisionDialog(false)
       setRoundClosed(true)
       toast({ title: t('live.roundClosedToast') })
+      loadSchedule(competitionId)
     } catch (err) {
       console.error('[useRoundControl] resolve tie failed', err)
       toast({ title: t('live.tieFailed'), variant: 'destructive' })
     } finally {
       setClosing(false)
     }
-  }, [activeRoundId, setRoundClosed, toast, t])
+  }, [activeRoundId, closeResult, setRoundClosed, toast, t, loadSchedule, competitionId])
+
+  // Fetch dance statuses from backend
+  const fetchDanceStatuses = useCallback(async () => {
+    if (!activeRoundId) return
+    try {
+      const statuses = await liveApi.getDanceStatuses(activeRoundId)
+      setDanceStatuses(statuses)
+    } catch {
+      // silently ignore
+    }
+  }, [activeRoundId, setDanceStatuses])
+
+  // Fetch dance statuses when activeRoundId changes — clear stale statuses first
+  useEffect(() => {
+    setDanceStatuses([])
+    fetchDanceStatuses()
+  }, [fetchDanceStatuses]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close a single dance
+  const handleCloseDance = useCallback(async () => {
+    if (!activeRoundId || !selectedDanceName) return
+    setClosingDance(true)
+    try {
+      await liveApi.closeDance(activeRoundId, selectedDanceName)
+      await fetchDanceStatuses()
+      toast({ title: t('live.dance_closed') })
+    } catch (err) {
+      console.error('[useRoundControl] close dance failed', err)
+      toast({ title: t('live.danceCloseFailed'), variant: 'destructive' })
+    } finally {
+      setClosingDance(false)
+    }
+  }, [activeRoundId, selectedDanceName, fetchDanceStatuses, toast, t])
 
   // SSE handlers for results
   const onResultsPublished = useCallback(async () => {
@@ -134,7 +189,7 @@ export function useRoundControl({
     try {
       const [results, statuses] = await Promise.all([
         liveApi.getHeatResults(data.heatId),
-        liveApi.getJudgeStatuses(data.heatId, undefined, competitionId),
+        liveApi.getJudgeStatuses(data.heatId, selectedDanceName ?? undefined, competitionId),
       ])
       setHeatResults(results)
       for (const s of statuses) {
@@ -144,20 +199,30 @@ export function useRoundControl({
     } catch {
       // silently ignore
     }
-  }, [competitionId, setHeatResults, updateJudgeStatus, updateJudgeOnline])
+  }, [competitionId, selectedDanceName, setHeatResults, updateJudgeStatus, updateJudgeOnline])
+
+  // SSE handler for dance-closed event (admin channel)
+  const onDanceClosed = useCallback((data: { danceName: string }) => {
+    if (!data.danceName) return
+    fetchDanceStatuses()
+  }, [fetchDanceStatuses])
 
   return {
     sending,
     closing,
+    closingDance,
     closeResult,
     setCloseResult,
     showCollisionDialog,
     setShowCollisionDialog,
     resolveRealHeatId,
     handleSend,
+    handleCloseDance,
     handleCloseRound,
     handleResolveTie,
+    fetchDanceStatuses,
     onResultsPublished,
     onAllSubmitted,
+    onDanceClosed,
   }
 }

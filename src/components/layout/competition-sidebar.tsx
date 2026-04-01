@@ -175,13 +175,13 @@ export function CompetitionSidebar({
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#3B82F6] to-[#06B6D4] text-[13px] font-bold text-white"
             style={{ fontFamily: "var(--font-sora)", boxShadow: "0 2px 10px rgba(59,130,246,0.4)" }}
           >
-            DA
+            PP
           </div>
           <span
             className="text-[15px] font-bold text-white"
             style={{ fontFamily: "var(--font-sora)" }}
           >
-            DanceApp
+            ProPodium
           </span>
         </div>
         <div className="mb-1 h-px bg-[rgba(255,255,255,0.07)]" />

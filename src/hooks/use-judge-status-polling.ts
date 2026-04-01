@@ -4,6 +4,7 @@ import { useLiveStore } from '@/store/live-store'
 
 interface Options {
   activeRoundId: string | null
+  selectedDanceId: string | null
   selectedDanceName: string | null
   competitionId: string
   resolveRealHeatId: () => Promise<string | null>
@@ -16,11 +17,12 @@ interface Options {
  */
 export function useJudgeStatusPolling({
   activeRoundId,
+  selectedDanceId,
   selectedDanceName,
   competitionId,
   resolveRealHeatId,
 }: Options) {
-  const { updateJudgeStatus, updateJudgeOnline } = useLiveStore()
+  const { updateJudgeStatus, updateJudgeOnline, setDanceConfirmation } = useLiveStore()
 
   const poll = useCallback(async () => {
     const realHeatId = await resolveRealHeatId()
@@ -37,9 +39,13 @@ export function useJudgeStatusPolling({
             updateJudgeOnline(s.judgeId, s.online)
           }
         }
+        // Keep danceConfirmations in sync with polling data
+        if (selectedDanceId) {
+          setDanceConfirmation(selectedDanceId, statuses.filter((j) => j.status === 'submitted').length, statuses.length)
+        }
       })
       .catch(() => {})
-  }, [resolveRealHeatId, selectedDanceName, competitionId, updateJudgeStatus, updateJudgeOnline])
+  }, [resolveRealHeatId, selectedDanceId, selectedDanceName, competitionId, updateJudgeStatus, updateJudgeOnline, setDanceConfirmation])
 
   useEffect(() => {
     if (!activeRoundId) return

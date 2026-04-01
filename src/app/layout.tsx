@@ -29,8 +29,8 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "DanceApp",
-    template: "%s | DanceApp",
+    default: "ProPodium",
+    template: "%s | ProPodium",
   },
   description: "Competition management for ballroom dancing",
   formatDetection: { telephone: false },

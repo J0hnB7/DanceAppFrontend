@@ -7,6 +7,7 @@ import { CheckCircle2, Bell, CloudOff, Wifi, WifiOff, AlertTriangle, Sun, Moon, 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
+import axios from "axios";
 import { judgeOfflineStore } from "@/lib/judge-offline-store";
 import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
@@ -199,12 +200,13 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     document.documentElement.classList.toggle("dark", dark);
   };
 
-  const competitionId = typeof window !== "undefined" ? localStorage.getItem("judge_competition_id") : null;
-  const adjudicatorId = typeof window !== "undefined" ? localStorage.getItem("judge_adjudicator_id") : null;
-  const deviceToken   = typeof window !== "undefined" ? localStorage.getItem("judge_device_token")   : null;
+  const competitionId = typeof window !== "undefined" ? localStorage.getItem(`judge_competition_id_${token}`) : null;
+  const adjudicatorId = typeof window !== "undefined" ? localStorage.getItem(`judge_adjudicator_id_${token}`) : null;
+  const deviceToken   = typeof window !== "undefined" ? localStorage.getItem(`judge_device_token_${token}`)   : null;
 
 
-  useEffect(() => {
+  // Reload active round data — called on mount and when SSE signals a new heat/dance
+  const loadActiveRound = useCallback(() => {
     if (!competitionId) { router.push(`/judge/${token}`); return; }
     apiClient
       .get<ActiveRoundResponse>("/judge/active-round", {
@@ -212,6 +214,11 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         ...(adjudicatorId ? { headers: { 'X-Judge-Token': adjudicatorId } } : {}),
       })
       .then((r) => {
+        // Final rounds use placement UI — redirect to /final
+        if (r.data.round.roundType === "FINAL") {
+          router.replace(`/judge/${token}/final`);
+          return;
+        }
         setRound(r.data.round);
         const mappedDances = (r.data.dances ?? []).map((d) => ({ ...d, name: d.danceName ?? d.name ?? "" }));
         setDances(mappedDances);
@@ -220,7 +227,11 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         setSectionName(r.data.sectionName ?? null);
 
         // Track which dances are already submitted
-        const submitted = new Set(r.data.submittedDances ?? []);
+        // 'UNKNOWN' means judge submitted via legacy path without dance name — treat as all dances done
+        const rawSubmitted = new Set(r.data.submittedDances ?? []);
+        const submitted = rawSubmitted.has("UNKNOWN")
+          ? new Set([...rawSubmitted, ...mappedDances.map((d) => d.name)])
+          : rawSubmitted;
         setSubmittedDanceNames(submitted);
 
         // Auto-skip to first unsubmitted dance
@@ -233,30 +244,42 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             setActiveDanceIdx(mappedDances.length - 1);
           }
         }
+        // Reset per-dance submission state so scoring grid is shown
+        setSubmitted(false);
+        setPairStates({});
       })
       .catch(() => router.push(`/judge/${token}/lobby`))
       .finally(() => setLoading(false));
-  }, [competitionId, token, router]);
+  }, [competitionId, adjudicatorId, token, router]);
+
+  useEffect(() => {
+    loadActiveRound();
+  }, [loadActiveRound]);
 
   // Refs to avoid stale closure in SSE callback
+  const loadActiveRoundRef = useRef(loadActiveRound);
+  useEffect(() => { loadActiveRoundRef.current = loadActiveRound; }, [loadActiveRound]);
   const dancesRef = useRef<DanceDto[]>([]);
   const heatsRef  = useRef<HeatGroup[]>([]);
+  const submittedDanceNamesRef = useRef<Set<string>>(new Set());
   useEffect(() => { dancesRef.current = dances; }, [dances]);
   useEffect(() => { heatsRef.current  = heats;  }, [heats]);
+  useEffect(() => { submittedDanceNamesRef.current = submittedDanceNames; }, [submittedDanceNames]);
 
   // Subscribe to public SSE channel: floor-control + judge-ping
   useEffect(() => {
     if (!competitionId) return;
     const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
     es.addEventListener("floor-control", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { danceName: string; heatNumber: number };
-        const danceIdx = dancesRef.current.findIndex((d) => d.name === data.danceName);
-        if (danceIdx >= 0) setActiveDanceIdx(danceIdx);
-        const heatIdx = heatsRef.current.findIndex((h) => h.heatNumber === data.heatNumber);
-        if (heatIdx >= 0) setActiveHeatIdx(heatIdx);
-      } catch { /* ignore malformed */ }
+      console.log("[judge-round] SSE floor-control received:", e.data);
+      loadActiveRoundRef.current();
     });
+    es.addEventListener("heat-sent", (e: MessageEvent) => {
+      console.log("[judge-round] SSE heat-sent received:", e.data);
+      loadActiveRoundRef.current();
+    });
+    es.onerror = () => console.warn("[judge-round] SSE connection error");
+    es.onopen = () => console.log("[judge-round] SSE connected");
     es.addEventListener("judge-ping", (e: MessageEvent) => {
       try {
         const data = JSON.parse(e.data) as { judgeTokenId: string };
@@ -266,18 +289,27 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         }
       } catch { /* ignore */ }
     });
+    es.addEventListener("dance-closed", (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { danceName: string };
+        if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
+          // Lock the dance tab — judge can no longer submit for this dance
+          setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
+        }
+      } catch { /* ignore malformed */ }
+    });
     return () => es.close();
   }, [competitionId, adjudicatorId]);
 
   // Heartbeat every 20s — keeps admin dashboard online indicator accurate
   useEffect(() => {
-    if (!adjudicatorId || !isOnline) return;
+    if (!adjudicatorId) return;
     const sendHeartbeat = () =>
       apiClient.put(`/judge-access/${adjudicatorId}/heartbeat`).catch(() => {});
     sendHeartbeat();
     const id = setInterval(sendHeartbeat, 20_000);
     return () => clearInterval(id);
-  }, [adjudicatorId, isOnline]);
+  }, [adjudicatorId]);
 
   const activeDance = dances[activeDanceIdx];
   const activeHeat  = heats.length > 0 ? heats[activeHeatIdx] : null;
@@ -358,9 +390,11 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   const allDancesSubmitted = dances.length > 0 && dances.every((d) => submittedDanceNames.has(d.name));
 
   // Show pairs for the selected group only; fall back to all pairs if no heats
-  const visiblePairs = activeHeat
+  // Always sort by startNumber ascending
+  const visiblePairs = (activeHeat
     ? pairs.filter((p) => activeHeat.pairIds.includes(p.id))
-    : pairs;
+    : pairs
+  ).toSorted((a, b) => a.startNumber - b.startNumber);
 
   const allowedCrosses = round?.pairsToAdvance ?? 0;
   const givenCrosses   = Object.values(pairStates).filter((s) => s === "selected").length;
@@ -417,13 +451,22 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
 
     if (isOnline) {
       try {
-        await apiClient.post(
-          `/rounds/${round.id}/callbacks`,
+        await axios.post(
+          `/api/v1/rounds/${round.id}/callbacks`,
           { selectedPairIds, dance: activeDance?.name ?? 'UNKNOWN' },
           { params: { dance: activeDance?.name }, headers: { 'X-Judge-Token': adjudicatorId } }
         );
         await judgeOfflineStore.markAsSynced(pairs.map((p) => `${adjudicatorId}-${round.id}-${p.id}`));
-      } catch { /* saved offline */ }
+      } catch (err) {
+        // 409 = dance already closed or already submitted — lock the dance tab silently
+        if (axios.isAxiosError(err) && err.response?.status === 409) {
+          const dn = activeDance?.name ?? 'UNKNOWN';
+          setSubmittedDanceNames((prev) => new Set([...prev, dn]));
+          setSubmitting(false);
+          return;
+        }
+        // other errors: saved offline, continue normally
+      }
     }
 
     // Clean up tentative localStorage for this dance
@@ -436,16 +479,9 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       return next;
     });
 
-    const nextIdx = dances.findIndex((d, i) => i > activeDanceIdx && !submittedDanceNames.has(d.name) && d.name !== danceName);
-    if (nextIdx >= 0) {
-      setTimeout(() => {
-        setActiveDanceIdx(nextIdx);
-        setPairStates({});
-        setSubmitted(false);
-      }, 2000);
-    } else {
-      setSubmitted(true);
-    }
+    // Don't auto-advance to next dance — admin controls when the next dance starts.
+    // Judge sees "results sent, waiting for next dance" until admin opens the next dance.
+    setSubmitted(true);
     setSubmitting(false);
   }, [round, adjudicatorId, pairs, pairStates, deviceToken, isOnline, activeDance, dances, activeDanceIdx, submittedDanceNames, tentativeStorageKey]);
 
@@ -504,18 +540,16 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
               const isDone = submittedDanceNames.has(d.name);
               const isActive = i === activeDanceIdx;
               return (
-                <button
+                <span
                   key={d.id}
-                  onClick={() => { setActiveDanceIdx(i); if (!isDone) { setPairStates({}); setSubmitted(false); } }}
                   aria-label={`${d.name}${isDone ? " (submitted)" : ""}`}
-                  aria-pressed={isActive}
                   className={cn(
-                    "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors min-h-[44px] flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
+                    "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors min-h-[44px] flex items-center",
                     isActive ? "bg-[var(--accent)] text-white" : isDone ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
                   )}
                 >
                   {isDone && "✓ "}{d.name}
-                </button>
+                </span>
               );
             })}
           </div>

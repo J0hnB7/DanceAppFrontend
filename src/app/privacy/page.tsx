@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Ochrana osobních údajů | DanceApp",
+  title: "Ochrana osobních údajů | ProPodium",
 };
 
 export default function PrivacyPage() {
@@ -10,7 +10,7 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-semibold">Správce dat</h2>
         <p className="text-sm text-gray-600">
-          Osobní údaje zpracovává provozovatel aplikace DanceApp.
+          Osobní údaje zpracovává provozovatel aplikace ProPodium.
         </p>
       </section>
 

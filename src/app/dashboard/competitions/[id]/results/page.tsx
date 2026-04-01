@@ -14,7 +14,7 @@ import { useLocale } from "@/contexts/locale-context";
 import { cn } from "@/lib/utils";
 import type { SectionDto } from "@/lib/api/sections";
 
-const ACTIVE_ROUND_STATUSES = ["OPEN", "IN_PROGRESS", "CLOSED", "CALCULATED", "PENDING"];
+const ACTIVE_ROUND_STATUSES = ["OPEN", "IN_PROGRESS", "CLOSED", "COMPLETED", "CALCULATED", "PENDING"];
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -23,10 +23,10 @@ function sectionResultStatus(section: SectionDto, t: TFn): {
   variant: "success" | "secondary" | "warning";
   icon: React.ReactNode;
 } {
-  if (section.status === "COMPLETED") {
+  const roundStatus = section.currentRound?.status;
+  if (section.status === "COMPLETED" || roundStatus === "COMPLETED") {
     return { label: t("results.statusAvailable"), variant: "success", icon: <CheckCircle2 className="h-4 w-4" /> };
   }
-  const roundStatus = section.currentRound?.status;
   if (section.status === "ACTIVE" || (roundStatus && ACTIVE_ROUND_STATUSES.includes(roundStatus))) {
     return { label: t("results.statusInProgress"), variant: "warning", icon: <Clock className="h-4 w-4" /> };
   }

@@ -31,6 +31,7 @@ export interface ScheduleSlot {
   suggested: boolean;
   durationLocked: boolean;
   roundNumber: number | null;
+  danceStyle: string | null;
 }
 
 export interface CompetitionSchedule {

@@ -153,6 +153,12 @@
   --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
 }
 
+/* ── Number input spinners in dark mode ──────────────────── */
+.dark input[type="number"]::-webkit-inner-spin-button,
+.dark input[type="number"]::-webkit-outer-spin-button {
+  filter: invert(1);
+}
+
 * {
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;

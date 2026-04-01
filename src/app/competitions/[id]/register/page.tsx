@@ -405,7 +405,7 @@ function PublicNav() {
         <a href="/competitions" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
           <Trophy style={{ width: 18, height: 18, color: "#4F46E5" }} />
-          <span style={{ fontWeight: 700, fontSize: ".9rem", color: "#111827" }}>DanceApp</span>
+          <span style={{ fontWeight: 700, fontSize: ".9rem", color: "#111827" }}>ProPodium</span>
         </a>
         <a href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
           {t("publicReg.organizerLogin")}

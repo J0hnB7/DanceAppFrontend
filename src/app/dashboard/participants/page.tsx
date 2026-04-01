@@ -155,9 +155,9 @@ export default function ParticipantsPage() {
 
       {/* Stats */}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard value={allPairs.length} label={t("participants.totalPairs")} sub={`${competitions.length} soutěží`} color="bg-blue-500" />
-        <StatCard value={paidCount} label={t("participants.paid")} sub={`${allPairs.length > 0 ? Math.round((paidCount / allPairs.length) * 100) : 0}% zaplaceno`} color="bg-emerald-500" />
-        <StatCard value={pendingCount} label={t("participants.pendingPayment")} sub="čeká na platbu" color="bg-amber-500" />
+        <StatCard value={allPairs.length} label={t("participants.totalPairs")} sub={t("participants.competitionCount", { count: competitions.length })} color="bg-blue-500" />
+        <StatCard value={paidCount} label={t("participants.paid")} sub={t("participants.paidPercent", { percent: allPairs.length > 0 ? Math.round((paidCount / allPairs.length) * 100) : 0 })} color="bg-emerald-500" />
+        <StatCard value={pendingCount} label={t("participants.pendingPayment")} sub={t("participants.awaitingPayment")} color="bg-amber-500" />
       </div>
 
       {isLoading ? (

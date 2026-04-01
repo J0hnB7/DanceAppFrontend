@@ -34,7 +34,9 @@ interface JudgeStore {
   adjudicatorId: string | null;
   competitionId: string | null;
   competitionName: string | null;
+  judgeName: string | null;
   deviceToken: string | null;
+  qrToken: string | null;
   currentRound: Round | null;
   currentDance: string | null;
   currentHeat: Heat | null;
@@ -60,7 +62,9 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
   adjudicatorId: null,
   competitionId: null,
   competitionName: null,
+  judgeName: null,
   deviceToken: null,
+  qrToken: null,
   currentRound: null,
   currentDance: null,
   currentHeat: null,
@@ -74,15 +78,16 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
     set({ loginError: null });
     try {
       const res = await apiClient.post("/judge-access/connect", { token: qrToken, pin });
-      const { accessToken, adjudicatorId, competitionId, competitionName, deviceToken } = res.data;
+      const { accessToken, adjudicatorId, competitionId, competitionName, deviceToken, judgeName } = res.data;
 
-      // Store JWT and device token
-      localStorage.setItem("judge_access_token", accessToken);
-      localStorage.setItem("judge_device_token", deviceToken);
-      localStorage.setItem("judge_competition_id", competitionId);
-      localStorage.setItem("judge_adjudicator_id", adjudicatorId);
+      // Store JWT and device token — scoped by QR token to prevent cross-session leaks
+      localStorage.setItem(`judge_access_token_${qrToken}`, accessToken);
+      localStorage.setItem(`judge_device_token_${qrToken}`, deviceToken);
+      localStorage.setItem(`judge_competition_id_${qrToken}`, competitionId);
+      localStorage.setItem(`judge_adjudicator_id_${qrToken}`, adjudicatorId);
+      if (judgeName) localStorage.setItem(`judge_name_${qrToken}`, judgeName);
 
-      set({ adjudicatorId, competitionId, competitionName, deviceToken });
+      set({ adjudicatorId, competitionId, competitionName, judgeName, deviceToken, qrToken });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
       const message = (err as { response?: { status?: number; data?: { message?: string } } })?.response?.data?.message;
@@ -144,13 +149,12 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
     }
 
     try {
+      const selectedPairIds = recalls.filter((r) => r.recalled).map((r) => r.pairId);
       await apiClient.post(
         `/rounds/${currentRound.id}/callbacks`,
         {
-          heatId,
+          selectedPairIds,
           dance,
-          recalls,
-          deviceToken,
         },
         { headers: { 'X-Judge-Token': adjudicatorId } }
       );
@@ -228,7 +232,7 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
     if (!adjudicatorId || !deviceToken) return;
     set({ syncError: null });
     try {
-      await judgeOfflineStore.syncAll(adjudicatorId, deviceToken);
+      await judgeOfflineStore.syncAll(adjudicatorId, deviceToken, get().qrToken ?? undefined);
     } catch {
       const msg = "Synchronizace offline záznamů selhala";
       set({ syncError: msg });

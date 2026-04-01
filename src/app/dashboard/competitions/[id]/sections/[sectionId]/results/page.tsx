@@ -31,9 +31,11 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SimpleDialog } from "@/components/ui/dialog";
+import apiClient from "@/lib/api-client";
 import { scoringApi, type PairFinalResultRow, type SectionFinalSummaryResponse } from "@/lib/api/scoring";
 import { sectionsApi } from "@/lib/api/sections";
 import { pairsApi } from "@/lib/api/pairs";
+import { roundsApi, type PreliminaryResultResponse } from "@/lib/api/rounds";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
@@ -268,6 +270,15 @@ export default function SectionResultsPage({
   });
   const summary = summaryOverride ?? summaryData;
 
+  // For non-final rounds, fetch preliminary results (who advances)
+  const currentRoundId = section?.currentRound?.id;
+  const isFinal = section?.currentRound?.roundType === "FINAL";
+  const { data: prelimData, isLoading: prelimLoading } = useQuery({
+    queryKey: ["preliminary-results", currentRoundId],
+    queryFn: () => roundsApi.getPreliminaryResults(currentRoundId!),
+    enabled: !!currentRoundId && !isFinal,
+  });
+
   const { data: pairs } = useQuery({
     queryKey: ["pairs", competitionId, sectionId],
     queryFn: () => pairsApi.list(competitionId, sectionId),
@@ -347,16 +358,35 @@ export default function SectionResultsPage({
               {t("results.approveAndPublish")}
             </Button>
           )}
-          {summary && (
+          {(summary || (!isFinal && prelimData?.pairs?.length)) && (
             <Button
               size="sm"
               variant="outline"
-              onClick={() =>
-                window.open(`/api/v1/sections/${sectionId}/results/export?format=xlsx`, '_blank')
-              }
+              onClick={async () => {
+                try {
+                  let blob: Blob;
+                  if (!isFinal && currentRoundId && prelimData?.pairs?.length) {
+                    blob = await roundsApi.exportPreliminary(currentRoundId);
+                  } else {
+                    const res = await apiClient.get(`/sections/${sectionId}/results/export`, {
+                      params: { format: 'xlsx' },
+                      responseType: 'blob',
+                    });
+                    blob = res.data as Blob;
+                  }
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${section?.name ?? 'results'}.xlsx`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch {
+                  toast({ title: t("common.error"), variant: "destructive" });
+                }
+              }}
             >
               <FileSpreadsheet className="h-4 w-4" />
-              Exportovat XLSX
+              {t("results.exportXlsx")}
             </Button>
           )}
           {summary && (
@@ -389,9 +419,58 @@ export default function SectionResultsPage({
         }
       />
 
-      {summaryLoading && <Skeleton className="h-64 w-full" />}
+      {(summaryLoading || prelimLoading) && <Skeleton className="h-64 w-full" />}
 
-      {!summaryLoading && !summary && (
+      {/* Preliminary round results — show who advances */}
+      {!isFinal && prelimData && prelimData.pairs && prelimData.pairs.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+              <BarChart3 className="h-4 w-4" />
+              {t("results.roundHeat")} — {prelimData.pairsToAdvance} {t("results.pair").toLowerCase()}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10 text-center">{t("results.place")}</TableHead>
+                    <TableHead className="w-12">#</TableHead>
+                    <TableHead>{t("results.dancers")}</TableHead>
+                    <TableHead className="w-20 text-center">X</TableHead>
+                    <TableHead className="w-28 text-right">{t("results.statusAvailable")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {prelimData.pairs
+                    .sort((a, b) => b.voteCount - a.voteCount)
+                    .map((pair, idx) => (
+                      <TableRow
+                        key={pair.pairId}
+                        className={pair.advances ? "bg-green-500/5" : ""}
+                      >
+                        <TableCell className="text-center text-sm text-[var(--text-secondary)]">{idx + 1}.</TableCell>
+                        <TableCell className="font-mono font-bold">{pair.startNumber}</TableCell>
+                        <TableCell>
+                          {pairNames[pair.pairId] ?? pair.dancer1Name ?? `${t("results.pair")} #${pair.startNumber}`}
+                        </TableCell>
+                        <TableCell className="text-center font-semibold">{pair.voteCount}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={pair.advances ? "success" : "destructive"}>
+                            {pair.advances ? "Postupuje" : "Nepostupuje"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!summaryLoading && !summary && !prelimData?.pairs?.length && (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-20 text-center">
             <BarChart3 className="h-12 w-12 text-[var(--text-tertiary)]" />

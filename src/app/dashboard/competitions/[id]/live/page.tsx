@@ -95,22 +95,23 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
     const slot = slots.find((s) => s.id === selectedRoundId);
     if (!slot) return;
 
-    // Fetch real dances from backend section; fall back to hardcoded if fetch fails
+    let cancelled = false;
+
+    // Immediately set dances from danceStyle (no API call needed)
+    const styleName = slot.danceStyle ?? slot.label;
+    setDances(getDanceNames(styleName).map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
+
+    // Then async-upgrade with real dance UUIDs from section (needed for final scoring)
     if (slot.sectionId) {
       apiClient.get<{ dances?: Array<{ id: string; danceName: string; danceOrder: number }> }>(
         `/competitions/${competitionId}/sections/${slot.sectionId}`
       ).then((res) => {
+        if (cancelled) return;
         const sectionDances = res.data.dances;
         if (sectionDances && sectionDances.length > 0) {
           setDances([...sectionDances].sort((a, b) => a.danceOrder - b.danceOrder).map((d) => ({ id: d.id, name: d.danceName })));
-        } else {
-          setDances(getDanceNames(slot.label).map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
         }
-      }).catch(() => {
-        setDances(getDanceNames(slot.label).map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
-      });
-    } else {
-      setDances(getDanceNames(slot.label).map((name, i) => ({ id: `${selectedRoundId}-d${i}`, name })));
+      }).catch(() => { /* already have dances from sync path */ });
     }
 
     const mapGroups = (groups: { heatNumber: number; pairs: { startNumber: number }[] }[]) =>
@@ -146,9 +147,18 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
           );
           setActiveRoundId(res2.data.find((r) => r.roundNumber === roundNumber)?.id ?? null);
         }
-      }).catch(() => setActiveRoundId(null));
+      }).catch(() => { if (!cancelled) setActiveRoundId(null); });
     }
+
+    return () => { cancelled = true; };
   }, [selectedRoundId, slots, competitionId]);
+
+  // Auto-select first heat when there's only one (e.g. final rounds)
+  useEffect(() => {
+    if (heats.length === 1 && selectedHeatId !== heats[0].id) {
+      selectHeat(heats[0].id);
+    }
+  }, [heats, selectedHeatId, selectHeat]);
 
   // Build synthetic→real heat UUID map
   useEffect(() => {

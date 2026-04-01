@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const original = error.config as AxiosRequestConfig & { _retry?: boolean };
-    const isAuthEndpoint = original.url?.includes("/auth/login") || original.url?.includes("/auth/refresh");
+    const isAuthEndpoint = original.url?.includes("/auth/login") || original.url?.includes("/auth/refresh") || original.url?.includes("/auth/logout");
     if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
       if (!refreshPromise) {

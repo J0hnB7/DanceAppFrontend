@@ -74,6 +74,7 @@ export function LiveControlDashboard({
     updateJudgeStatus,
     hydrateFromServer,
     danceConfirmations,
+    danceStatuses,
     roundClosed,
   } = useLiveStore()
 
@@ -91,15 +92,18 @@ export function LiveControlDashboard({
   const {
     sending,
     closing,
+    closingDance,
     closeResult,
     setCloseResult,
     showCollisionDialog,
     resolveRealHeatId,
     handleSend,
+    handleCloseDance,
     handleCloseRound,
     handleResolveTie,
     onResultsPublished,
     onAllSubmitted,
+    onDanceClosed,
   } = useRoundControl({
     competitionId,
     activeRoundId,
@@ -119,6 +123,12 @@ export function LiveControlDashboard({
     return dc.total > 0 && dc.submitted === dc.total
   })
 
+  // Dance status for selected dance — determines close dance button visibility
+  const selectedDanceStatus = danceStatuses.find((ds) => ds.danceName === selectedDanceName)
+  const showCloseDance = selectedDanceStatus?.status === 'SENT'
+  const selectedDanceConf = selectedDanceId ? danceConfirmations[selectedDanceId] : undefined
+  const canCloseDance = !!(selectedDanceConf && selectedDanceConf.total > 0 && selectedDanceConf.submitted >= selectedDanceConf.total)
+
   // Hydrate when heat or dance selected or activeRoundId resolves
   useEffect(() => {
     if (!activeRoundId) return
@@ -128,7 +138,7 @@ export function LiveControlDashboard({
   }, [competitionId, selectedHeatId, selectedDanceName, heatIdMap, activeRoundId, hydrateFromServer, resolveRealHeatId])
 
   // Judge status polling fallback (SSE is primary)
-  useJudgeStatusPolling({ activeRoundId, selectedDanceName, competitionId, resolveRealHeatId })
+  useJudgeStatusPolling({ activeRoundId, selectedDanceId, selectedDanceName, competitionId, resolveRealHeatId })
 
   // Load pending violations
   useEffect(() => {
@@ -148,10 +158,29 @@ export function LiveControlDashboard({
 
   // SSE event handlers
   useSSE(competitionId, 'score-submitted', (data: { judgeTokenId: string }) => {
-    if (data.judgeTokenId) updateJudgeStatus(data.judgeTokenId, 'submitted')
+    if (data.judgeTokenId) {
+      updateJudgeStatus(data.judgeTokenId, 'submitted')
+      // Also refresh full judge statuses + danceConfirmations so counter stays in sync
+      resolveRealHeatId().then((realHeatId) => {
+        if (!realHeatId) return
+        const store = useLiveStore.getState()
+        liveApi.getJudgeStatuses(realHeatId, selectedDanceName ?? undefined, competitionId)
+          .then((statuses) => {
+            for (const s of statuses) {
+              store.updateJudgeStatus(s.judgeId, s.status)
+              if (s.online !== undefined) store.updateJudgeOnline(s.judgeId, s.online)
+            }
+            if (selectedDanceId) {
+              store.setDanceConfirmation(selectedDanceId, statuses.filter((j) => j.status === 'submitted').length, statuses.length)
+            }
+          })
+          .catch(() => {})
+      })
+    }
   })
   useSSE(competitionId, 'results-published', onResultsPublished)
   useSSE(competitionId, 'heat:all-submitted', onAllSubmitted)
+  useSSE(competitionId, 'dance-closed', onDanceClosed)
   useSSE(competitionId, 'violation-reported', () => {
     violationsApi.list(competitionId, 'PENDING_REVIEW').then(v => { setViolations(v); pingAudio() }).catch(() => {})
   })
@@ -249,7 +278,7 @@ export function LiveControlDashboard({
             <RoundSelector rounds={rounds} selectedId={selectedRoundId} onSelect={selectRound} />
 
             {selectedRoundId && (
-              <DanceSelector dances={dances} selectedId={selectedDanceId} onSelect={selectDance} roundLabel={selectedRound?.label} confirmations={danceConfirmations} />
+              <DanceSelector dances={dances} selectedId={selectedDanceId} onSelect={selectDance} roundLabel={selectedRound?.label} confirmations={danceConfirmations} danceStatuses={danceStatuses} />
             )}
 
             {selectedDanceId && (
@@ -348,11 +377,15 @@ export function LiveControlDashboard({
         roundClosed={roundClosed}
         allDancesConfirmed={allDancesConfirmed}
         closing={closing}
+        closingDance={closingDance}
         sending={sending}
         ctxLine={ctxLine}
         lastSentAt={lastSentAt}
         heatSynced={heatSynced}
+        showCloseDance={showCloseDance}
+        canCloseDance={canCloseDance}
         onSend={handleSend}
+        onCloseDance={handleCloseDance}
         onCloseRound={() => setShowCloseConfirm(true)}
       />
 

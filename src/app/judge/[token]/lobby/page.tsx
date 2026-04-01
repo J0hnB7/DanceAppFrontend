@@ -4,12 +4,10 @@ import { use, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useOnline } from "@/hooks/use-online";
 import { Trophy, WifiOff, Clock, CheckCircle2, Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
 import { judgeOfflineStore } from "@/lib/judge-offline-store";
 import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
-import { cn } from "@/lib/utils";
 import { useJudgeSSERehydration } from "@/hooks/use-sse";
 
 interface RoundInfo {
@@ -23,6 +21,7 @@ interface RoundInfo {
 interface ActiveRoundResponse {
   round: RoundInfo;
   pairs: unknown[];
+  heatSent: boolean;
 }
 
 const POLL_INTERVAL = 3000;
@@ -35,26 +34,27 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
 
   const [competitionName, setCompetitionName] = useState<string | null>(null);
   const [judgeNumber, setJudgeNumber] = useState<number | null>(null);
+  const [judgeName, setJudgeName] = useState<string | null>(null);
   const [currentRound, setCurrentRound] = useState<RoundInfo | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const competitionId = typeof window !== "undefined"
-    ? localStorage.getItem("judge_competition_id")
+    ? localStorage.getItem(`judge_competition_id_${token}`)
     : null;
   const adjudicatorId = typeof window !== "undefined"
-    ? localStorage.getItem("judge_adjudicator_id")
+    ? localStorage.getItem(`judge_adjudicator_id_${token}`)
     : null;
 
   const [pingAlert, setPingAlert] = useState(false);
 
-  // SSE reconnect rehydration: on reconnect, check for active round and navigate if found
-  const { pollingFallback } = useJudgeSSERehydration(
-    competitionId ?? undefined,
-    token,
-    // Skip rehydration navigation if we're already watching a round (currentRound?.status === "IN_PROGRESS")
-    currentRound?.status === "IN_PROGRESS"
-  );
+  const navigateToScoring = useCallback((round: RoundInfo) => {
+    if (round.roundType === "FINAL") {
+      router.push(`/judge/${token}/final`);
+    } else {
+      router.push(`/judge/${token}/round`);
+    }
+  }, [token, router]);
 
   const checkRound = useCallback(async () => {
     if (!competitionId) return;
@@ -65,19 +65,23 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
       const round = res.data.round;
       setCurrentRound(round);
 
-      // Navigate automatically when round is IN_PROGRESS
-      if (round.status === "IN_PROGRESS") {
-        if (round.roundType === "FINAL") {
-          router.push(`/judge/${token}/final`);
-        } else {
-          router.push(`/judge/${token}/round`);
-        }
+      // Navigate only when admin has sent a heat to judges (not just round IN_PROGRESS)
+      if (round.status === "IN_PROGRESS" && res.data.heatSent) {
+        navigateToScoring(round);
       }
     } catch {
       // 404 = no active round, keep waiting
       setCurrentRound(null);
     }
-  }, [competitionId, token, router]);
+  }, [competitionId, navigateToScoring]);
+
+  // SSE reconnect rehydration: on reconnect, re-check active round (with heatSent guard)
+  const { pollingFallback } = useJudgeSSERehydration(
+    competitionId ?? undefined,
+    token,
+    currentRound?.status === "IN_PROGRESS",
+    checkRound
+  );
 
   // Load session info
   useEffect(() => {
@@ -87,6 +91,7 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
       .then((r) => {
         setCompetitionName(r.data.competitionName);
         setJudgeNumber(r.data.judgeNumber);
+        setJudgeName(typeof window !== "undefined" ? localStorage.getItem(`judge_name_${token}`) : null);
       })
       .catch(() => {
         router.push(`/judge/${token}`);
@@ -109,9 +114,9 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
   // Sync on reconnect
   useEffect(() => {
     if (isOnline && pendingCount > 0) {
-      const deviceToken = localStorage.getItem("judge_device_token");
+      const deviceToken = localStorage.getItem(`judge_device_token_${token}`);
       if (adjudicatorId && deviceToken) {
-        judgeOfflineStore.syncAll(adjudicatorId, deviceToken).then(() => {
+        judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token).then(() => {
           judgeOfflineStore.getPendingCount().then(setPendingCount);
         });
       }
@@ -120,18 +125,20 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
 
   // Heartbeat every 20s — keeps admin dashboard online indicator accurate
   useEffect(() => {
-    if (!adjudicatorId || !isOnline) return;
+    if (!adjudicatorId) return;
     const sendHeartbeat = () =>
       apiClient.put(`/judge-access/${adjudicatorId}/heartbeat`).catch(() => {});
     sendHeartbeat();
     const id = setInterval(sendHeartbeat, 20_000);
     return () => clearInterval(id);
-  }, [adjudicatorId, isOnline]);
+  }, [adjudicatorId]);
 
-  // Listen for judge-ping on public SSE channel
+  // Listen for judge-ping and heat-sent on public SSE channel
   useEffect(() => {
     if (!competitionId || !adjudicatorId) return;
     const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
+
+    // Admin pinged this judge
     es.addEventListener("judge-ping", (e: MessageEvent) => {
       try {
         const data = JSON.parse(e.data) as { judgeTokenId: string };
@@ -141,8 +148,19 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
         }
       } catch { /* ignore */ }
     });
+
+    // Admin sent a heat to judges — navigate to scoring
+    es.addEventListener("heat-sent", () => {
+      if (currentRound?.status === "IN_PROGRESS") {
+        navigateToScoring(currentRound);
+      } else {
+        // Round info might not be loaded yet — re-check
+        checkRound();
+      }
+    });
+
     return () => es.close();
-  }, [competitionId, adjudicatorId]);
+  }, [competitionId, adjudicatorId, currentRound, navigateToScoring, checkRound]);
 
   if (loading) {
     return (
@@ -183,6 +201,7 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
           <p className="text-xs text-[var(--text-tertiary)]">{competitionName}</p>
           <h1 className="text-base font-semibold text-[var(--text-primary)]">
             {t("judge.label", locale)} {judgeNumber}
+            {judgeName && <span className="ml-1.5 font-normal text-[var(--text-secondary)]">— {judgeName}</span>}
           </h1>
         </div>
       </div>
@@ -190,9 +209,10 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
       {/* Main content */}
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-12 text-center">
         {currentRound?.status === "IN_PROGRESS" ? (
+          /* Round is active but admin hasn't sent heat yet — show "ready, waiting" */
           <>
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--success)]/10">
-              <CheckCircle2 className="h-10 w-10 text-[var(--success)]" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent)]/10">
+              <CheckCircle2 className="h-10 w-10 text-[var(--accent)]" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-[var(--text-primary)]">
@@ -202,19 +222,18 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
                 {t("judge.lobby_subtitle", locale)}
               </p>
             </div>
-            <Button
-              size="lg"
-              className="min-w-48"
-              onClick={() => {
-                if (currentRound.roundType === "FINAL") {
-                  router.push(`/judge/${token}/final`);
-                } else {
-                  router.push(`/judge/${token}/round`);
-                }
-              }}
-            >
-              {t("judge.lobby_go", locale)}
-            </Button>
+
+            {/* Pulsing animation — waiting for admin to send */}
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)]" />
+              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.2s]" />
+              <div className="h-2 w-2 animate-ping rounded-full bg-[var(--accent)] [animation-delay:0.4s]" />
+            </div>
+
+            <div className="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium" style={{ background: "rgba(48,209,88,0.1)", color: "#30d158" }}>
+              <div className="h-2 w-2 rounded-full bg-[#30d158]" />
+              {t("judge.waiting_for_admin", locale)}
+            </div>
           </>
         ) : (
           <>
