@@ -49,11 +49,27 @@ export interface PairFinalResultRow {
   finalPlacement: number;
   tieResolution: string;
   perDance: Record<string, number>;
+  dancerName?: string;
+  club?: string;
 }
 
 export interface SectionFinalSummaryResponse {
   sectionId: string;
   rankings: PairFinalResultRow[];
+}
+
+export interface JudgePlacementsResponse {
+  judgeLetters: string[];
+  dances: {
+    danceId: string;
+    danceName: string;
+    pairs: {
+      pairId: string;
+      startNumber: number;
+      dancer1Name: string;
+      placements: (number | null)[];
+    }[];
+  }[];
 }
 
 export const scoringApi = {
@@ -85,4 +101,7 @@ export const scoringApi = {
     apiClient
       .post<SectionFinalSummaryResponse>(`/sections/${sectionId}/dance-off`, { winnerId, loserId })
       .then((r) => r.data),
+
+  getJudgePlacements: (roundId: string) =>
+    apiClient.get<JudgePlacementsResponse>(`/rounds/${roundId}/judge-placements`).then((r) => r.data),
 };

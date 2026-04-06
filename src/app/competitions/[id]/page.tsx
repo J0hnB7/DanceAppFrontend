@@ -13,6 +13,7 @@ import apiClient from "@/lib/api-client";
 import type { CompetitionDto, CompetitionNewsItem } from "@/lib/api/competitions";
 import { competitionKeys } from "@/hooks/queries/use-competitions";
 import type { SectionDto } from "@/lib/api/sections";
+import { ResultsSection } from "@/components/public/ResultsSection";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
@@ -185,6 +186,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
 
   const isOpen = competition.registrationOpen === true;
   const isLive = competition.status === "IN_PROGRESS";
+  const isCompleted = competition.status === "COMPLETED";
   const capacityPct = competition.maxPairs
     ? Math.round(((competition.registeredPairsCount ?? 0) / competition.maxPairs) * 100) : null;
   const spotsLeft = competition.maxPairs ? competition.maxPairs - (competition.registeredPairsCount ?? 0) : null;
@@ -385,6 +387,11 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Results — only when COMPLETED */}
+          {isCompleted && sections.length > 0 && (
+            <ResultsSection sections={sections} />
           )}
 
           {/* Divider */}

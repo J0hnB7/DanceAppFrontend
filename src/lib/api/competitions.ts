@@ -149,6 +149,9 @@ export const competitionsApi = {
   publish: (id: string) =>
     apiClient.post<CompetitionDto>(`/competitions/${id}/publish`).then((r) => r.data),
 
+  complete: (id: string) =>
+    apiClient.post(`/competitions/${id}/complete`).then((r) => r.data),
+
   openRegistration: (id: string) =>
     apiClient.put<CompetitionDto>(`/competitions/${id}`, { registrationOpen: true }).then((r) => r.data),
 

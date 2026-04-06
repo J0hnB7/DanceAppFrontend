@@ -445,8 +445,8 @@ export default function Home() {
             ProPodium
           </Link>
           <ul style={{ display: "flex", gap: 24, listStyle: "none" }}>
-            {[["#", t("landing.footerFeatures")],["#", t("landing.footerDocs")],["mailto:info@propodium.cz", t("landing.footerContact")],["#security","GDPR"]].map(([href, label]) => (
-              <li key={label}><a href={href} style={{ fontSize: ".8rem", color: "#4B5563", textDecoration: "none" }}>{label}</a></li>
+            {[["#", t("landing.footerFeatures")],["#", t("landing.footerDocs")],["mailto:info@propodium.cz", t("landing.footerContact")],["#security","GDPR"]].map(([href, label], i) => (
+              <li key={i}><a href={href} style={{ fontSize: ".8rem", color: "#4B5563", textDecoration: "none" }}>{label}</a></li>
             ))}
           </ul>
           <div style={{ fontSize: ".73rem", color: "#9CA3AF" }}>{t("landing.copyright")}</div>

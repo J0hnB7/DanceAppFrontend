@@ -802,6 +802,7 @@
     "awaitingPayment": "awaiting payment"
   },
   "round": {
+    "label": "Round",
     "openRound": "Open round",
     "closeRound": "Close round",
     "calculateResults": "Calculate results",
@@ -854,6 +855,7 @@
     "diplomas": "Diplomas",
     "diplomasDesc": "Generate and print diplomas for all categories",
     "roundHeat": "Heat",
+    "roundQuarterFinal": "Quarter Final",
     "roundSemifinal": "Semifinal",
     "roundFinal": "Final",
     "roundSingle": "Round",
@@ -893,7 +895,17 @@
     "danceOffResolved": "Dance-off resolved",
     "champion": "Category Champion",
     "presentNavHint": "← → arrows to navigate",
-    "votesCount": "Votes: {{n}}"
+    "votesCount": "Votes: {{n}}",
+    "roundsHistory": "Round History",
+    "pairsAdvanced": "Advanced: {{n}}",
+    "dancePlacementsTitle": "Placements — {{name}}",
+    "noRoundData": "No data for this round",
+    "roundInProgress": "In Progress",
+    "roundCompleted": "Completed",
+    "roundPending": "Pending",
+    "judgeMatrix": "Judge placements",
+    "viewFull": "Full details",
+    "pairs": "pairs"
   },
   "diplomas": {
     "title": "Diplomas",
@@ -1271,6 +1283,7 @@
     "actionAdd": "Add",
     "actionBuild": "Build",
     "actionStart": "Start",
+    "actionPublish": "Publish",
     "detailStatus": "Status",
     "detailRegistration": "Registration",
     "detailDate": "Date",

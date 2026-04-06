@@ -1,7 +1,7 @@
 import apiClient from "@/lib/api-client";
 
 export type RoundStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "OPEN" | "CLOSED" | "CALCULATED";
-export type RoundType = "HEAT" | "SEMIFINAL" | "FINAL" | "SINGLE_ROUND" | "PRELIMINARY";
+export type RoundType = "HEAT" | "SEMIFINAL" | "FINAL" | "SINGLE_ROUND" | "PRELIMINARY" | "QUARTER_FINAL";
 
 export interface RoundDto {
   id: string;

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
+import { getAccessToken } from "@/lib/api-client";
 import { Spinner } from "@/components/ui/spinner";
 import type { UserDto } from "@/lib/api/auth";
 
@@ -22,7 +23,13 @@ export function AuthGuard({ children, allowedRoles, redirectTo = "/dashboard" }:
 
   useEffect(() => {
     if (!_hasHydrated) return;
+    // Not authenticated at all → try refresh/me
     if (!isAuthenticated && !isLoading) {
+      checkAuth();
+      return;
+    }
+    // Authenticated (from localStorage) but access token lost after page refresh → re-hydrate silently
+    if (isAuthenticated && !isLoading && !getAccessToken()) {
       checkAuth();
     }
   }, [_hasHydrated, isAuthenticated, isLoading, checkAuth]);
@@ -46,8 +53,12 @@ export function AuthGuard({ children, allowedRoles, redirectTo = "/dashboard" }:
     }
   }, [_hasHydrated, isAuthenticated, isLoading, user, allowedRoles, redirectTo, router]);
 
-  // Show spinner until Zustand has rehydrated from localStorage
-  if (!_hasHydrated || isLoading) {
+  // Show spinner until: Zustand hydrated, loading done, AND access token is ready.
+  // isAuthenticated can be true (from localStorage) while access token is still null
+  // (in-memory, lost after page refresh). Without this check, child queries fire
+  // immediately and get 401 before the refresh interceptor can restore the token.
+  const tokenMissing = isAuthenticated && !getAccessToken();
+  if (!_hasHydrated || isLoading || tokenMissing) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Spinner size="lg" />

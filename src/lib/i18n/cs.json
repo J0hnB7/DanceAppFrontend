@@ -802,6 +802,7 @@
     "awaitingPayment": "čeká na platbu"
   },
   "round": {
+    "label": "Kolo",
     "openRound": "Otevřít kolo",
     "closeRound": "Uzavřít kolo",
     "calculateResults": "Vypočítat výsledky",
@@ -854,6 +855,7 @@
     "diplomas": "Diplomy",
     "diplomasDesc": "Generování a tisk diplomů pro všechny kategorie",
     "roundHeat": "1. kolo",
+    "roundQuarterFinal": "Čtvrtfinále",
     "roundSemifinal": "Semifinále",
     "roundFinal": "Finále",
     "roundSingle": "Kolo",
@@ -893,7 +895,17 @@
     "danceOffResolved": "Dance-off vyřešen",
     "champion": "Vítěz kategorie",
     "presentNavHint": "← → šipky pro navigaci",
-    "votesCount": "Počet hlasů: {{n}}"
+    "votesCount": "Počet hlasů: {{n}}",
+    "roundsHistory": "Průběh kol",
+    "pairsAdvanced": "Postoupilo: {{n}}",
+    "dancePlacementsTitle": "Umístění — {{name}}",
+    "noRoundData": "Žádná data pro toto kolo",
+    "roundInProgress": "Probíhá",
+    "roundCompleted": "Dokončeno",
+    "roundPending": "Čeká",
+    "judgeMatrix": "Hodnocení porotců",
+    "viewFull": "Celý přehled",
+    "pairs": "párů"
   },
   "diplomas": {
     "title": "Diplomy",
@@ -1271,6 +1283,7 @@
     "actionAdd": "Přidat",
     "actionBuild": "Sestavit",
     "actionStart": "Spustit",
+    "actionPublish": "Zveřejnit",
     "detailStatus": "Status",
     "detailRegistration": "Registrace",
     "detailDate": "Datum",

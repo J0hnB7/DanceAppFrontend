@@ -97,6 +97,9 @@ export function useRoundControl({
     setClosing(true)
     try {
       await roundsApi.close(activeRoundId)
+      // Compute final dance rankings (Skating System) — needed for FINAL rounds.
+      // For preliminary rounds this is a no-op (round_scores_final is empty).
+      roundsApi.calculateResults(activeRoundId).catch(() => {})
       const result = await roundsApi.getPreliminaryResults(activeRoundId)
       setCloseResult(result)
       if (result.tieAtBoundary && result.tiedPairsAtBoundary?.length > 0) {

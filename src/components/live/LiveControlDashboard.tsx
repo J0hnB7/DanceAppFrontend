@@ -414,7 +414,7 @@ export function LiveControlDashboard({
       )}
 
       {roundClosed && closeResult && (
-        <RoundResultsOverlay closeResult={closeResult} onClose={() => setCloseResult(null)} />
+        <RoundResultsOverlay closeResult={closeResult} competitionId={competitionId} sectionId={sectionId} onClose={() => setCloseResult(null)} />
       )}
 
       <PresentationOverlay

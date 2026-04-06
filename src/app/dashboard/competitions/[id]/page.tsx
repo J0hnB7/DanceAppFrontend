@@ -329,6 +329,15 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     onError: () => toast({ title: "Nelze zrušit start", variant: "destructive" }),
   });
 
+  const completeMutation = useMutation({
+    mutationFn: () => competitionsApi.complete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["competition", id] });
+      toast({ title: "Soutěž uzavřena, výsledky jsou zveřejněny", variant: "success" });
+    },
+    onError: () => toast({ title: "Nepodařilo se uzavřít soutěž", variant: "destructive" }),
+  });
+
   const [tab, setTab] = useState("overview");
   const [launchDialogOpen, setLaunchDialogOpen] = useState(false);
   const xlsxFileRef = useRef<HTMLInputElement>(null);
@@ -743,6 +752,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
   );
 
   // Phase stepper logic
+  const hasResultsPublished = activityEvents.some((e) => e.eventType === "RESULTS_PUBLISHED");
   const phases = [t("competitionDetail.phaseCreation"), t("competitionDetail.phaseRegistration"), t("competitionDetail.phaseCheckIn"), t("competitionDetail.phaseSchedule"), t("competitionDetail.phaseCompetition"), t("competitionDetail.phaseResults")];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -755,7 +765,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     competition.registrationOpen === true || (competition.registeredPairsCount ?? 0) > 0 || competition.status === "PUBLISHED" || competition.status === "IN_PROGRESS" || competition.status === "COMPLETED",
     anyPresenceClosed || isEventDay || competition.status === "IN_PROGRESS" || competition.status === "COMPLETED",
     scheduleStatus?.status === "PUBLISHED" || competition.status === "IN_PROGRESS" || competition.status === "COMPLETED",
-    competition.status === "IN_PROGRESS" || competition.status === "COMPLETED",
+    competition.status === "IN_PROGRESS" || competition.status === "COMPLETED" || hasResultsPublished,
     competition.status === "COMPLETED",
   ];
   let currentPhaseIdx = 0;
@@ -768,7 +778,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
   const categoriesReady = (sections?.length ?? 0) > 0;
   const registrationWasOpen = competition.registrationOpen === true || (competition.registeredPairsCount ?? 0) > 0;
   const checkinReady = anyPresenceClosed || isEventDay || competition.status === "IN_PROGRESS" || competition.status === "COMPLETED";
-  const isRunning = competition.status === "IN_PROGRESS" || competition.status === "COMPLETED";
+  const isRunning = competition.status === "IN_PROGRESS" || competition.status === "COMPLETED" || hasResultsPublished;
   const resultsReady = competition.status === "COMPLETED";
   const schedulePublished = scheduleStatus?.status === "PUBLISHED";
   const checklistItems: { done: boolean; label: string; action?: () => void; actionLabel?: string }[] = [
@@ -779,7 +789,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     { done: checkinReady, label: t("competitionDetail.checklistCheckInOpen"), action: !checkinReady ? () => router.push(`/dashboard/competitions/${id}/presence`) : undefined, actionLabel: t("competitionDetail.actionOpen") },
     { done: schedulePublished, label: t("competitionDetail.checklistScheduleReady"), action: !schedulePublished ? () => router.push(`/dashboard/competitions/${id}/schedule`) : undefined, actionLabel: t("competitionDetail.actionBuild") },
     { done: isRunning, label: t("competitionDetail.checklistCompetitionStarted"), action: !isRunning ? () => router.push(`/dashboard/competitions/${id}/live`) : undefined, actionLabel: t("competitionDetail.actionStart") },
-    { done: resultsReady, label: t("competitionDetail.checklistResultsPublished") },
+    { done: resultsReady, label: t("competitionDetail.checklistResultsPublished"), action: !resultsReady && isRunning ? () => completeMutation.mutate() : undefined, actionLabel: t("competitionDetail.actionPublish") },
   ];
   const checklistDoneCount = checklistItems.filter((i) => i.done).length;
 

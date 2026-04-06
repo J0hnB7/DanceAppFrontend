@@ -115,40 +115,39 @@ export default function DashboardPage() {
       {/* Live banner */}
       {live.length > 0 && (
         <div
-          className="flex items-center gap-3 mb-6 rounded-xl transition-shadow cursor-pointer"
+          className="flex items-center gap-4 mb-6 rounded-full transition-shadow"
           style={{
-            padding: "14px 18px",
-            background: "#ECFDF5",
-            border: "1px solid rgba(16,185,129,0.15)",
+            padding: "14px 24px",
+            background: "var(--surface)",
+            border: "2px solid #047857",
+            boxShadow: "0 1px 3px rgba(4,120,87,0.08)",
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(16,185,129,0.1)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = ""; }}
         >
           <span
-            className="shrink-0 h-2 w-2 rounded-full"
+            className="shrink-0 h-2.5 w-2.5 rounded-full"
             style={{
-              background: "#10B981",
+              background: "#059669",
               animation: "livePulse 2s infinite",
-              boxShadow: "0 0 0 0 rgba(16,185,129,0.5)",
+              boxShadow: "0 0 0 0 rgba(5,150,105,0.5)",
             }}
           />
-          <p className="flex-1 text-[0.86rem] font-medium" style={{ color: "#059669" }}>
-            <strong className="font-bold">
-              {live.length === 1 ? t("dashboard.liveOngoing") : t("dashboard.liveOngoingMany", { n: live.length })}
-            </strong>
+          <p className="flex-1 text-[0.86rem] font-semibold" style={{ color: "#059669" }}>
+            {live.length === 1 ? t("dashboard.liveOngoing") : t("dashboard.liveOngoingMany", { n: live.length })}
           </p>
-          {live.map((c) => (
-            <Link
-              key={c.id}
-              href={`/dashboard/competitions/${c.id}`}
-              className="flex items-center gap-1 text-[0.82rem] font-semibold"
-              style={{ color: "#059669" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {c.name}
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          ))}
+          <div className="flex items-center gap-5">
+            {live.map((c) => (
+              <Link
+                key={c.id}
+                href={`/dashboard/competitions/${c.id}`}
+                className="flex items-center gap-1 text-[0.84rem] font-semibold whitespace-nowrap transition-colors hover:underline"
+                style={{ color: "#047857" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {c.name}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
