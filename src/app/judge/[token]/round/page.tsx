@@ -204,6 +204,10 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   const adjudicatorId = typeof window !== "undefined" ? localStorage.getItem(`judge_adjudicator_id_${token}`) : null;
   const deviceToken   = typeof window !== "undefined" ? localStorage.getItem(`judge_device_token_${token}`)   : null;
 
+  // True only for the very first loadActiveRound() after mount. Subsequent refreshes
+  // (triggered by SSE) must NOT auto-skip the active dance or reset the "submitted"
+  // waiting-for-admin screen — only admin's floor-control SSE event drives dance changes.
+  const initialLoadRef = useRef(true);
 
   // Reload active round data — called on mount and when SSE signals a new heat/dance
   const loadActiveRound = useCallback(() => {
@@ -234,19 +238,25 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
           : rawSubmitted;
         setSubmittedDanceNames(submitted);
 
-        // Auto-skip to first unsubmitted dance
-        if (submitted.size > 0 && mappedDances.length > 0) {
-          const firstUnsubmitted = mappedDances.findIndex((d) => !submitted.has(d.name));
-          if (firstUnsubmitted >= 0) {
-            setActiveDanceIdx(firstUnsubmitted);
-          } else {
-            // All dances submitted — show last dance as submitted
-            setActiveDanceIdx(mappedDances.length - 1);
+        // Auto-skip to first unsubmitted dance ONLY on initial mount.
+        // On SSE-triggered refreshes we must leave activeDanceIdx / submitted alone —
+        // the floor-control handler is the single source of truth for which dance is active.
+        if (initialLoadRef.current) {
+          if (mappedDances.length > 0) {
+            const firstUnsubmitted = mappedDances.findIndex((d) => !submitted.has(d.name));
+            if (firstUnsubmitted >= 0) {
+              setActiveDanceIdx(firstUnsubmitted);
+              setSubmitted(false);
+              setPairStates({});
+            } else {
+              // All dances already submitted — stay on last dance in "waiting" state
+              setActiveDanceIdx(mappedDances.length - 1);
+              setSubmitted(true);
+              setPairStates({});
+            }
           }
+          initialLoadRef.current = false;
         }
-        // Reset per-dance submission state so scoring grid is shown
-        setSubmitted(false);
-        setPairStates({});
       })
       .catch(() => router.push(`/judge/${token}/lobby`))
       .finally(() => setLoading(false));
@@ -270,10 +280,35 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   useEffect(() => {
     if (!competitionId) return;
     const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
+    // floor-control is the single source of truth for which dance/heat the admin
+    // has put on the floor. Parse the payload, move activeDanceIdx / activeHeatIdx
+    // to exactly what admin sent, and reset the per-dance submission state only
+    // when the admin switches to a dance the judge has not yet submitted.
     es.addEventListener("floor-control", (e: MessageEvent) => {
       console.log("[judge-round] SSE floor-control received:", e.data);
+      try {
+        const data = JSON.parse(e.data) as { danceName?: string; heatNumber?: number };
+        if (data.danceName) {
+          const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
+          if (idx >= 0) {
+            setActiveDanceIdx(idx);
+            // If admin re-opened a dance this judge already submitted, keep the
+            // "waiting" screen (submitted=true). Otherwise start fresh scoring grid.
+            const alreadySubmitted = submittedDanceNamesRef.current.has(data.danceName);
+            setSubmitted(alreadySubmitted);
+            setPairStates({});
+          }
+        }
+        if (typeof data.heatNumber === "number" && data.heatNumber >= 1) {
+          setActiveHeatIdx(data.heatNumber - 1);
+        }
+      } catch { /* ignore malformed */ }
+      // Refresh pairs/heats/submittedDances from backend — but loadActiveRound
+      // will NOT auto-skip because initialLoadRef is already false.
       loadActiveRoundRef.current();
     });
+    // heat-sent is broadcast alongside floor-control; we only need a data refresh,
+    // all navigation is driven by floor-control above.
     es.addEventListener("heat-sent", (e: MessageEvent) => {
       console.log("[judge-round] SSE heat-sent received:", e.data);
       loadActiveRoundRef.current();
@@ -302,13 +337,25 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   }, [competitionId, adjudicatorId]);
 
   // Heartbeat every 20s — keeps admin dashboard online indicator accurate
+  // Uses a ref for the interval so React Strict Mode double-invocation doesn't
+  // clear the interval before it fires. Also resumes on tab visibility change.
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (!adjudicatorId) return;
     const sendHeartbeat = () =>
       apiClient.put(`/judge-access/${adjudicatorId}/heartbeat`).catch(() => {});
-    sendHeartbeat();
-    const id = setInterval(sendHeartbeat, 20_000);
-    return () => clearInterval(id);
+    const startInterval = () => {
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      sendHeartbeat();
+      heartbeatIntervalRef.current = setInterval(sendHeartbeat, 20_000);
+    };
+    startInterval();
+    const onVisible = () => { if (document.visibilityState === 'visible') startInterval(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      if (heartbeatIntervalRef.current) { clearInterval(heartbeatIntervalRef.current); heartbeatIntervalRef.current = null; }
+    };
   }, [adjudicatorId]);
 
   const activeDance = dances[activeDanceIdx];
@@ -479,10 +526,25 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
       return next;
     });
 
-    // Don't auto-advance to next dance — admin controls when the next dance starts.
-    // Judge sees "results sent, waiting for next dance" until admin opens the next dance.
+    // Show "hodnocení odesláno" screen briefly, then auto-advance to the next
+    // not-yet-submitted dance — no admin involvement needed. Judge cannot navigate
+    // manually (dance tabs are non-clickable spans), so this is the only way to progress.
     setSubmitted(true);
     setSubmitting(false);
+    const justSubmitted = new Set(submittedDanceNames);
+    justSubmitted.add(danceName);
+    setTimeout(() => {
+      const nextIdx = dances.findIndex((d, i) => i > activeDanceIdx && !justSubmitted.has(d.name));
+      const fallbackIdx = dances.findIndex((d) => !justSubmitted.has(d.name));
+      const target = nextIdx >= 0 ? nextIdx : fallbackIdx;
+      if (target >= 0) {
+        setActiveDanceIdx(target);
+        setActiveHeatIdx(0);
+        setPairStates({});
+        setSubmitted(false);
+      }
+      // If no unsubmitted dance remains, stay on the "submitted" screen.
+    }, 1500);
   }, [round, adjudicatorId, pairs, pairStates, deviceToken, isOnline, activeDance, dances, activeDanceIdx, submittedDanceNames, tentativeStorageKey]);
 
   const [showTentativeWarn, setShowTentativeWarn] = useState(false);

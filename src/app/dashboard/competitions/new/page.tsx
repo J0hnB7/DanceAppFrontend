@@ -21,6 +21,7 @@ import {
 import { useCreateCompetition } from "@/hooks/queries/use-competitions";
 import { useCompetitionTemplates } from "@/hooks/queries/use-competition-templates";
 import { sectionsApi } from "@/lib/api/sections";
+import { judgeTokensApi } from "@/lib/api/judge-tokens";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 import type { AgeCategory, Level, DanceStyle, CompetitorType, CompetitionType, Series } from "@/lib/api/sections";
@@ -318,6 +319,15 @@ export default function NewCompetitionPage() {
       }
     }
 
+    const maxJudges = Math.max(...(values.categories ?? []).map((c: any) => c.numberOfJudges ?? 5), 0);
+    for (let i = 1; i <= maxJudges; i++) {
+      try {
+        await judgeTokensApi.create(createdId!, { judgeNumber: i, role: "JUDGE" });
+      } catch {
+        // non-fatal — judges can be added manually later
+      }
+    }
+
     setSubmitting(false);
 
     if (failedSections.length > 0) {
@@ -328,7 +338,7 @@ export default function NewCompetitionPage() {
       });
     }
 
-    router.push(`/dashboard/competitions/${createdId}`);
+    router.push(`/dashboard/competitions/${createdId}?tab=judges`);
   };
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect, useCallback } from "react";
+import { use, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useOnline } from "@/hooks/use-online";
 import { Trophy, WifiOff, Clock, CheckCircle2, Bell } from "lucide-react";
@@ -75,6 +75,14 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
     }
   }, [competitionId, navigateToScoring]);
 
+  // Refs for stable SSE handlers — same pattern as round/page.tsx
+  const currentRoundRef = useRef(currentRound);
+  useEffect(() => { currentRoundRef.current = currentRound; }, [currentRound]);
+  const navigateToScoringRef = useRef(navigateToScoring);
+  useEffect(() => { navigateToScoringRef.current = navigateToScoring; }, [navigateToScoring]);
+  const checkRoundRef = useRef(checkRound);
+  useEffect(() => { checkRoundRef.current = checkRound; }, [checkRound]);
+
   // SSE reconnect rehydration: on reconnect, re-check active round (with heatSent guard)
   const { pollingFallback } = useJudgeSSERehydration(
     competitionId ?? undefined,
@@ -124,16 +132,29 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
   }, [isOnline, pendingCount]);
 
   // Heartbeat every 20s — keeps admin dashboard online indicator accurate
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (!adjudicatorId) return;
     const sendHeartbeat = () =>
       apiClient.put(`/judge-access/${adjudicatorId}/heartbeat`).catch(() => {});
-    sendHeartbeat();
-    const id = setInterval(sendHeartbeat, 20_000);
-    return () => clearInterval(id);
+    const startInterval = () => {
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      sendHeartbeat();
+      heartbeatIntervalRef.current = setInterval(sendHeartbeat, 20_000);
+    };
+    startInterval();
+    const onVisible = () => { if (document.visibilityState === 'visible') startInterval(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      if (heartbeatIntervalRef.current) { clearInterval(heartbeatIntervalRef.current); heartbeatIntervalRef.current = null; }
+    };
   }, [adjudicatorId]);
 
-  // Listen for judge-ping and heat-sent on public SSE channel
+  // Listen for judge-ping and heat-sent on public SSE channel.
+  // Uses refs for currentRound/navigate/checkRound so the EventSource is never
+  // recreated when round state changes — prevents the race where heat-sent arrives
+  // during the brief close→reopen gap and is missed without Last-Event-ID replay.
   useEffect(() => {
     if (!competitionId || !adjudicatorId) return;
     const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
@@ -151,16 +172,17 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
 
     // Admin sent a heat to judges — navigate to scoring
     es.addEventListener("heat-sent", () => {
-      if (currentRound?.status === "IN_PROGRESS") {
-        navigateToScoring(currentRound);
+      const round = currentRoundRef.current;
+      if (round?.status === "IN_PROGRESS") {
+        navigateToScoringRef.current(round);
       } else {
-        // Round info might not be loaded yet — re-check
-        checkRound();
+        checkRoundRef.current();
       }
     });
 
     return () => es.close();
-  }, [competitionId, adjudicatorId, currentRound, navigateToScoring, checkRound]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [competitionId, adjudicatorId]);
 
   if (loading) {
     return (

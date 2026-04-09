@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Uložit",
+    "saving": "Ukládám...",
     "cancel": "Zrušit",
     "delete": "Smazat",
     "create": "Vytvořit",
@@ -1843,6 +1844,7 @@
     "pairsPerHeat": "Max párů na skupinu",
     "minutesPerDance": "Minut na tanec",
     "saveAndCompute": "Uložit a vypočítat",
+    "saveSuccess": "Nastavení uloženo, harmonogram přepočítán",
     "saveError": "Nepodařilo se uložit nastavení",
     "emptyState": "Zadejte nastavení a spočítejte harmonogram",
     "noSections": "Žádné sekce",

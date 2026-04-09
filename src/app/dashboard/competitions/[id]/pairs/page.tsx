@@ -460,7 +460,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<AddPairForm>({ resolver: zodResolver(addPairSchema) });
+  } = useForm<AddPairForm>({ resolver: zodResolver(addPairSchema), defaultValues: { sectionId: "" } });
 
   const confirmedCount = pairs?.filter((p) => p.registrationStatus === "CONFIRMED").length ?? 0;
   const pendingCount = pairs?.filter((p) => p.registrationStatus === "UNCONFIRMED").length ?? 0;
@@ -493,6 +493,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
         dancer2FirstName: values.dancer2FirstName,
         dancer2LastName: values.dancer2LastName,
         dancer2Club: values.dancer2Club,
+        email: values.email || undefined,
       });
       toast({ title: t("pairs.added"), variant: "success" });
       reset();
@@ -535,6 +536,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
         "Jméno 2": "firstName2", "Příjmení 2": "lastName2",
         "Země": "country", "Klub": "club",
         "ID competitora": "externalId",
+        "Email": "email",
         "Startovné/os": "feePerPerson", "Startovné celkem": "feeTotal",
         "Startuje": "starts",
       };
@@ -542,7 +544,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
       const colIdx: Record<string, number> = {
         startNum: 0, category: 1, firstName1: 2, lastName1: 3,
         firstName2: 4, lastName2: 5, country: 6, club: 7,
-        externalId: 8, feePerPerson: 10, feeTotal: 11, starts: 12,
+        externalId: 8, email: 9, feePerPerson: 10, feeTotal: 11, starts: 12,
       };
       const headerRow = rows[0];
       if (headerRow.some((h) => Object.keys(HEADER_MAP).includes(String(h ?? "").trim()))) {
@@ -577,6 +579,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
         const feePerPerson = typeof rawFeePerPerson === "number" ? rawFeePerPerson : undefined;
         const rawFeeTotal = r[colIdx.feeTotal];
         const feeTotal = typeof rawFeeTotal === "number" ? rawFeeTotal : undefined;
+        const email = colIdx.email !== undefined ? str(r[colIdx.email]) : "";
         const startsVal = r[colIdx.starts];
         const starts = startsVal === 1 || startsVal === true || String(startsVal) === "1";
         if (!firstName1 || !lastName1) { skipped++; continue; }
@@ -592,6 +595,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
           club: club || undefined,
           country: country || undefined,
           externalId: externalCompetitorId,
+          email: email || undefined,
           feePerPerson,
           feeTotal,
           starts,

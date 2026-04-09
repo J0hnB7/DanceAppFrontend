@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocale } from "@/contexts/locale-context";
 import {
   usePreliminarySchedule,
@@ -23,13 +23,17 @@ export function PreliminarySchedulePanel({ competitionId }: Props) {
   const is404 =
     (error as { response?: { status?: number } })?.response?.status === 404;
 
-  const [startTime, setStartTime] = useState(data?.settings?.startTime ?? "09:00");
-  const [pairsPerHeat, setPairsPerHeat] = useState(
-    String(data?.settings?.pairsPerHeat ?? 8)
-  );
-  const [minutesPerDance, setMinutesPerDance] = useState(
-    String(data?.settings?.minutesPerDance ?? 1.5)
-  );
+  const [startTime, setStartTime] = useState("09:00");
+  const [pairsPerHeat, setPairsPerHeat] = useState("8");
+  const [minutesPerDance, setMinutesPerDance] = useState("1.5");
+
+  useEffect(() => {
+    if (data?.settings) {
+      setStartTime(data.settings.startTime);
+      setPairsPerHeat(String(data.settings.pairsPerHeat));
+      setMinutesPerDance(String(data.settings.minutesPerDance));
+    }
+  }, [data?.settings]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +43,8 @@ export function PreliminarySchedulePanel({ competitionId }: Props) {
       minutesPerDance: parseFloat(minutesPerDance) || 1.5,
     };
     saveMutation.mutate(settings, {
+      onSuccess: () =>
+        toast({ title: t("prelimSchedule.saveSuccess") }),
       onError: () =>
         toast({ title: t("prelimSchedule.saveError"), variant: "destructive" }),
     });

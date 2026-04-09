@@ -1,0 +1,160 @@
+<h2>Kde a jak zobrazit výsledky?</h2>
+<p class="subtitle">Vyber layout pro sekci Výsledky na veřejné stránce soutěže (zobrazí se jen po kliknutí "Zveřejnit")</p>
+
+<div class="cards">
+
+  <!-- Option A: Podium hero + tabulka -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#F9FAFB;border-radius:10px;padding:20px;font-family:sans-serif">
+        <!-- Header -->
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6B7280;margin-bottom:4px">VÝSLEDKY SOUTĚŽE</div>
+          <div style="font-size:1rem;font-weight:800;color:#111827">Latin Bronze — Junioři I.</div>
+        </div>
+        <!-- Podium -->
+        <div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:16px">
+          <div style="text-align:center">
+            <div style="background:#E5E7EB;border-radius:6px;width:52px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <div style="font-size:.55rem;color:#6B7280">#42</div>
+              <div style="font-size:.6rem;font-weight:700;color:#374151">Novák J.</div>
+            </div>
+            <div style="background:#9CA3AF;height:28px;width:52px;border-radius:0 0 4px 4px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#fff">2.</div>
+          </div>
+          <div style="text-align:center">
+            <div style="background:#FEF9C3;border-radius:6px;width:60px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #FDE68A">
+              <div style="font-size:.6rem;color:#92400E">🏆 #17</div>
+              <div style="font-size:.62rem;font-weight:800;color:#78350F">Svoboda T.</div>
+            </div>
+            <div style="background:#EAB308;height:38px;width:60px;border-radius:0 0 4px 4px;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:900;color:#fff">1.</div>
+          </div>
+          <div style="text-align:center">
+            <div style="background:#E5E7EB;border-radius:6px;width:52px;height:36px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <div style="font-size:.55rem;color:#6B7280">#8</div>
+              <div style="font-size:.6rem;font-weight:700;color:#374151">Dvořák P.</div>
+            </div>
+            <div style="background:#CD7C2C;height:22px;width:52px;border-radius:0 0 4px 4px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#fff">3.</div>
+          </div>
+        </div>
+        <!-- Table preview -->
+        <div style="background:#fff;border-radius:8px;border:1px solid #E5E7EB;overflow:hidden">
+          <div style="display:grid;grid-template-columns:28px 1fr auto;gap:0;font-size:.58rem">
+            <div style="padding:5px 6px;background:#F3F4F6;font-weight:700;color:#6B7280">#</div>
+            <div style="padding:5px 6px;background:#F3F4F6;font-weight:700;color:#6B7280">Pár</div>
+            <div style="padding:5px 6px;background:#F3F4F6;font-weight:700;color:#6B7280">Body</div>
+            <div style="padding:5px 6px;color:#374151;border-top:1px solid #F3F4F6;font-weight:800">1</div>
+            <div style="padding:5px 6px;color:#111827;border-top:1px solid #F3F4F6">#17 Svoboda T. &amp; K.</div>
+            <div style="padding:5px 6px;color:#374151;border-top:1px solid #F3F4F6">38.5</div>
+            <div style="padding:5px 6px;color:#374151;border-top:1px solid #F3F4F6">2</div>
+            <div style="padding:5px 6px;color:#374151;border-top:1px solid #F3F4F6">#42 Novák J. &amp; M.</div>
+            <div style="padding:5px 6px;color:#374151;border-top:1px solid #F3F4F6">32.0</div>
+            <div style="padding:5px 6px;color:#374151;border-top:1px solid #F3F4F6">3</div>
+            <div style="padding:5px 6px;color:#374151;border-top:1px solid #F3F4F6">#8 Dvořák P. &amp; L.</div>
+            <div style="padding:5px 6px;color:#374151;border-top:1px solid #F3F4F6">29.5</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Podium + tabulka</h3>
+      <p>Vizuální podium pro top 3, pod ním kompletní pořadí. Slavnostní dojem, okamžitě čitelné.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Kompaktní accordion per sekce -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#F9FAFB;border-radius:10px;padding:20px;font-family:sans-serif">
+        <div style="font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6B7280;margin-bottom:10px">VÝSLEDKY</div>
+        <!-- Accordion item 1 (open) -->
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;margin-bottom:8px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #F3F4F6">
+            <div>
+              <div style="font-size:.72rem;font-weight:700;color:#111827">Latin Bronze — Junioři I.</div>
+              <div style="font-size:.58rem;color:#6B7280;margin-top:1px">12 párů • 5 tanců • Finále</div>
+            </div>
+            <div style="font-size:.6rem;font-weight:700;color:#4F46E5">▲</div>
+          </div>
+          <div style="padding:8px 12px">
+            <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #F9FAFB">
+              <div style="width:20px;height:20px;border-radius:50%;background:#EAB308;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:900;color:#fff;flex-shrink:0">1</div>
+              <div style="font-size:.65rem;color:#111827;flex:1">#17 Svoboda Tomáš &amp; Kateřina</div>
+              <div style="font-size:.6rem;color:#6B7280">38.5 b.</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #F9FAFB">
+              <div style="width:20px;height:20px;border-radius:50%;background:#9CA3AF;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:900;color:#fff;flex-shrink:0">2</div>
+              <div style="font-size:.65rem;color:#374151;flex:1">#42 Novák Jan &amp; Marie</div>
+              <div style="font-size:.6rem;color:#6B7280">32.0 b.</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:4px 0">
+              <div style="width:20px;height:20px;border-radius:50%;background:#CD7C2C;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:900;color:#fff;flex-shrink:0">3</div>
+              <div style="font-size:.65rem;color:#374151;flex:1">#8 Dvořák Pavel &amp; Lucie</div>
+              <div style="font-size:.6rem;color:#6B7280">29.5 b.</div>
+            </div>
+            <div style="text-align:center;padding-top:6px">
+              <span style="font-size:.58rem;color:#4F46E5;font-weight:600">+ 9 dalších párů ↓</span>
+            </div>
+          </div>
+        </div>
+        <!-- Accordion item 2 (closed) -->
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px">
+            <div>
+              <div style="font-size:.72rem;font-weight:700;color:#111827">Standard — Dospělí A</div>
+              <div style="font-size:.58rem;color:#6B7280;margin-top:1px">8 párů • 5 tanců • Finále</div>
+            </div>
+            <div style="font-size:.6rem;font-weight:700;color:#6B7280">▼</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Accordion per sekce</h3>
+      <p>Každá kategorie je rozbalovací panel. Rychlý přehled, dobré pro více sekcí najednou.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Velké číslo + ribbon -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#F9FAFB;border-radius:10px;padding:20px;font-family:sans-serif">
+        <div style="font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6B7280;margin-bottom:10px">VÝSLEDKY</div>
+        <!-- Section header with gradient -->
+        <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);border-radius:10px;padding:12px 14px;margin-bottom:8px;color:#fff">
+          <div style="font-size:.72rem;font-weight:800">Latin Bronze — Junioři I.</div>
+          <div style="font-size:.58rem;opacity:.8;margin-top:2px">12 párů finalizováno</div>
+        </div>
+        <!-- Cards row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+          <div style="background:linear-gradient(135deg,#FEF9C3,#FDE68A);border-radius:8px;padding:8px;text-align:center;border:1px solid #FCD34D">
+            <div style="font-size:1.2rem;font-weight:900;color:#78350F">1.</div>
+            <div style="font-size:.55rem;font-weight:800;color:#92400E">#17</div>
+            <div style="font-size:.5rem;color:#B45309">Svoboda T.</div>
+          </div>
+          <div style="background:#F3F4F6;border-radius:8px;padding:8px;text-align:center;border:1px solid #E5E7EB">
+            <div style="font-size:1.2rem;font-weight:900;color:#374151">2.</div>
+            <div style="font-size:.55rem;font-weight:800;color:#374151">#42</div>
+            <div style="font-size:.5rem;color:#6B7280">Novák J.</div>
+          </div>
+          <div style="background:linear-gradient(135deg,#FFF7ED,#FFEDD5);border-radius:8px;padding:8px;text-align:center;border:1px solid #FED7AA">
+            <div style="font-size:1.2rem;font-weight:900;color:#9A3412">3.</div>
+            <div style="font-size:.55rem;font-weight:800;color:#C2410C">#8</div>
+            <div style="font-size:.5rem;color:#EA580C">Dvořák P.</div>
+          </div>
+        </div>
+        <!-- Full list collapsed -->
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:.6rem;color:#374151;font-weight:600">Zobrazit kompletní výsledky (12)</span>
+          <span style="font-size:.65rem;color:#4F46E5">→</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Top 3 karty + expand</h3>
+      <p>Farebný gradient header, velká 3 čísla pro top 3, kompletní seznam na klik. Moderní a výrazné.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;text-align:center">Klikni na variantu (nebo víc) — pak odpověz v terminálu</p>

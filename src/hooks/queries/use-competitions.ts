@@ -33,7 +33,7 @@ export function useCreateCompetition() {
     mutationFn: (data: CreateCompetitionRequest) => competitionsApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: competitionKeys.lists() });
-      toast({ title: getT()("competitions.created"), variant: "success" });
+      toast({ title: getT()("competition.created"), variant: "success" });
     },
   });
 }

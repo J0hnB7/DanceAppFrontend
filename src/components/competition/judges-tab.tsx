@@ -377,14 +377,14 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
       <Card>
         <Table className="table-fixed">
           <colgroup>
-            <col style={{ width: "6%" }} />   {/* Porotce */}
-            <col style={{ width: "14%" }} />  {/* Jméno */}
-            <col style={{ width: "7%" }} />   {/* Země */}
-            <col style={{ width: "18%" }} />  {/* Token */}
-            <col style={{ width: "10%" }} />  {/* PIN */}
-            <col style={{ width: "10%" }} />  {/* Status */}
-            <col style={{ width: "7%" }} />   {/* Online */}
-            <col style={{ width: "10%" }} />  {/* Akce */}
+            {/* Porotce */}<col style={{ width: "6%" }} />
+            {/* Jméno */}<col style={{ width: "14%" }} />
+            {/* Země */}<col style={{ width: "7%" }} />
+            {/* Token */}<col style={{ width: "18%" }} />
+            {/* PIN */}<col style={{ width: "10%" }} />
+            {/* Status */}<col style={{ width: "10%" }} />
+            {/* Online */}<col style={{ width: "7%" }} />
+            {/* Akce */}<col style={{ width: "10%" }} />
           </colgroup>
           <TableHeader>
             <TableRow>

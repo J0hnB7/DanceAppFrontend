@@ -1,6 +1,7 @@
 # CLAUDE.md — DanceApp Frontend
 
 > Automaticky načítáno Claude Code. Implementuj autonomně bez potvrzování.
+> Zřídka potřebné detaily: `docs/claude-ref.md`
 
 ---
 
@@ -152,7 +153,7 @@ const realHeatId = heatIdMap[syntheticHeatId]  // VŽDY takhle
 ## Judge scoring — pravidla chování
 
 - **Čísla párů vždy seřazená** od nejmenšího po největší (`startNumber` ascending) — v prelim i final gridu
-- **Po odeslání hodnocení tance se NESMÍ automaticky přejít na další tanec** — to řídí admin. Porotce po odeslání vidí "Hodnocení odesláno, čeká se na další tanec" a zůstává na této obrazovce, dokud admin neotevře další tanec.
+- **Po odeslání hodnocení se po 1.5 s automaticky přejde na další neodeslaný tanec.** Admin do toho nezasahuje. Porotce nemůže navigovat manuálně — dance tabs jsou `<span>`, ne `<button>`. Implementace: `setTimeout(1500ms)` v `handleSubmit`/`submitDance` v `judge/[token]/round/page.tsx` a `final/page.tsx`. `initialLoadRef` zabraňuje auto-skipu na první mount; `floor-control` SSE event respektuje současný `submitted` stav.
 
 ## Judge API — X-Judge-Token header
 
@@ -167,6 +168,7 @@ const realHeatId = heatIdMap[syntheticHeatId]  // VŽDY takhle
 - **`<button>` elementy** v Tailwind nemají `cursor-pointer` defaultně — přidávej explicitně
 - **Labels + inputs** — každý `<label>` musí mít `htmlFor`, každý `<input>`/`<textarea>` musí mít `id`. Pro dynamické listy: `id={\`field-${idx}-name\`}`
 - **Decorative icons** (Lucide): vždy `aria-hidden="true"` na ikonách vedle textu
+- **Axios error logging** — `console.error('msg', err)` serializuje axios error jako `{}` (nečitelné). Vždy destrukturuj: `const detail = axios.isAxiosError(err) ? { status: err.response?.status, data: err.response?.data, message: err.message } : err;` a loguj `detail`.
 
 ## Accessibility — povinné pre judge interface (`/judge/**`)
 
@@ -175,6 +177,14 @@ const realHeatId = heatIdMap[syntheticHeatId]  // VŽDY takhle
 - Toggle/selection buttons: `aria-pressed={boolean}`
 - Icon-only buttons: `aria-label="..."` povinné
 - Dekoratívne ikony: `aria-hidden="true"`
+
+## Backend restart — vždy clean při změně repository/query
+
+`./mvnw spring-boot:run` bez `clean` může použít stará `.class` — "Nothing to compile" = změna se nenačetla.
+Po změně `@Query`, repository nebo service vždy:
+```bash
+./mvnw clean spring-boot:run -Dspring-boot.run.profiles=local -DskipTests > /tmp/backend.log 2>&1 &
+```
 
 ## TypeScript build
 
@@ -198,51 +208,12 @@ npx tsc --noEmit
 - Všechny endpointy mají prefix `/api/v1/`
 - API moduly: `src/lib/api/` — `competitions`, `rounds`, `sections`, `pairs`, `live`, `schedule`, `judge-tokens`, `scoring`, `auth`, `payments`, `gdpr`, atd.
 
-## Wizard — nová soutěž (`/dashboard/competitions/new`)
-
-- 3 kroky: **Základní info → Šablona → Sekce**
-- Krok 2: 4 šablony (Ballroom Championship / Latin Bronze / Začátečníci / Prázdná) — prefillují sekce přes `replace()` z `useFieldArray`
-- Krok 3: každá sekce má `numberOfJudges` + `maxFinalPairs`, live majority display: `floor(n/2)+1`
-- Šablona musí být vybrána pro pokračování (button `disabled` dokud `selectedTemplate === null`)
-
 ## Hydration (Next.js SSR)
 
 - Locale mismatch: server renders DEFAULT_LOCALE, client reads localStorage → `suppressHydrationWarning` **nestačí** pro text nodes. Použij `mounted` guard: `const [mounted, setMounted] = useState(false); useEffect(() => setMounted(true), []);` a renderuj locale-závislý text jen když `mounted === true`.
-
-## Hotové stránky / endpointy — nezapomeň
-
-- `/checkin/[token]/page.tsx` — frontend stránka již existuje; backend: CheckinTokenController + CheckinTokenService + entita CheckinToken + V050 migration (přidáno 2026-03-29)
-- Přidej `/api/v1/checkin-tokens/**` do `permitAll()` v SecurityConfig (backend)
-
-### Dancer platform (Spec A — A6+A7, přidáno 2026-03-30)
-- `src/lib/api/dancer.ts` — dancer API modul (register, onboarding, profile, partner invite, my-competitions)
-- `/register` — registrace tančíře + Google OAuth tlačítko (`/register/dancer` redirectuje sem)
-- **Organizátoři se neregistrují sami** — pouze přes pozvánku od admina. Stránka `/register` je výhradně pro tanečníky.
-- `/auth/callback` — OAuth2 callback; volá `POST /auth/refresh` z HttpOnly cookie → hydratuje store → redirect na `/onboarding` nebo `/profile`
-- `/onboarding` — 2-krokový form (profil → partner); v proxy.ts přidáno jako public path
-- `/profile` — profil + partner invite flow (generování linku, copy, unlink)
-- `/profile/my-competitions` — competition history dashboard
-- `/partner-invite/[token]` — public invite stránka; přidána do proxy.ts public paths
-- **proxy.ts public paths**: `/auth/callback`, `/onboarding`, `/partner-invite` přidány
 
 ## Spec soubory
 
 - **Schedule modul:** `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`
   - Frontend route: `/dashboard/competitions/[id]/schedule`
   - Drag & drop: `@dnd-kit/core`
-
-## Computer Use testy
-
-- **Test 1 (core flows):** `computer-use-prompt.md` — 7 flows: Wizard, Live Control, Judge Scoring (mobile), Public Browsing, Schedule, Settings, Full E2E
-- **Test 2 (full coverage):** `computer-use-prompt-2.md` — 16 flows (A–P): Dashboard pages, Competition Detail tabs (Kategorie, Páry, Porota, Check-in, Harmonogram, Live, Vyhodnocení, Diplomy, Obsah, E-maily, Platby, Rozpočet, Nastavení), Judge mobile, Veřejné stránky, Scoreboard, Dark/Light + Locale
-
-### Výsledky testů (2026-03-31)
-
-23/23 flows PASS. Nalezené bugy:
-
-| Závažnost | Bug | Kde |
-|-----------|-----|-----|
-| **MAJOR** | Wizard silent validation — šablona neprefilluje "Kategorie soutěže" (series), RHF errors se nezobrazí uživateli, tlačítko "Vytvořit" nereaguje | `/dashboard/competitions/new` (krok 3) |
-| **MEDIUM** | Chybějící i18n klíče na stránce Vyhodnocení — `results.hubTitle`, `results.categoriesCompleted`, `results.statusWaiting`, `results.statusInProgress` zobrazují raw klíče | `/dashboard/competitions/[id]/results` |
-| **LOW** | Neúplné EN překlady na stats sub-labels (Účastníci) — "6 soutěží", "52% zaplaceno" zůstávají v CZ při EN locale | `/dashboard/participants` |
-| **LOW** | Hydration mismatch na login — server renderuje EN, klient CZ (známý problém) | `/login` |

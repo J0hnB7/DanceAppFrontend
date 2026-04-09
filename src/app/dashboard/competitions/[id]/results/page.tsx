@@ -16,10 +16,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useSections } from "@/hooks/queries/use-sections";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { scoringApi, type RoundResultsResponse } from "@/lib/api/scoring";
 import { roundsApi, type RoundDto } from "@/lib/api/rounds";
 import apiClient from "@/lib/api-client";
+import axios from "axios";
 import { useLocale } from "@/contexts/locale-context";
 import { cn } from "@/lib/utils";
 import type { SectionDto } from "@/lib/api/sections";
@@ -469,12 +470,42 @@ export default function ResultsHubPage({
   const { id: competitionId } = use(params);
   const { t } = useLocale();
   const { data: sections, isLoading } = useSections(competitionId);
+  const queryClient = useQueryClient();
+  const [calculatingAll, setCalculatingAll] = useState(false);
+  const [calcProgress, setCalcProgress] = useState<{ done: number; total: number } | null>(null);
 
   const completedSections = sections?.filter((s) => s.status === "COMPLETED") ?? [];
   const activeSections = sections?.filter((s) => s.status === "ACTIVE") ?? [];
   const pendingSections = sections?.filter((s) => s.status !== "COMPLETED" && s.status !== "ACTIVE") ?? [];
 
   const ordered = [...completedSections, ...activeSections, ...pendingSections];
+
+  const eligibleForCalc = ordered.filter(
+    (s) => s.status === "COMPLETED" || s.currentRound?.status === "COMPLETED",
+  );
+
+  const handleCalculateAll = async () => {
+    if (eligibleForCalc.length === 0 || calculatingAll) return;
+    setCalculatingAll(true);
+    setCalcProgress({ done: 0, total: eligibleForCalc.length });
+    let done = 0;
+    for (const section of eligibleForCalc) {
+      try {
+        await apiClient.post(`/sections/${section.id}/final-summary/calculate`);
+      } catch (err) {
+        const detail = axios.isAxiosError(err)
+          ? { status: err.response?.status, data: err.response?.data, message: err.message }
+          : err;
+        console.error("[results] calculate section failed", section.id, detail);
+      }
+      done += 1;
+      setCalcProgress({ done, total: eligibleForCalc.length });
+    }
+    await queryClient.invalidateQueries({ queryKey: ["section-summary"] });
+    await queryClient.invalidateQueries({ queryKey: ["sections", competitionId] });
+    setCalculatingAll(false);
+    setCalcProgress(null);
+  };
 
   return (
     <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
@@ -483,6 +514,30 @@ export default function ResultsHubPage({
         description={t("results.categoriesCompleted", { done: completedSections.length, total: sections?.length ?? 0 })}
         backHref={`/dashboard/competitions/${competitionId}`}
       />
+
+      {!isLoading && eligibleForCalc.length > 0 && (
+        <div className="mb-4 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={handleCalculateAll}
+            disabled={calculatingAll}
+            className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors disabled:opacity-50 cursor-pointer min-h-[44px]"
+            title="Přepočítat celkové pořadí pro všechny kategorie"
+            aria-label="Vytvořit celkové pořadí pro všechny kategorie"
+          >
+            {calculatingAll ? (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            ) : (
+              <Trophy className="h-4 w-4" aria-hidden="true" />
+            )}
+            {calculatingAll && calcProgress
+              ? `Přepočítávám… ${calcProgress.done}/${calcProgress.total}`
+              : `Vytvořit celkové pořadí (${eligibleForCalc.length})`}
+          </button>
+        </div>
+      )}
 
       {isLoading && (
         <div className="space-y-3">

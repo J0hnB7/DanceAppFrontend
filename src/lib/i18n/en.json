@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Save",
+    "saving": "Saving...",
     "cancel": "Cancel",
     "delete": "Delete",
     "create": "Create",
@@ -1843,6 +1844,7 @@
     "pairsPerHeat": "Max pairs per heat",
     "minutesPerDance": "Minutes per dance",
     "saveAndCompute": "Save and compute",
+    "saveSuccess": "Settings saved, schedule recomputed",
     "saveError": "Failed to save settings",
     "emptyState": "Enter settings and compute the schedule",
     "noSections": "No sections",

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -91,11 +92,8 @@ export function Sidebar() {
       <div className="shrink-0 px-4 pb-3 pt-4">
         {/* Logo row */}
         <div className="mb-3 flex items-center gap-2.5">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#3B82F6] to-[#06B6D4] text-[13px] font-bold text-white"
-            style={{ fontFamily: "var(--font-sora)", boxShadow: "0 2px 10px rgba(59,130,246,0.4)" }}
-          >
-            PP
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+            <Image src="/logo.png" alt="ProPodium" width={36} height={36} className="rounded-[10px] w-9 h-auto" />
           </div>
           <span
             className="text-[15px] font-bold text-white"

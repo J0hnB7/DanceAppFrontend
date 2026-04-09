@@ -292,7 +292,6 @@ function RoundCard({
 
   const isCompleted = slot.liveStatus === "COMPLETED";
   const isRunning = slot.liveStatus === "RUNNING";
-  const isFinal = /(?<!(semi|čtvrt))finál/i.test(slot.label);
 
   // Compute heats
   const pairCount = parsePairCount(slot.label) ?? maxPairsOnFloor;
@@ -424,8 +423,7 @@ function RoundCard({
             <Users className="h-4 w-4" />
           </button>
 
-          {!isFinal && (
-            <button
+          <button
               onClick={() => redraw()}
               disabled={isRedrawing || !drawAllowed}
               className={cn(
@@ -439,7 +437,6 @@ function RoundCard({
               <ArrowRight className={cn("h-3 w-3 rotate-90", isRedrawing && "animate-spin")} />
               {t("scheduleBuilder.drawButton")}
             </button>
-          )}
 
           <button
             onClick={() => onAddBreakAfter(slot.id)}

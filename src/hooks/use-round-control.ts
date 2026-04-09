@@ -121,12 +121,12 @@ export function useRoundControl({
     if (!activeRoundId || !closeResult) return
     setClosing(true)
     try {
-      // Derive advancing pair IDs from pairs list (backend doesn't return advancedPairIds separately)
-      const advancingIds = closeResult.pairs.filter((p) => p.advances).map((p) => p.pairId)
-      // 'more' = advance tied pairs too; 'less' = exclude them
+      // Backend expects approvedPairIds ⊆ tiedPairsAtBoundary (subset of tied pairs only).
+      // It automatically merges non-boundary advancing pairs on its side.
+      // 'more' = advance all tied pairs; 'less' = exclude them all.
       const approvedPairIds = choice === 'more'
-        ? [...advancingIds, ...(closeResult.tiedPairsAtBoundary ?? [])]
-        : [...advancingIds]
+        ? [...(closeResult.tiedPairsAtBoundary ?? [])]
+        : []
       const result = await roundsApi.resolveChairmanTie(activeRoundId, approvedPairIds)
       setCloseResult(result as PreliminaryResultResponse)
       setShowCollisionDialog(false)
@@ -134,7 +134,10 @@ export function useRoundControl({
       toast({ title: t('live.roundClosedToast') })
       loadSchedule(competitionId)
     } catch (err) {
-      console.error('[useRoundControl] resolve tie failed', err)
+      const detail = axios.isAxiosError(err)
+        ? { status: err.response?.status, data: err.response?.data, message: err.message }
+        : err
+      console.error('[useRoundControl] resolve tie failed', detail)
       toast({ title: t('live.tieFailed'), variant: 'destructive' })
     } finally {
       setClosing(false)

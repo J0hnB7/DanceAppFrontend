@@ -164,6 +164,9 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
   const adjudicatorId = typeof window !== "undefined" ? localStorage.getItem(`judge_adjudicator_id_${token}`) : null;
   const deviceToken   = typeof window !== "undefined" ? localStorage.getItem(`judge_device_token_${token}`)   : null;
 
+  // True only for the first load after mount — see round/page.tsx for rationale.
+  const initialLoadRef = useRef(true);
+
   const loadActiveRound = useCallback(() => {
     if (!competitionId) { router.push(`/judge/${token}`); return; }
     apiClient
@@ -186,14 +189,14 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
           : rawSubmitted;
         setSubmittedDanceNames(allSubmitted);
 
-        // Auto-skip to first unsubmitted dance
-        if (allSubmitted.size > 0 && mappedDances.length > 0) {
-          const firstUnsubmitted = mappedDances.findIndex((d) => !allSubmitted.has(d.name));
-          if (firstUnsubmitted >= 0) {
-            setActiveDanceIdx(firstUnsubmitted);
-          } else {
-            setActiveDanceIdx(mappedDances.length - 1);
+        // Auto-skip to first unsubmitted dance ONLY on initial mount.
+        // On SSE refreshes the active dance is driven by admin's floor-control event.
+        if (initialLoadRef.current) {
+          if (mappedDances.length > 0) {
+            const firstUnsubmitted = mappedDances.findIndex((d) => !allSubmitted.has(d.name));
+            setActiveDanceIdx(firstUnsubmitted >= 0 ? firstUnsubmitted : mappedDances.length - 1);
           }
+          initialLoadRef.current = false;
         }
       })
       .catch(() => router.push(`/judge/${token}/lobby`))
@@ -209,13 +212,28 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
   useEffect(() => { loadActiveRoundRef.current = loadActiveRound; }, [loadActiveRound]);
   const submittedDanceNamesRef = useRef<Set<string>>(new Set());
   useEffect(() => { submittedDanceNamesRef.current = submittedDanceNames; }, [submittedDanceNames]);
+  const dancesRef = useRef<DanceDto[]>([]);
+  useEffect(() => { dancesRef.current = dances; }, [dances]);
 
   // SSE: floor-control + judge-ping + dance-closed
   useEffect(() => {
     if (!competitionId) return;
     const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
-    es.addEventListener("floor-control", () => loadActiveRoundRef.current());
-    es.addEventListener("heat-sent", () => loadActiveRoundRef.current());
+    // floor-control is the single source of truth for which dance is active.
+    // Move to exactly the dance admin sent; never auto-skip past it.
+    es.addEventListener("floor-control", (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { danceName?: string };
+        if (data.danceName) {
+          const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
+          if (idx >= 0) setActiveDanceIdx(idx);
+        }
+      } catch { /* ignore malformed */ }
+      loadActiveRoundRef.current();
+    });
+    es.addEventListener("heat-sent", () => {
+      loadActiveRoundRef.current();
+    });
     es.onerror = () => console.warn("[judge-final] SSE connection error");
     es.addEventListener("judge-ping", (e: MessageEvent) => {
       try {
@@ -238,13 +256,23 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
   }, [competitionId, adjudicatorId]);
 
   // Heartbeat every 20s
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (!adjudicatorId) return;
     const sendHeartbeat = () =>
       apiClient.put(`/judge-access/${adjudicatorId}/heartbeat`).catch(() => {});
-    sendHeartbeat();
-    const id = setInterval(sendHeartbeat, 20_000);
-    return () => clearInterval(id);
+    const startInterval = () => {
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      sendHeartbeat();
+      heartbeatIntervalRef.current = setInterval(sendHeartbeat, 20_000);
+    };
+    startInterval();
+    const onVisible = () => { if (document.visibilityState === 'visible') startInterval(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      if (heartbeatIntervalRef.current) { clearInterval(heartbeatIntervalRef.current); heartbeatIntervalRef.current = null; }
+    };
   }, [adjudicatorId]);
 
   const setPlacement = (danceId: string, pairId: string, placement: number) => {
@@ -277,7 +305,15 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
       const danceName = dances[activeDanceIdx]?.name ?? "UNKNOWN";
       setSubmittedDanceNames((prev) => new Set([...prev, danceName]));
       toast({ title: locale === "cs" ? "Hodnocení odesláno" : "Score submitted", variant: "success" });
-      // Don't auto-advance — admin controls when next dance starts
+      // Auto-advance to the next not-yet-submitted dance after a brief pause.
+      // Judge cannot navigate manually (dance tabs are non-clickable).
+      const justSubmitted = new Set([...submittedDanceNames, danceName]);
+      setTimeout(() => {
+        const nextIdx = dances.findIndex((d, i) => i > activeDanceIdx && !justSubmitted.has(d.name));
+        const fallbackIdx = dances.findIndex((d) => !justSubmitted.has(d.name));
+        const target = nextIdx >= 0 ? nextIdx : fallbackIdx;
+        if (target >= 0) setActiveDanceIdx(target);
+      }, 1500);
     } catch (err) {
       // 409 = already submitted — mark as done silently
       if (axios.isAxiosError(err) && err.response?.status === 409) {
