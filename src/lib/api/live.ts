@@ -1,6 +1,13 @@
 import apiClient from '@/lib/api-client'
 import type { HeatResult, Incident, JudgeStatus } from '@/store/live-store'
 
+export interface JudgeMarksResponse {
+  roundType: 'PRELIMINARY' | 'FINAL'
+  dances: string[]
+  pairs: { id: string; startNumber: number }[]
+  marks: Record<string, Record<string, number>>
+}
+
 export interface JudgeStatusDto {
   judgeId: string
   letter: string
@@ -58,6 +65,11 @@ export const liveApi = {
   getJudgeCallbacks: (roundId: string, judgeTokenId: string) =>
     apiClient
       .get<string[]>(`/rounds/${roundId}/callbacks`, { headers: { 'X-Judge-Token': judgeTokenId } })
+      .then((r) => r.data),
+
+  getJudgeMarks: (roundId: string, judgeTokenId: string) =>
+    apiClient
+      .get<JudgeMarksResponse>(`/rounds/${roundId}/judge-marks`, { params: { judgeTokenId } })
       .then((r) => r.data),
 
   closeDance: (roundId: string, danceName: string) =>

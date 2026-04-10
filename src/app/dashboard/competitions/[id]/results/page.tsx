@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { Fragment, use, useState } from "react";
 import { Trophy, ChevronRight, ChevronDown, BarChart3, Clock, CheckCircle2, Download, Medal } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
@@ -12,13 +12,15 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { useSections } from "@/hooks/queries/use-sections";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { scoringApi, type RoundResultsResponse } from "@/lib/api/scoring";
-import { roundsApi, type RoundDto } from "@/lib/api/rounds";
+import { scoringApi } from "@/lib/api/scoring";
+import { roundsApi, type RoundDto, isPreliminaryDetail, isFinalDetail } from "@/lib/api/rounds";
+import { PrelimRoundTable, type PreliminaryRoundDetail } from "@/components/results/prelim-round-table";
+import { FinalRoundTable, type FinalRoundDetail } from "@/components/results/final-round-table";
+import { PairDetailModal } from "@/components/results/pair-detail-modal";
 import apiClient from "@/lib/api-client";
 import axios from "axios";
 import { useLocale } from "@/contexts/locale-context";
@@ -51,8 +53,6 @@ function PlacementIcon({ placement }: { placement: number }) {
   return null;
 }
 
-const FINAL_TYPES = new Set(["FINAL", "SINGLE_ROUND"]);
-
 function roundTypeLabel(round: RoundDto, t: TFn): string {
   switch (round.roundType) {
     case "HEAT": return t("results.roundHeat");
@@ -67,127 +67,31 @@ function roundTypeLabel(round: RoundDto, t: TFn): string {
 
 function RoundContent({ round }: { round: RoundDto }) {
   const { t } = useLocale();
-  const isFinal = FINAL_TYPES.has(round.roundType);
 
-  const { data: finalData, isLoading: finalLoading } = useQuery({
-    queryKey: ["round-results", round.id],
-    queryFn: () => roundsApi.getResults(round.id) as Promise<RoundResultsResponse>,
-    enabled: isFinal,
+  const isCompleted = round.status === "COMPLETED" || round.status === "CALCULATED";
+
+  const { data: detailData, isLoading: detailLoading } = useQuery({
+    queryKey: ["round-detail", round.id],
+    queryFn: () => roundsApi.getRoundDetail(round.id),
+    enabled: isCompleted,
   });
 
-  const { data: prelimData, isLoading: prelimLoading } = useQuery({
-    queryKey: ["round-prelim", round.id],
-    queryFn: () => roundsApi.getPreliminaryResults(round.id),
-    enabled: !isFinal && round.status === "COMPLETED",
-  });
-
-  const { data: sectionSummary } = useQuery({
-    queryKey: ["section-summary", round.sectionId],
-    queryFn: () => scoringApi.getSectionSummary(round.sectionId!),
-    enabled: !isFinal && round.status === "COMPLETED" && !!round.sectionId,
-  });
-
-  if (isFinal) {
-    if (finalLoading) return <Skeleton className="h-24 w-full" />;
-    if (!finalData?.dances?.length) return <p className="text-sm text-[var(--text-secondary)]">{t("results.noResults")}</p>;
-
-    const allPairs = Array.from(
-      new Map(finalData.dances.flatMap((d) => d.rankings).map((r) => [r.startNumber, r])).values()
-    ).sort((a, b) => a.startNumber - b.startNumber);
-
-    const placementMap = new Map<number, Map<string, number>>();
-    for (const dance of finalData.dances) {
-      for (const r of dance.rankings) {
-        if (!placementMap.has(r.startNumber)) placementMap.set(r.startNumber, new Map());
-        placementMap.get(r.startNumber)!.set(dance.danceId, r.placement);
-      }
-    }
-    const rows = allPairs.map((p) => {
-      const dancePlacements = finalData.dances.map((d) => placementMap.get(p.startNumber)?.get(d.danceId) ?? 0);
-      const sum = dancePlacements.reduce((a, b) => a + b, 0);
-      return { ...p, sum, dancePlacements };
-    }).sort((a, b) => a.sum - b.sum);
-
-    return (
-      <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8"></TableHead>
-              <TableHead className="w-10">#</TableHead>
-              <TableHead>{t("results.dancers")}</TableHead>
-              {finalData.dances.map((d) => (
-                <TableHead key={d.danceId} className="w-14 text-center text-xs">{d.danceName}</TableHead>
-              ))}
-              <TableHead className="w-14 text-center">{t("results.sum")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row, idx) => (
-              <TableRow key={row.pairId ?? row.startNumber} className={cn(idx < 3 && "bg-yellow-50/30")}>
-                <TableCell className="text-right font-bold text-[var(--text-secondary)]">{idx + 1}.</TableCell>
-                <TableCell className="font-mono font-bold">{row.startNumber}</TableCell>
-                <TableCell>{row.dancer1Name}</TableCell>
-                {row.dancePlacements.map((pl, i) => (
-                  <TableCell key={i} className="text-center font-mono text-sm">{pl || "—"}</TableCell>
-                ))}
-                <TableCell className="text-center font-bold">{row.sum}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }
-
-  // Callback round
-  if (round.status !== "COMPLETED") {
+  if (!isCompleted) {
     return <p className="text-sm text-[var(--text-secondary)]">{t("results.roundInProgress")}</p>;
   }
-  if (prelimLoading) return <Skeleton className="h-24 w-full" />;
-  if (!prelimData?.pairs?.length) return <p className="text-sm text-[var(--text-secondary)]">{t("results.noResults")}</p>;
 
-  const finalPlacementMap = new Map<string, number>(
-    (sectionSummary?.rankings ?? []).map((r) => [r.pairId, r.finalPlacement])
-  );
-  const sorted = [...prelimData.pairs].sort((a, b) => {
-    const pA = finalPlacementMap.get(a.pairId) ?? 999;
-    const pB = finalPlacementMap.get(b.pairId) ?? 999;
-    return pA !== pB ? pA - pB : b.voteCount - a.voteCount;
-  });
-  return (
-    <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-8 text-center">{t("results.place")}</TableHead>
-            <TableHead className="w-10">#</TableHead>
-            <TableHead>{t("results.dancers")}</TableHead>
-            <TableHead className="w-10 text-center">X</TableHead>
-            <TableHead className="w-28 text-right">{t("results.statusAvailable")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((pair, idx) => {
-            const place = finalPlacementMap.get(pair.pairId) ?? (idx + 1);
-            return (
-            <TableRow key={pair.pairId} className={pair.advances ? "bg-green-500/5" : ""}>
-              <TableCell className="text-center font-bold text-[var(--text-secondary)]">{place}.</TableCell>
-              <TableCell className="font-mono font-bold">{pair.startNumber}</TableCell>
-              <TableCell>{pair.dancer1Name}</TableCell>
-              <TableCell className="text-center font-semibold">{pair.voteCount}</TableCell>
-              <TableCell className="text-right">
-                <Badge variant={pair.advances ? "success" : "destructive"}>
-                  {pair.advances ? "Postupuje" : "Nepostupuje"}
-                </Badge>
-              </TableCell>
-            </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
-  );
+  if (detailLoading) return <Skeleton className="h-24 w-full" />;
+
+  if (detailData && detailData.pairs.length > 0) {
+    if (isFinalDetail(detailData)) {
+      return <FinalRoundTable data={detailData as FinalRoundDetail} />;
+    }
+    if (isPreliminaryDetail(detailData)) {
+      return <PrelimRoundTable data={detailData as PreliminaryRoundDetail} />;
+    }
+  }
+
+  return <p className="text-sm text-[var(--text-secondary)]">{t("results.noResults")}</p>;
 }
 
 function RoundAccordion({ round, defaultOpen }: { round: RoundDto; defaultOpen: boolean }) {
@@ -260,6 +164,7 @@ function SectionInlineResults({
   competitionId: string;
 }) {
   const { t } = useLocale();
+  const [detailPairId, setDetailPairId] = useState<string | null>(null);
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ["section-summary", section.id],
@@ -270,71 +175,183 @@ function SectionInlineResults({
 
   const hasSummary = (summary?.rankings?.length ?? 0) > 0;
 
+  // Group rankings by reachedRound, preserving finalPlacement order.
+  // Rendered as sequential segments (Finále → Semifinále → Čtvrtfinále → Základní kolo),
+  // each with its own header. "—" semantics differ per segment (placement vs crosses),
+  // so we label the Součet column accordingly.
+  const ROUND_ORDER: Record<string, number> = {
+    FINAL: 0,
+    SINGLE_ROUND: 0,
+    SEMIFINAL: 1,
+    QUARTER_FINAL: 2,
+    PRELIMINARY: 3,
+  };
+  const ROUND_LABEL: Record<string, string> = {
+    FINAL: t("results.roundFinal"),
+    SINGLE_ROUND: t("results.roundFinal"),
+    SEMIFINAL: t("results.roundSemifinal"),
+    QUARTER_FINAL: t("results.roundQuarterFinal"),
+    PRELIMINARY: t("results.sectionPrelim"),
+  };
+  const isPlacementRound = (r: string) =>
+    r === "FINAL" || r === "SINGLE_ROUND";
+
+  type Ranking = NonNullable<typeof summary>["rankings"][number];
+  type RankingWithPlace = Ranking & { placeLabel: string; placeRank: number };
+  // Skating System Rule 7: in a final round, each couple gets their specific finalPlacement
+  // from the backend (tie-resolved). Range notation ("3.-5.") is only valid in preliminary rounds.
+  const assignTiedPlaces = (rows: Ranking[], offset: number, isFinal: boolean): RankingWithPlace[] => {
+    if (isFinal) {
+      return rows.map(row => ({
+        ...row,
+        placeLabel: `${row.finalPlacement}.`,
+        placeRank: row.finalPlacement,
+      }));
+    }
+    // Non-final: group by totalSum → range notation ("3.-5.") is correct for prelims
+    const out: RankingWithPlace[] = [];
+    let i = 0;
+    while (i < rows.length) {
+      let j = i + 1;
+      if (rows[i].totalSum > 0) {
+        while (j < rows.length && rows[j].totalSum === rows[i].totalSum) j++;
+      }
+      const startRank = offset + i + 1;
+      const endRank = offset + j;
+      const label = j - i === 1 ? `${startRank}.` : `${startRank}.-${endRank}.`;
+      for (let k = i; k < j; k++) {
+        out.push({ ...rows[k], placeLabel: label, placeRank: startRank });
+      }
+      i = j;
+    }
+    return out;
+  };
+  const segments: { round: string; rows: RankingWithPlace[] }[] = [];
+  if (hasSummary) {
+    const sorted = [...summary!.rankings].sort((a, b) => {
+      const ra = ROUND_ORDER[a.reachedRound ?? "PRELIMINARY"] ?? 99;
+      const rb = ROUND_ORDER[b.reachedRound ?? "PRELIMINARY"] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return a.finalPlacement - b.finalPlacement;
+    });
+    const rawSegments: { round: string; rows: Ranking[] }[] = [];
+    for (const row of sorted) {
+      const key = row.reachedRound ?? "PRELIMINARY";
+      const last = rawSegments[rawSegments.length - 1];
+      if (!last || last.round !== key) {
+        rawSegments.push({ round: key, rows: [row] });
+      } else {
+        last.rows.push(row);
+      }
+    }
+    let offset = 0;
+    for (const s of rawSegments) {
+      segments.push({ round: s.round, rows: assignTiedPlaces(s.rows, offset, isPlacementRound(s.round)) });
+      offset += s.rows.length;
+    }
+  }
+
   return (
     <div className="space-y-3">
-      {/* Summary table if available */}
-      {hasSummary && (() => {
-        const danceNames = Object.keys(summary!.rankings[0]?.perDance ?? {});
-        return (
-          <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">{t("results.place")}</TableHead>
-                  <TableHead className="w-10">#</TableHead>
-                  <TableHead>{t("results.dancers")}</TableHead>
-                  <TableHead className="w-16 text-center">{t("results.sum")}</TableHead>
-                  {danceNames.map((d) => (
-                    <TableHead key={d} className="w-14 text-center text-xs">{d}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {summary!.rankings.map((row) => (
-                  <TableRow key={row.pairId} className={cn(row.finalPlacement <= 3 && "bg-yellow-50/30")}>
-                    <TableCell className="text-center">
-                      <span className="flex items-center justify-center gap-1">
-                        <PlacementIcon placement={row.finalPlacement} />
-                        <span className={cn(
-                          "font-bold",
-                          row.finalPlacement === 1 && "text-yellow-600",
-                          row.finalPlacement === 2 && "text-slate-500",
-                          row.finalPlacement === 3 && "text-amber-700",
-                        )}>
-                          {row.finalPlacement}
-                        </span>
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-mono font-bold">{row.startNumber}</TableCell>
-                    <TableCell>
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {row.dancerName ?? `${t("results.pair")} #${row.startNumber}`}
-                      </span>
-                      {row.club && (
-                        <span className="ml-1.5 text-xs text-[var(--text-tertiary)]">{row.club}</span>
-                      )}
-                      {row.tieResolution !== "NONE" && (
-                        <Badge variant="warning" className="ml-2 text-xs">{t("results.tieResolved")}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center font-semibold">
-                      {Object.keys(row.perDance).length > 0 ? row.totalSum : "—"}
-                    </TableCell>
-                    {danceNames.map((d) => (
-                      <TableCell key={d} className="text-center font-mono text-sm text-[var(--text-secondary)]">
-                        {row.perDance[d] ?? "—"}
+      {/* Summary table — segmented by reached round */}
+      {hasSummary && (
+        <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">
+          <Table>
+            <TableBody>
+              {segments.map((segment) => {
+                const danceNames = Object.keys(segment.rows[0]?.perDance ?? {});
+                const placement = isPlacementRound(segment.round);
+                return (
+                  <Fragment key={segment.round}>
+                    {/* Segment header row */}
+                    <TableRow className="bg-[var(--surface-secondary)]">
+                      <TableCell colSpan={4 + danceNames.length} className="py-2">
+                        <div className="flex items-baseline gap-3">
+                          <span className="text-sm font-semibold text-[var(--text-primary)]">
+                            {ROUND_LABEL[segment.round] ?? segment.round}
+                          </span>
+                          <span className="text-xs text-[var(--text-tertiary)]">
+                            {placement
+                              ? t("results.segmentPlacementHint")
+                              : t("results.segmentCallbackHint")}
+                          </span>
+                        </div>
                       </TableCell>
+                    </TableRow>
+                    {/* Column headers per segment (semantics differ) */}
+                    <TableRow>
+                      <TableHead className="w-12 text-center">{t("results.place")}</TableHead>
+                      <TableHead className="w-10">#</TableHead>
+                      <TableHead>{t("results.dancers")}</TableHead>
+                      <TableHead className="w-16 text-center">
+                        {placement ? t("results.sum") : t("results.crossesTotal")}
+                      </TableHead>
+                      {danceNames.map((d) => (
+                        <TableHead key={d} className="w-14 text-center text-xs">{d}</TableHead>
+                      ))}
+                    </TableRow>
+                    {segment.rows.map((row) => (
+                      <TableRow
+                        key={row.pairId}
+                        onClick={() => setDetailPairId(row.pairId)}
+                        className={cn(
+                          "cursor-pointer transition-colors hover:bg-[var(--surface-secondary)]",
+                          placement && row.placeRank <= 3 && "bg-yellow-50/30",
+                        )}
+                      >
+                        <TableCell className="text-center">
+                          <span className="flex items-center justify-center gap-1">
+                            {placement && <PlacementIcon placement={row.placeRank} />}
+                            <span className={cn(
+                              "font-bold",
+                              placement && row.placeRank === 1 && "text-yellow-600",
+                              placement && row.placeRank === 2 && "text-slate-500",
+                              placement && row.placeRank === 3 && "text-amber-700",
+                            )}>
+                              {row.placeLabel}
+                            </span>
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-mono font-bold">{row.startNumber}</TableCell>
+                        <TableCell>
+                          <span className="font-medium text-[var(--text-primary)]">
+                            {row.dancerName ?? `${t("results.pair")} #${row.startNumber}`}
+                          </span>
+                          {row.club && (
+                            <span className="ml-1.5 text-xs text-[var(--text-tertiary)]">{row.club}</span>
+                          )}
+                          {row.tieResolution !== "NONE" && (
+                            <Badge variant="warning" className="ml-2 text-xs">{t("results.tieResolved")}</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center font-semibold">
+                          {Object.keys(row.perDance).length > 0 ? row.totalSum : "—"}
+                        </TableCell>
+                        {danceNames.map((d) => (
+                          <TableCell key={d} className="text-center font-mono text-sm text-[var(--text-secondary)]">
+                            {row.perDance[d] ?? "—"}
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        );
-      })()}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* All rounds — always shown */}
       <RoundFallbackView competitionId={competitionId} sectionId={section.id} />
+
+      <PairDetailModal
+        open={detailPairId !== null}
+        sectionId={section.id}
+        pairId={detailPairId}
+        onClose={() => setDetailPairId(null)}
+        useThemeVars
+      />
     </div>
   );
 }

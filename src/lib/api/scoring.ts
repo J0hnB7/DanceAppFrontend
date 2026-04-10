@@ -51,6 +51,7 @@ export interface PairFinalResultRow {
   perDance: Record<string, number>;
   dancerName?: string;
   club?: string;
+  reachedRound?: string;
 }
 
 export interface SectionFinalSummaryResponse {

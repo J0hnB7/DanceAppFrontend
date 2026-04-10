@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,8 @@ const labelCls = "mb-1 block text-xs font-semibold text-[#6B7280] uppercase trac
 export default function PublicCompetitionsPage() {
   const router = useRouter();
   const { t, locale } = useLocale();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -108,6 +110,8 @@ export default function PublicCompetitionsPage() {
   const handleFilter = () => {
     setActiveFilters({ search, status: statusFilter, from: dateFrom, to: dateTo });
   };
+
+  if (!mounted) return null;
 
   return (
     <>

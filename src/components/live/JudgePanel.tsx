@@ -4,8 +4,7 @@ import { useCallback, useState } from 'react'
 import { X } from 'lucide-react'
 import { useLocale } from '@/contexts/locale-context'
 import { JudgeCard } from './JudgeCard'
-import apiClient from '@/lib/api-client'
-import { liveApi, type JudgeStatusDto } from '@/lib/api/live'
+import { liveApi, type JudgeStatusDto, type JudgeMarksResponse } from '@/lib/api/live'
 import { useLiveStore } from '@/store/live-store'
 import type { HeatResult, JudgeStatus } from '@/store/live-store'
 import { useToast } from '@/hooks/use-toast'
@@ -25,9 +24,8 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
   const isHydrating = useLiveStore((s) => s.isHydrating)
   const judgeOnline = useLiveStore((s) => s.judgeOnline)
   const [selectedJudge, setSelectedJudge] = useState<JudgeStatusDto | null>(null)
-  const [callbackPairIds, setCallbackPairIds] = useState<string[] | null>(null)
-  const [pairStartNumbers, setPairStartNumbers] = useState<Record<string, number>>({})
-  const [loadingCallbacks, setLoadingCallbacks] = useState(false)
+  const [judgeMarks, setJudgeMarks] = useState<JudgeMarksResponse | null>(null)
+  const [loadingMarks, setLoadingMarks] = useState(false)
 
   const submittedCount = judgeDetails.filter(
     (j) => (judgeStatuses[j.judgeId] ?? j.status) === 'submitted'
@@ -51,40 +49,23 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
       const judge = judgeDetails.find((j) => j.judgeId === judgeId)
       if (!judge) return
       setSelectedJudge(judge)
-      setCallbackPairIds(null)
-      setPairStartNumbers({})
-      setLoadingCallbacks(true)
+      setJudgeMarks(null)
+      setLoadingMarks(true)
       try {
-        const [ids, pairsRes] = await Promise.all([
-          liveApi.getJudgeCallbacks(activeRoundId, judgeId),
-          apiClient
-            .get<{ content: Array<{ id: string; startNumber: number }> } | Array<{ id: string; startNumber: number }>>(
-              `/competitions/${competitionId}/pairs`,
-              { params: { size: 500 } }
-            )
-            .then((r) => (Array.isArray(r.data) ? r.data : r.data.content))
-            .catch(() => [] as Array<{ id: string; startNumber: number }>),
-        ])
-        setCallbackPairIds(ids)
-        const numMap: Record<string, number> = {}
-        for (const p of pairsRes) numMap[p.id] = p.startNumber
-        // also seed from heatResults in case pairs list misses some
-        for (const r of heatResults ?? []) {
-          if (!(r.pairId in numMap)) numMap[r.pairId] = r.pairNumber
-        }
-        setPairStartNumbers(numMap)
+        const marks = await liveApi.getJudgeMarks(activeRoundId, judgeId)
+        setJudgeMarks(marks)
       } catch {
-        setCallbackPairIds([])
+        setJudgeMarks({ roundType: 'PRELIMINARY', dances: [], pairs: [], marks: {} })
       } finally {
-        setLoadingCallbacks(false)
+        setLoadingMarks(false)
       }
     },
-    [activeRoundId, heatId, judgeDetails, competitionId, heatResults]
+    [activeRoundId, judgeDetails]
   )
 
   const closeModal = useCallback(() => {
     setSelectedJudge(null)
-    setCallbackPairIds(null)
+    setJudgeMarks(null)
   }, [])
 
   const allDone = submittedCount === totalCount && totalCount > 0
@@ -143,7 +124,7 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
         </div>
       </div>
 
-      {/* Judge callbacks modal */}
+      {/* Judge marks modal */}
       {selectedJudge && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
@@ -151,7 +132,7 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
           onClick={closeModal}
         >
           <div
-            className="relative w-full max-w-sm rounded-[18px] border p-6 shadow-2xl"
+            className="relative w-full max-w-lg rounded-[18px] border p-6 shadow-2xl"
             style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -180,40 +161,75 @@ export function JudgePanel({ judgeStatuses, judgeDetails, competitionId, heatId,
                 onClick={closeModal}
                 className="shrink-0 rounded-[8px] p-1 transition-colors hover:bg-[rgba(255,255,255,.07)]"
                 style={{ color: 'var(--text-tertiary)' }}
+                aria-label="Zavřít"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Content */}
-            {loadingCallbacks ? (
+            {loadingMarks ? (
               <div className="flex items-center justify-center py-8">
                 <div
-                  className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
+                  className="h-6 w-6 animate-spin rounded-full border-2"
                   style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
                 />
               </div>
-            ) : callbackPairIds && callbackPairIds.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {callbackPairIds.map((pairId) => {
-                  const num = pairStartNumbers[pairId]
-                  return (
-                    <div
-                      key={pairId}
-                      className="flex h-9 min-w-[42px] items-center justify-center rounded-[10px] border px-3 text-[14px] font-bold"
-                      style={{
-                        fontFamily: 'var(--font-sora)',
-                        background: 'rgba(48,209,88,.08)',
-                        borderColor: 'rgba(48,209,88,.22)',
-                        color: 'var(--success)',
-                      }}
-                    >
-                      {num !== undefined ? num : pairId.slice(0, 6)}
-                    </div>
-                  )
-                })}
+            ) : judgeMarks && judgeMarks.dances.length > 0 && judgeMarks.pairs.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '4px 10px 8px 0', color: 'var(--text-tertiary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        #
+                      </th>
+                      {judgeMarks.dances.map((d) => (
+                        <th key={d} style={{ padding: '4px 8px 8px', color: 'var(--text-tertiary)', fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {d.length > 5 ? d.slice(0, 4) + '.' : d}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {judgeMarks.pairs.map((pair, i) => (
+                      <tr
+                        key={pair.id}
+                        style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.03)' }}
+                      >
+                        <td style={{ padding: '5px 10px 5px 0', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-sora)', whiteSpace: 'nowrap' }}>
+                          {pair.startNumber}
+                        </td>
+                        {judgeMarks.dances.map((d) => {
+                          const val = judgeMarks.marks[d]?.[pair.id]
+                          const isPrelim = judgeMarks.roundType === 'PRELIMINARY'
+                          return (
+                            <td key={d} style={{ padding: '5px 8px', textAlign: 'center' }}>
+                              {isPrelim ? (
+                                val === 1 ? (
+                                  <span style={{ color: 'var(--success)', fontWeight: 700, fontSize: 15 }}>✓</span>
+                                ) : (
+                                  <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>—</span>
+                                )
+                              ) : val !== undefined ? (
+                                <span style={{
+                                  fontWeight: 700,
+                                  fontFamily: 'var(--font-sora)',
+                                  color: val === 1 ? '#FFD60A' : val <= 3 ? 'var(--accent)' : 'var(--text-secondary)',
+                                }}>
+                                  {val}
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                              )}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : callbackPairIds && callbackPairIds.length === 0 ? (
+            ) : judgeMarks ? (
               <p className="text-center text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
                 {t('live.noCallbacks')}
               </p>

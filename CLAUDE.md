@@ -150,6 +150,18 @@ const realHeatId = heatIdMap[syntheticHeatId]  // VŽDY takhle
 `IncidentPanel` — incidenty
 `PresentationOverlay` — fullscreen prezentační mód
 
+## Results detail — ČSTS-style tables (2026-04-09)
+
+Endpoint: `GET /rounds/{roundId}/detail` → `roundsApi.getRoundDetail(roundId)` vrací `RoundDetail` union (`PreliminaryRoundDetail | FinalRoundDetail`). Rozliš přes type guards `isPreliminaryDetail()` / `isFinalDetail()` z `@/lib/api/rounds`.
+
+Komponenty v `src/components/results/`:
+- `PrelimRoundTable` — callback `x`/`-` grid (používá pro PRELIMINARY, QUARTER_FINAL, SEMIFINAL). Sticky první 3 sloupce na mobile, `font-mono text-base` (iOS anti-zoom), `scope` atributy.
+- `FinalRoundTable` — dual-row buňky: raw marks + `calculatedPlacement`. Trophy/Medal ikony pro top 3.
+
+`results/page.tsx` `RoundContent` používá `useQuery(["round-detail", round.id], ...)` a podle type guard volí komponentu. **Neimportuj** staré `RoundResultsResponse` ani `FINAL_TYPES` — odstraněno.
+
+i18n klíče: `results.prelimDetailCaption`, `results.finalDetailCaption` (cs + en).
+
 ## Judge scoring — pravidla chování
 
 - **Čísla párů vždy seřazená** od nejmenšího po největší (`startNumber` ascending) — v prelim i final gridu

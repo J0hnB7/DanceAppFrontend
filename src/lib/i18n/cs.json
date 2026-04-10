@@ -851,6 +851,10 @@
     "approveClose": "Schválit a uzavřít kolo",
     "dancers": "Tančící",
     "sum": "Součet",
+    "crossesTotal": "Křížků",
+    "sectionPrelim": "Základní kolo",
+    "segmentPlacementHint": "součet umístění v jednotlivých tancích (nižší = lepší)",
+    "segmentCallbackHint": "počet křížků od porotců v daném kole (vyšší = lepší)",
     "noRoundsStarted": "Zatím nebyla zahájena žádná kola.",
     "noCategories": "Žádné kategorie k zobrazení.",
     "diplomas": "Diplomy",
@@ -906,7 +910,9 @@
     "roundPending": "Čeká",
     "judgeMatrix": "Hodnocení porotců",
     "viewFull": "Celý přehled",
-    "pairs": "párů"
+    "pairs": "párů",
+    "prelimDetailCaption": "Detailní výsledky kola {{round}} — callback marks",
+    "finalDetailCaption": "Detailní výsledky kola {{round}} — placement marks"
   },
   "diplomas": {
     "title": "Diplomy",

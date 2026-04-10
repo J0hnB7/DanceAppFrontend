@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import type { SectionDto } from "@/lib/api/sections";
+import { PairDetailModal } from "@/components/results/pair-detail-modal";
 
 interface PairResultRow {
   pairId: string;
@@ -14,6 +15,77 @@ interface PairResultRow {
   perDance: Record<string, number>;
   dancerName?: string;
   club?: string;
+  reachedRound?: string;
+}
+
+const ROUND_ORDER: Record<string, number> = {
+  FINAL: 0,
+  SINGLE_ROUND: 0,
+  SEMIFINAL: 1,
+  QUARTER_FINAL: 2,
+  PRELIMINARY: 3,
+};
+const ROUND_LABEL: Record<string, string> = {
+  FINAL: "Finále",
+  SINGLE_ROUND: "Finále",
+  SEMIFINAL: "Semifinále",
+  QUARTER_FINAL: "Čtvrtfinále",
+  PRELIMINARY: "Základní kolo",
+};
+const isPlacementRound = (r: string) => r === "FINAL" || r === "SINGLE_ROUND";
+
+type TiedRow = PairResultRow & { placeLabel: string; placeRank: number };
+
+function assignTiedPlaces(rows: PairResultRow[], offset: number, isFinal: boolean): TiedRow[] {
+  // Skating System Rule 7: in a final round, each couple gets their specific finalPlacement
+  // from the backend (tie-resolved). Range notation is only valid in preliminary rounds.
+  if (isFinal) {
+    return rows.map(row => ({
+      ...row,
+      placeLabel: `${row.finalPlacement}.`,
+      placeRank: row.finalPlacement,
+    }));
+  }
+  // Non-final: group by totalSum → range notation is correct for prelims
+  const out: TiedRow[] = [];
+  let i = 0;
+  while (i < rows.length) {
+    let j = i + 1;
+    if (rows[i].totalSum > 0) {
+      while (j < rows.length && rows[j].totalSum === rows[i].totalSum) j++;
+    }
+    const startRank = offset + i + 1;
+    const endRank = offset + j;
+    const label = j - i === 1 ? `${startRank}.` : `${startRank}.-${endRank}.`;
+    for (let k = i; k < j; k++) {
+      out.push({ ...rows[k], placeLabel: label, placeRank: startRank });
+    }
+    i = j;
+  }
+  return out;
+}
+
+function segmentByRound(rows: PairResultRow[]): { round: string; rows: TiedRow[] }[] {
+  const sorted = [...rows].sort((a, b) => {
+    const ra = ROUND_ORDER[a.reachedRound ?? "PRELIMINARY"] ?? 99;
+    const rb = ROUND_ORDER[b.reachedRound ?? "PRELIMINARY"] ?? 99;
+    if (ra !== rb) return ra - rb;
+    return a.finalPlacement - b.finalPlacement;
+  });
+  const raw: { round: string; rows: PairResultRow[] }[] = [];
+  for (const row of sorted) {
+    const key = row.reachedRound ?? "PRELIMINARY";
+    const last = raw[raw.length - 1];
+    if (!last || last.round !== key) raw.push({ round: key, rows: [row] });
+    else last.rows.push(row);
+  }
+  const out: { round: string; rows: TiedRow[] }[] = [];
+  let offset = 0;
+  for (const s of raw) {
+    out.push({ round: s.round, rows: assignTiedPlaces(s.rows, offset, isPlacementRound(s.round)) });
+    offset += s.rows.length;
+  }
+  return out;
 }
 
 interface SectionSummary {
@@ -38,6 +110,7 @@ function matchesSearch(r: PairResultRow, q: string): boolean {
 function SectionResultCard({ section, searchQuery }: { section: SectionDto; searchQuery: string }) {
   const [manualOpen, setManualOpen] = useState<boolean | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [detailPairId, setDetailPairId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<SectionSummary>({
     queryKey: ["section-summary", section.id],
@@ -320,46 +393,64 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                     </tr>
                   </thead>
                   <tbody>
-                    {sorted.map((r) => {
-                      const rs = RANK_STYLES[r.finalPlacement];
+                    {segmentByRound(sorted).flatMap((segment) => [
+                      <tr key={`seg-${segment.round}`} style={{ background: "#F9FAFB" }}>
+                        <td colSpan={danceNames.length > 0 ? 4 : 3} style={{ padding: "10px 12px", borderTop: "1px solid #E5E7EB", borderBottom: "1px solid #E5E7EB" }}>
+                          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".85rem", color: "#111827" }}>
+                              {ROUND_LABEL[segment.round] ?? segment.round}
+                            </span>
+                            <span style={{ fontSize: ".7rem", color: "#6B7280" }}>
+                              {isPlacementRound(segment.round)
+                                ? "součet umístění (nižší = lepší)"
+                                : "počet křížků (vyšší = lepší)"}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>,
+                      ...segment.rows.map((r) => {
+                      const segIsPlacement = isPlacementRound(segment.round);
+                      const rs = segIsPlacement ? RANK_STYLES[r.placeRank] : undefined;
                       const isExpanded = expandedRow === r.pairId;
-                      const isTop = r.finalPlacement <= 3;
+                      const isTop = segIsPlacement && r.placeRank <= 3;
                       const isMatch = searchQuery ? matchesSearch(r, searchQuery) : false;
                       return (
                         <React.Fragment key={r.pairId}>
                           <tr
+                            onClick={() => setDetailPairId(r.pairId)}
                             style={{
                               background: isMatch
                                 ? "rgba(79,70,229,.06)"
                                 : isTop ? (rs?.bg ?? "transparent") : "transparent",
                               borderBottom: isExpanded ? "none" : "1px solid #F3F4F6",
                               outline: isMatch ? "2px solid rgba(79,70,229,.2)" : "none",
+                              cursor: "pointer",
                             }}
                           >
                             <td style={{ padding: "10px 10px", verticalAlign: "middle" }}>
                               <div
                                 style={{
-                                  width: 28,
+                                  minWidth: 40,
                                   height: 28,
-                                  borderRadius: "50%",
-                                  background:
-                                    r.finalPlacement === 1
-                                      ? "#EAB308"
-                                      : r.finalPlacement === 2
-                                      ? "#9CA3AF"
-                                      : r.finalPlacement === 3
-                                      ? "#CD7F32"
-                                      : "#F3F4F6",
-                                  display: "flex",
+                                  borderRadius: 14,
+                                  padding: "0 10px",
+                                  background: segIsPlacement && r.placeRank === 1
+                                    ? "#EAB308"
+                                    : segIsPlacement && r.placeRank === 2
+                                    ? "#9CA3AF"
+                                    : segIsPlacement && r.placeRank === 3
+                                    ? "#CD7F32"
+                                    : "#F3F4F6",
+                                  display: "inline-flex",
                                   alignItems: "center",
                                   justifyContent: "center",
                                   fontSize: ".75rem",
                                   fontWeight: 800,
-                                  color: r.finalPlacement <= 3 ? "#fff" : "#6B7280",
+                                  color: isTop ? "#fff" : "#6B7280",
                                   flexShrink: 0,
                                 }}
                               >
-                                {r.finalPlacement}
+                                {r.placeLabel}
                               </div>
                             </td>
                             <td style={{ padding: "10px 10px", color: "#111827", fontWeight: isTop ? 700 : 500, verticalAlign: "middle" }}>
@@ -406,7 +497,10 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                             {danceNames.length > 0 && (
                               <td style={{ padding: "10px 10px", textAlign: "center", verticalAlign: "middle" }}>
                                 <button
-                                  onClick={() => setExpandedRow(isExpanded ? null : r.pairId)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedRow(isExpanded ? null : r.pairId);
+                                  }}
                                   style={{
                                     background: "none",
                                     border: "1px solid #E5E7EB",
@@ -465,7 +559,8 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                           )}
                         </React.Fragment>
                       );
-                    })}
+                    }),
+                    ])}
                   </tbody>
                 </table>
               </div>
@@ -473,6 +568,12 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
           )}
         </div>
       )}
+      <PairDetailModal
+        open={detailPairId !== null}
+        sectionId={section.id}
+        pairId={detailPairId}
+        onClose={() => setDetailPairId(null)}
+      />
     </div>
   );
 }

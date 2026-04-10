@@ -851,6 +851,10 @@
     "approveClose": "Approve and close round",
     "dancers": "Dancers",
     "sum": "Sum",
+    "crossesTotal": "Marks",
+    "sectionPrelim": "Preliminary round",
+    "segmentPlacementHint": "sum of placements per dance (lower = better)",
+    "segmentCallbackHint": "number of callback marks from judges in this round (higher = better)",
     "noRoundsStarted": "No rounds started yet.",
     "noCategories": "No categories to display.",
     "diplomas": "Diplomas",
@@ -906,7 +910,9 @@
     "roundPending": "Pending",
     "judgeMatrix": "Judge placements",
     "viewFull": "Full details",
-    "pairs": "pairs"
+    "pairs": "pairs",
+    "prelimDetailCaption": "Detailed results for {{round}} — callback marks",
+    "finalDetailCaption": "Detailed results for {{round}} — placement marks"
   },
   "diplomas": {
     "title": "Diplomas",

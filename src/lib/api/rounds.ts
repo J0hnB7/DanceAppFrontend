@@ -51,6 +51,68 @@ export interface PreliminaryResultResponse {
   advancedPairIds: string[];
 }
 
+export interface PreliminaryRoundDetail {
+  roundId: string;
+  roundLabel: string;
+  dances: string[];
+  judges: { tokenId: string; label: string }[];
+  pairs: {
+    pairId: string;
+    startNumber: number;
+    dancerName: string;
+    club: string | null;
+    place: string;
+    marksByDance: Record<string, string>;
+    total: number;
+  }[];
+}
+
+export interface FinalRoundDetail {
+  roundId: string;
+  roundLabel: string;
+  dances: string[];
+  judges: { tokenId: string; label: string }[];
+  pairs: {
+    pairId: string;
+    startNumber: number;
+    dancerName: string;
+    club: string | null;
+    finalPlace: number;
+    marksByDance: Record<string, { rawMarks: string; calculatedPlacement: number }>;
+    totalSum: number;
+  }[];
+}
+
+export type RoundDetail = PreliminaryRoundDetail | FinalRoundDetail;
+
+export interface PairDetail {
+  pairId: string;
+  startNumber: number;
+  dancerName: string;
+  club: string | null;
+  rounds: PairDetailRoundBlock[];
+}
+
+export interface PairDetailRoundBlock {
+  roundId: string;
+  roundLabel: string;
+  roundType: RoundType;
+  placementRound: boolean;
+  judges: { tokenId: string; label: string }[];
+  dances: string[];
+  marksByDance: Record<string, { marks: string; calculatedPlacement: number | null }>;
+  place: string;
+  totalSum: number | null;
+}
+
+export function isPreliminaryDetail(data: RoundDetail): data is PreliminaryRoundDetail {
+  return data.pairs.length > 0 && "total" in data.pairs[0];
+}
+
+export function isFinalDetail(data: RoundDetail): data is FinalRoundDetail {
+  return data.pairs.length > 0 && "finalPlace" in data.pairs[0];
+}
+
 export const roundsApi = {
   /** Backend: GET /competitions/{cId}/sections/{sId}/rounds */
   list: (competitionId: string, sectionId: string) =>
@@ -88,6 +150,14 @@ export const roundsApi = {
   /** Backend: GET /rounds/{roundId}/preliminary/export — XLSX audit export */
   exportPreliminary: (roundId: string) =>
     apiClient.get(`/rounds/${roundId}/preliminary/export`, { responseType: 'blob' }).then((r) => r.data as Blob),
+
+  /** Backend: GET /rounds/{roundId}/detail — ČSTS-style round detail (prelim or final) */
+  getRoundDetail: (roundId: string) =>
+    apiClient.get<RoundDetail>(`/rounds/${roundId}/detail`).then((r) => r.data),
+
+  /** Backend: GET /sections/{sectionId}/pairs/{pairId}/detail — per-pair ČSTS audit across all rounds (public) */
+  getPairDetail: (sectionId: string, pairId: string) =>
+    apiClient.get<PairDetail>(`/sections/${sectionId}/pairs/${pairId}/detail`).then((r) => r.data),
 
   // Legacy/mock-only endpoints kept for backward compat with mock layer
   get: (roundId: string) =>
