@@ -220,6 +220,25 @@ npx tsc --noEmit
 - Všechny endpointy mají prefix `/api/v1/`
 - API moduly: `src/lib/api/` — `competitions`, `rounds`, `sections`, `pairs`, `live`, `schedule`, `judge-tokens`, `scoring`, `auth`, `payments`, `gdpr`, atd.
 
+## Playwright — login pattern (2026-04-10)
+
+After `page.click('button[type="submit"]')` on login form:
+- Use `page.wait_for_url(lambda url: "login" not in url, timeout=15000)` — NOT `wait_for_load_state("networkidle")`
+- `networkidle` fires before the Next.js redirect completes; `wait_for_url` is reliable
+- Section accordions on results page expand via `page.locator("text=SectionName").first.click()`, not `button[aria-expanded]`
+
+## Modal accessibility — Escape key pattern
+
+All dialogs/modals must close on Escape. Standard pattern:
+```ts
+useEffect(() => {
+  if (!open) return;
+  const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+  window.addEventListener("keydown", handler);
+  return () => window.removeEventListener("keydown", handler);
+}, [open, onClose]);
+```
+
 ## Hydration (Next.js SSR)
 
 - Locale mismatch: server renders DEFAULT_LOCALE, client reads localStorage → `suppressHydrationWarning` **nestačí** pro text nodes. Použij `mounted` guard: `const [mounted, setMounted] = useState(false); useEffect(() => setMounted(true), []);` a renderuj locale-závislý text jen když `mounted === true`.
