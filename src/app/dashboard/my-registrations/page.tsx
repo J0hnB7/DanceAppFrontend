@@ -293,7 +293,7 @@ export default function MyRegistrationsPage() {
   });
 
   // Find the next upcoming registration (soonest future date)
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
   const upcomingReg = registrations
     .filter((r) =>
       ["DRAFT", "PUBLISHED", "REGISTRATION_OPEN", "IN_PROGRESS"].includes(r.competitionStatus) &&

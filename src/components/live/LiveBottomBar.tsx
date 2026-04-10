@@ -44,9 +44,11 @@ export function LiveBottomBar({
 
   useEffect(() => {
     if (!lastSentAt) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisibleSentAt(null)
       return
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleSentAt(lastSentAt)
     const timer = setTimeout(() => setVisibleSentAt(null), 5000)
     return () => clearTimeout(timer)

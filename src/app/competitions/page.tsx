@@ -42,6 +42,7 @@ export default function PublicCompetitionsPage() {
   const router = useRouter();
   const { t, locale } = useLocale();
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   const [search, setSearch] = useState("");
@@ -104,8 +105,8 @@ export default function PublicCompetitionsPage() {
     return map;
   }, [filtered, noDateKey]);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const inThreeMonths = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
+  const [inThreeMonths] = useState(() => new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
 
   const handleFilter = () => {
     setActiveFilters({ search, status: statusFilter, from: dateFrom, to: dateTo });

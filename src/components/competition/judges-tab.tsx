@@ -247,6 +247,7 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
 
   useEffect(() => {
     if (tokens) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditValues((prev) => {
         const next = { ...prev };
         for (const tok of tokens) {

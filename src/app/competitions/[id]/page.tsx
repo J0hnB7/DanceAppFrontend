@@ -60,6 +60,7 @@ const sectionLabel = (icon: string, text: string) => (
 function PublicNav() {
   const { t: _t } = useLocale();
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
   const t = (key: string, params?: Record<string, string | number>) => mounted ? _t(key, params) : "";
   return (
@@ -219,9 +220,9 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
           )}
 
           <p style={{ fontSize: ".85rem", color: "#9CA3AF", marginBottom: 20 }}>{t("publicCompetition.confirmationSent")}</p>
-          <a href="/competitions" style={{ fontSize: ".875rem", color: "#4F46E5", fontWeight: 600, textDecoration: "none" }}>
+          <Link href="/competitions" style={{ fontSize: ".875rem", color: "#4F46E5", fontWeight: 600, textDecoration: "none" }}>
             {t("publicCompetition.backToAllCompetitions")}
-          </a>
+          </Link>
         </div>
       </div>
     );

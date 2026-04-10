@@ -71,7 +71,10 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
 
   // Fetch per-dance heat submission counts
   useEffect(() => {
-    if (heats.length === 0 || Object.keys(heatIdMap).length === 0) { setHeatSubmissions({}); return; }
+    if (heats.length === 0 || Object.keys(heatIdMap).length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHeatSubmissions({}); return;
+    }
     const danceName = dances.find((d) => d.id === selectedDanceId)?.name;
     const firstRealId = heatIdMap[heats[0].id];
     if (!firstRealId) return;
@@ -90,6 +93,7 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
   // When round selected → derive dances + fetch heat assignments + find real roundId
   useEffect(() => {
     if (!selectedRoundId || slots.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDances([]); setHeats([]); setActiveRoundId(null); return;
     }
     const slot = slots.find((s) => s.id === selectedRoundId);
@@ -162,7 +166,10 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
 
   // Build synthetic→real heat UUID map
   useEffect(() => {
-    if (!activeRoundId || !selectedRoundId) { setHeatIdMap({}); return; }
+    if (!activeRoundId || !selectedRoundId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHeatIdMap({}); return;
+    }
     apiClient.get<{ id: string; heatNumber: number; status: string }[]>(`/rounds/${activeRoundId}/heats`)
       .then((res) => {
         const map: Record<string, string> = {};

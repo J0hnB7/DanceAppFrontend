@@ -27,12 +27,8 @@ function writeQueue(queue: QueuedRequest[]) {
 }
 
 export function useOfflineQueue() {
-  const [queue, setQueue] = useState<QueuedRequest[]>([]);
+  const [queue, setQueue] = useState<QueuedRequest[]>(() => readQueue());
   const [syncing, setSyncing] = useState(false);
-
-  useEffect(() => {
-    setQueue(readQueue());
-  }, []);
 
   const enqueue = useCallback((url: string, method: "POST" | "PUT", data: unknown) => {
     const item: QueuedRequest = {

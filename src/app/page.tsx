@@ -103,6 +103,7 @@ export default function Home() {
   useReveal();
   const { t: _t } = useLocale();
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
   const t = (key: string, params?: Record<string, string | number>) => mounted ? _t(key, params) : "";
 

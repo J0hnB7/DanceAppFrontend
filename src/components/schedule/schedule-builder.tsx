@@ -284,7 +284,7 @@ function RoundCard({
     } catch {
       toast({ title: t("scheduleBuilder.drawError"), variant: "destructive" });
     }
-  }, [competitionId, slot.id, redrawQuery, toast]);
+  }, [competitionId, slot.id, redrawQuery, toast, t]);
   const updateStatus = useMutation({
     mutationFn: (status: BlockLiveStatus) => scheduleApi.updateBlockStatus(competitionId, slot.id, status),
     onError: () => toast({ title: t("scheduleBuilder.updateStatusError"), variant: "destructive" }),

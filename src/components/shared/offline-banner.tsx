@@ -5,7 +5,9 @@ import { WifiOff, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function OfflineBanner() {
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof window !== "undefined" ? navigator.onLine : true
+  );
   const [wasOffline, setWasOffline] = useState(false);
   const [showReconnected, setShowReconnected] = useState(false);
 
@@ -25,8 +27,7 @@ export function OfflineBanner() {
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-    // Initialize from current state
-    setIsOnline(navigator.onLine);
+    // Initialize from current state (done via lazy useState initializer)
 
     return () => {
       window.removeEventListener("online", handleOnline);

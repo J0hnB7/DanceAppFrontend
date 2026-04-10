@@ -156,9 +156,9 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
             <a href={`/competitions/${id}`} style={{ display: "block", textAlign: "center", padding: "10px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: ".875rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
               {t("publicReg.backToCompetition")}
             </a>
-            <a href="/competitions" style={{ display: "block", textAlign: "center", fontSize: ".8rem", color: "#6B7280", textDecoration: "none" }}>
+            <Link href="/competitions" style={{ display: "block", textAlign: "center", fontSize: ".8rem", color: "#6B7280", textDecoration: "none" }}>
               {t("publicCompetition.backToAllCompetitions")}
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -176,9 +176,9 @@ export default function PairRegistrationPage({ params }: { params: Promise<{ id:
           <a href={`/competitions/${id}`} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".875rem", color: "#4F46E5", fontWeight: 600, textDecoration: "none" }}>
             <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {t("publicReg.backToCompetitionShort")}
           </a>
-          <a href="/competitions" style={{ fontSize: ".8rem", color: "#6B7280", textDecoration: "none" }}>
+          <Link href="/competitions" style={{ fontSize: ".8rem", color: "#6B7280", textDecoration: "none" }}>
             {t("publicCompetition.backToAllCompetitions")}
-          </a>
+          </Link>
         </div>
 
         {/* Competition header */}
@@ -402,11 +402,11 @@ function PublicNav() {
   return (
     <nav style={{ borderBottom: "1px solid #E5E7EB", background: "#fff", height: 60, display: "flex", alignItems: "center" }}>
       <div style={{ maxWidth: 896, margin: "0 auto", width: "100%", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <a href="/competitions" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+        <Link href="/competitions" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
           <Trophy style={{ width: 18, height: 18, color: "#4F46E5" }} />
           <span style={{ fontWeight: 700, fontSize: ".9rem", color: "#111827" }}>ProPodium</span>
-        </a>
+        </Link>
         <a href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
           {t("publicReg.organizerLogin")}
         </a>

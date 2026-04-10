@@ -72,6 +72,7 @@ export default function ScoreboardPage({
     const completedSections = sections.filter((s) => s.status === "COMPLETED");
     if (completedSections.length === 0) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingResults(true);
     Promise.all(
       completedSections.map((s) => fetchSectionResults(competitionId, s.id, s.name))

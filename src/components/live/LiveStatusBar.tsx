@@ -30,7 +30,11 @@ export function LiveStatusBar({
   incidentCount,
 }: Props) {
   const [time, setTime] = useState(() => new Date())
-  const [isDark, setIsDark] = useState(true)
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== "undefined"
+      ? document.documentElement.classList.contains("dark")
+      : true
+  )
   const router = useRouter()
   const { t } = useLocale()
 
@@ -39,9 +43,7 @@ export function LiveStatusBar({
     return () => clearInterval(id)
   }, [])
 
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains('dark'))
-  }, [])
+  // isDark initialized via lazy useState from document; no effect needed
 
   const toggleTheme = () => {
     const next = !isDark

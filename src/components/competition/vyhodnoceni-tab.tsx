@@ -399,6 +399,8 @@ function SectionResults({
     enabled: view === "vysledky",
   });
 
+  const [exporting, setExporting] = useState(false);
+
   if (roundsLoading) return <div className="py-8 flex justify-center"><Spinner /></div>;
 
   if (!visibleRounds.length && !summary?.rankings?.length) {
@@ -419,7 +421,6 @@ function SectionResults({
     })),
   ];
 
-  const [exporting, setExporting] = useState(false);
   const handleExport = async () => {
     setExporting(true);
     try {

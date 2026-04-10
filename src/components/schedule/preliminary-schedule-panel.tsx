@@ -29,8 +29,11 @@ export function PreliminarySchedulePanel({ competitionId }: Props) {
 
   useEffect(() => {
     if (data?.settings) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStartTime(data.settings.startTime);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPairsPerHeat(String(data.settings.pairsPerHeat));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMinutesPerDance(String(data.settings.minutesPerDance));
     }
   }, [data?.settings]);

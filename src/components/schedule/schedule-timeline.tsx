@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Clock, PlayCircle, CheckCircle2, Trophy, Pause, Users, ChevronRight, Loader2,
@@ -329,12 +329,12 @@ export function ScheduleTimeline({
   canManageRounds = false,
 }: ScheduleTimelineProps) {
   const { slots, setSlots, setScheduleStatus, setSlotsHash, slotsHash } = useScheduleStore();
-  const nowRef = useRef(new Date());
+  const [now, setNow] = useState(() => new Date());
 
   // Refresh now every minute
   useEffect(() => {
     const id = setInterval(() => {
-      nowRef.current = new Date();
+      setNow(new Date());
     }, 60000);
     return () => clearInterval(id);
   }, []);
@@ -413,8 +413,6 @@ export function ScheduleTimeline({
       </div>
     );
   }
-
-  const now = nowRef.current;
 
   const runningSlot = slots.find((s) => s.liveStatus === "RUNNING");
   const nextSlot = slots.find((s) => {
