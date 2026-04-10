@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { roundsApi, type PairDetail } from "@/lib/api/rounds";
 import { X } from "lucide-react";
@@ -17,6 +18,13 @@ interface Props {
 }
 
 export function PairDetailModal({ open, sectionId, pairId, onClose, useThemeVars = false }: Props) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
   const { data, isLoading, isError } = useQuery<PairDetail>({
     queryKey: ["pair-detail", sectionId, pairId],
     queryFn: () => roundsApi.getPairDetail(sectionId, pairId!),
