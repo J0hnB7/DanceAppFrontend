@@ -41,6 +41,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.sentry-build-plugin
-tests/mocks/jap-2026-data.ts
 .github/workflows/
 .worktrees/
