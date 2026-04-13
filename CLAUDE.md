@@ -249,6 +249,13 @@ useEffect(() => {
 - `useEffect(() => setMounted(true), [])` — legitimate SSR hydration guard, but flagged by `react-hooks/set-state-in-effect`; add `// eslint-disable-next-line react-hooks/set-state-in-effect` above it
 - `Date.now()` impure-in-render: `useMemo` does NOT satisfy the rule — use `useState(() => Date.now())` lazy init instead
 
+## Railway / Docker deployment
+
+- `NEXT_PUBLIC_*` proměnné jsou **build-time** — v Dockerfile musí být jako `ARG` + `ENV ARG=$ARG`
+- `.gitignore` má `.env*` glob — pro `.env.example` přidej výjimku `!.env.example`
+- `output: "standalone"` v `next.config.ts` nutné pro Dockerfile (kopíruje jen `.next/standalone/`)
+- Healthcheck v Dockerfile: `/api/*` jsou rewrites na backend — nepoužívej jako healthcheck endpoint
+
 ## Spec soubory
 
 - **Schedule modul:** `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`
