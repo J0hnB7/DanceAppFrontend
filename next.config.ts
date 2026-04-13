@@ -56,26 +56,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-
-  widenClientFileUpload: true,
-
-  // Proxy tunnel route to bypass ad-blockers
-  tunnelRoute: "/monitoring",
-
-  silent: !process.env.CI,
-
-  // Disable source map processing in dev — prevents continuous recompilation loop
-  sourcemaps: {
-    disable: process.env.NODE_ENV === "development",
-  },
-  webpack: {
-    treeshake: {
-      removeDebugLogging: true,
-    },
-  },
-});
+export default nextConfig;
