@@ -1,21 +1,5 @@
-import * as Sentry from "@sentry/nextjs";
-
+// Sentry temporarily disabled for debugging 500 errors
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    try {
-      await import("./sentry.server.config");
-    } catch (e) {
-      console.error("[instrumentation] sentry.server.config failed:", e);
-    }
-  }
-
-  if (process.env.NEXT_RUNTIME === "edge") {
-    try {
-      await import("./sentry.edge.config");
-    } catch (e) {
-      console.error("[instrumentation] sentry.edge.config failed:", e);
-    }
-  }
+  // no-op
 }
 
-export const onRequestError = Sentry.captureRequestError;
