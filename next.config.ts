@@ -1,13 +1,8 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
-import webpack from "webpack";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// Content-Security-Policy
-// - script-src: 'unsafe-inline' needed for Next.js inline scripts (no nonce in pages router)
-// - connect-src: allows API calls, WebSocket, Sentry tunnel, Sentry ingest
-// - img-src: data: for base64 QR codes, blob: for generated files
 const csp = [
   "default-src 'self'",
   isDev
@@ -28,17 +23,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Turbopack is default in Next.js 16 — empty config silences the webpack/turbopack conflict warning
+  turbopack: {},
   transpilePackages: ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
-  },
-  webpack(config) {
-    if (process.env.NEXT_PUBLIC_MOCK_API !== "true") {
-      config.plugins.push(
-        new webpack.IgnorePlugin({ resourceRegExp: /src\/mocks/ })
-      );
-    }
-    return config;
   },
   async rewrites() {
     return [
@@ -56,4 +45,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  widenClientFileUpload: true,
+  tunnelRoute: "/monitoring",
+  silent: !process.env.CI,
+  sourcemaps: {
+    disable: process.env.NODE_ENV === "development",
+  },
+});
