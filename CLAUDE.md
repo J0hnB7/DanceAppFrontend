@@ -274,6 +274,16 @@ useEffect(() => {
 - Dashboard page header: `flex-col sm:flex-row` pre mobile (nie `flex items-start justify-between`)
 - Landing nav: pri ≤640px skry sekundárne nav tlačidlá, nechaj len primárny CTA
 
+## Judge interface header — layout pravidlo (2026-04-14)
+
+Header má **2 řádky**:
+- Řádek 1: `flex items-center justify-between` — vlevo [sectionName + roundLabel], vpravo [WifiOff (jen offline), EN toggle, theme toggle, Hlásit (icon-only)]
+- Řádek 2: `flex gap-1 overflow-x-auto` — dance tabs (scrollable, `scrollbarWidth: none`)
+- Wifi ikona se zobrazuje **pouze** při offline (`!isOnline`) — online = žádná ikona
+- Hlásit je v headeru jako icon-only (`TriangleAlert`, amber), **ne** jako floating button u bottom baru
+- Round label: `round.roundType` → "Finále"/"Final", "Semifinále"/"Semifinal", "Čtvrtfinále"/"Quarter-final", nebo "Kolo N"/"Round N"
+- Dance tabs mají `min-h-[36px]` (ne 44px) — jsou v headeru, ne standalone touch target
+
 ## CSS proměnné — light vs dark mode (2026-04-14)
 
 - `--accent-subtle` light mode = `#DBEAFE` (blue-100). Dark = `rgba(96,165,250,0.12)`. Nikdy nepoužívej 8% opacity v light mode — je neviditelné.
