@@ -243,7 +243,7 @@ export function LiveControlDashboard({
     : null
 
   return (
-    <div className="relative flex flex-col" style={{ minHeight: '100vh' }}>
+    <div className="relative flex flex-col min-h-full">
       <LiveStatusBar
         competitionId={competitionId}
         competitionName={competitionName}

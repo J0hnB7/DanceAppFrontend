@@ -845,9 +845,9 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
 
       <Tabs value={tab} onValueChange={setTab}>
         {/* ══ HERO ══ */}
-        <div className="relative border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="relative border-b border-[var(--border)] bg-[var(--surface-secondary)]">
           {/* Fade to page bg */}
-          <div className="pointer-events-none absolute -bottom-5 left-0 right-0 h-5" style={{ background: "linear-gradient(to bottom, var(--surface), var(--background))" }} />
+          <div className="pointer-events-none absolute -bottom-5 left-0 right-0 h-5" style={{ background: "linear-gradient(to bottom, var(--surface-secondary), var(--background))" }} />
 
           <div className="px-8 pb-5 pt-6 max-md:px-4">
             {/* Title row + badge */}

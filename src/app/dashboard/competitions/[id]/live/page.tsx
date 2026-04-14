@@ -9,6 +9,8 @@ import { useScheduleStore } from "@/store/schedule-store";
 import { useLiveStore } from "@/store/live-store";
 import { useJudgeConnectivity } from "@/hooks/use-judge-connectivity";
 import { LiveControlDashboard } from "@/components/live/LiveControlDashboard";
+import { AppShell } from "@/components/layout/app-shell";
+import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import type { RoundItem } from "@/components/live/RoundSelector";
 import type { DanceItem } from "@/components/live/DanceSelector";
 import type { HeatItem } from "@/components/live/HeatSelector";
@@ -228,18 +230,20 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
   });
 
   return (
-    <LiveControlDashboard
-      competitionId={competitionId}
-      competitionName={competition?.name ?? ""}
-      rounds={rounds}
-      dances={dances}
-      heats={enrichedHeats}
-      judgeDetails={judgeDetails}
-      activeRoundId={activeRoundId}
-      totalPairs={totalPairs}
-      heatIdMap={heatIdMap}
-      selectedDanceName={selectedDanceName}
-      sectionId={sectionId}
-    />
+    <AppShell noPadding sidebar={<CompetitionSidebar competitionId={competitionId} competitionName={competition?.name} />}>
+      <LiveControlDashboard
+        competitionId={competitionId}
+        competitionName={competition?.name ?? ""}
+        rounds={rounds}
+        dances={dances}
+        heats={enrichedHeats}
+        judgeDetails={judgeDetails}
+        activeRoundId={activeRoundId}
+        totalPairs={totalPairs}
+        heatIdMap={heatIdMap}
+        selectedDanceName={selectedDanceName}
+        sectionId={sectionId}
+      />
+    </AppShell>
   );
 }

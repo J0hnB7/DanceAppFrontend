@@ -56,7 +56,8 @@ export function LiveStatusBar({
       className="sticky top-0 z-50 flex items-center justify-between px-5 py-3"
       style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      {/* Left side — hidden on mobile (CompetitionSidebar provides navigation) */}
+      <div className="hidden lg:flex min-w-0 items-center gap-3">
         <button
           onClick={() => router.push(`/dashboard/competitions/${competitionId}`)}
           className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
@@ -81,6 +82,10 @@ export function LiveStatusBar({
           </>
         )}
       </div>
+      {/* Mobile: show round label as context */}
+      <span className="lg:hidden truncate text-sm text-[var(--text-secondary)] max-w-[40%]">
+        {roundLabel || competitionName}
+      </span>
 
       <div className="flex items-center gap-4">
         {/* Poslední signál */}
@@ -154,7 +159,7 @@ export function LiveStatusBar({
           title="Tisk"
           aria-label="Print"
           onClick={() => window.print()}
-          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          className="hidden md:flex cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] min-h-[44px] min-w-[44px] items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           style={{ color: 'var(--text-secondary)' }}
         >
           <Printer className="h-4 w-4" aria-hidden="true" />
@@ -174,7 +179,7 @@ export function LiveStatusBar({
           onClick={onShowHelp}
           title="Klávesové zkratky (?)"
           aria-label="Keyboard shortcuts (?)"
-          className="cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          className="hidden md:flex cursor-pointer rounded p-1.5 transition-colors hover:bg-[var(--surface-2)] min-h-[44px] min-w-[44px] items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           style={{ color: 'var(--text-secondary)' }}
         >
           <Keyboard className="h-4 w-4" aria-hidden="true" />

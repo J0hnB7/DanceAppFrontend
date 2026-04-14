@@ -534,7 +534,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                   disabled={pairSectionClosed}
                   onClick={() => !pairSectionClosed && setStatus.mutate({ pairId: pair.id, status: isPresent ? "ABSENT" : "CHECKED_IN" })}
                   className={cn(
-                    "shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all flex",
+                    "shrink-0 flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all",
                     pairSectionClosed
                       ? "cursor-default border-[var(--border)] text-[var(--text-tertiary)]"
                       : isPresent
@@ -543,7 +543,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                   )}
                 >
                   <UserCheck className="h-3 w-3" />
-                  {isPresent ? t("presence.checkedIn") : t("presence.notCheckedIn")}
+                  <span className="hidden sm:inline">{isPresent ? t("presence.checkedIn") : t("presence.notCheckedIn")}</span>
                 </button>
               </div>
             );
