@@ -1,5 +1,10 @@
-// Sentry temporarily disabled for debugging 500 errors
 export async function register() {
-  // no-op
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("./sentry.server.config");
+  }
+
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("./sentry.edge.config");
+  }
 }
 
