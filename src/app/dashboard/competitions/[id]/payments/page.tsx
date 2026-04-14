@@ -49,14 +49,18 @@ const STATUS_COLORS: Record<string, "default" | "success" | "warning" | "destruc
 };
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: string; icon: React.ElementType; color: string }) {
+  const iconBg = color.includes("green") ? "bg-green-100 dark:bg-green-950" : color.includes("amber") ? "bg-amber-100 dark:bg-amber-950" : "bg-[var(--surface-secondary)]";
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-[var(--text-secondary)]">{label}</p>
-          <p className={cn("mt-1 text-xl font-bold", color)}>{value}</p>
+    <Card className="px-3 py-3 sm:p-4">
+      <div className="flex flex-col items-center text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+        <div className={cn("mb-2 rounded-xl p-2 sm:hidden", iconBg)}>
+          <Icon className={cn("h-4 w-4", color)} />
         </div>
-        <div className={cn("rounded-xl p-2.5", color.includes("green") ? "bg-green-100 dark:bg-green-950" : color.includes("amber") ? "bg-amber-100 dark:bg-amber-950" : "bg-[var(--surface-secondary)]")}>
+        <div className="min-w-0">
+          <p className="truncate text-[10px] text-[var(--text-secondary)] sm:text-xs">{label}</p>
+          <p className={cn("truncate text-sm font-bold sm:mt-1 sm:text-xl", color)}>{value}</p>
+        </div>
+        <div className={cn("ml-3 hidden shrink-0 rounded-xl p-2.5 sm:block", iconBg)}>
           <Icon className={cn("h-5 w-5", color)} />
         </div>
       </div>
@@ -123,19 +127,19 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
   return (
     <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
       <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(`/dashboard/competitions/${competitionId}`)}
-              className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
+              className="shrink-0 rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("payments.title")}</h1>
           </div>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Button size="sm" className="shrink-0" onClick={() => setCreateOpen(true)} aria-label={t("payments.createInvoice")}>
             <Plus className="h-4 w-4" />
-            {t("payments.createInvoice")}
+            <span className="hidden sm:inline">{t("payments.createInvoice")}</span>
           </Button>
         </div>
 
