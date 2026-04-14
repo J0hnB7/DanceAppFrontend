@@ -35,14 +35,12 @@ interface PairPresence {
 function StatCard({ icon: Icon, label, value, accent }: { icon: React.ElementType; label: string; value: number; accent?: string }) {
   return (
     <Card>
-      <CardContent className="flex items-center gap-3 py-4">
-        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-lg)]", accent ?? "bg-[var(--surface-secondary)]")}>
+      <CardContent className="flex flex-col items-center gap-1.5 px-2 py-3 text-center">
+        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-lg)]", accent ?? "bg-[var(--surface-secondary)]")}>
           <Icon className="h-4 w-4 text-white" />
         </div>
-        <div>
-          <p className="text-xs text-[var(--text-secondary)]">{label}</p>
-          <p className="text-xl font-bold text-[var(--text-primary)]">{value}</p>
-        </div>
+        <p className="text-xl font-bold leading-none text-[var(--text-primary)]">{value}</p>
+        <p className="w-full truncate text-[10px] text-[var(--text-secondary)]">{label}</p>
       </CardContent>
     </Card>
   );
