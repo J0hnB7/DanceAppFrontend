@@ -136,7 +136,7 @@ export default function Home() {
         .pill-style{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:100px;border:1px solid #E5E7EB;background:#fff;font-size:.825rem;font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.07);color:#111827}
         .pill-style.active{border-color:#4F46E5;background:#EEF2FF;color:#4F46E5}
         @media(max-width:900px){.nav-links-hide{display:none!important}.sk-two-col{grid-template-columns:1fr!important;gap:40px!important}.roles-4col{grid-template-columns:1fr 1fr!important}.gdpr-3col{grid-template-columns:1fr 1fr!important}}
-        @media(max-width:640px){.roles-4col{grid-template-columns:1fr!important}.gdpr-3col{grid-template-columns:1fr!important}}
+        @media(max-width:640px){.roles-4col{grid-template-columns:1fr!important}.gdpr-3col{grid-template-columns:1fr!important}.nav-signin-hide{display:none!important}}
       `}</style>
 
       {/* NAV */}
@@ -167,7 +167,7 @@ export default function Home() {
           ))}
         </ul>
         <div style={{ display: "flex", gap: 10 }}>
-          <Link href="/login" style={{
+          <Link href="/login" className="nav-signin-hide" style={{
             padding: "7px 16px", borderRadius: 8, fontSize: ".875rem", fontWeight: 500, textDecoration: "none", transition: "all .2s",
             background: navLight ? "transparent" : "rgba(255,255,255,.1)",
             color: navLight ? "#4B5563" : "#fff",
