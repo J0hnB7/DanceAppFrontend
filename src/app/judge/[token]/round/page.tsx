@@ -589,35 +589,23 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
 
       {/* ── Header ── */}
       <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2 shadow-sm">
-        {sectionName && (
-          <p className="mx-auto max-w-lg truncate pb-1 text-[11px] font-medium text-[var(--text-tertiary)]">
-            {sectionName}
-          </p>
-        )}
+        {/* Row 1: section + round info + controls */}
         <div className="mx-auto max-w-lg flex items-center justify-between gap-2">
-
-          {/* Dance tabs — show which are done */}
-          <div className="flex gap-1 overflow-x-auto">
-            {dances.map((d, i) => {
-              const isDone = submittedDanceNames.has(d.name);
-              const isActive = i === activeDanceIdx;
-              return (
-                <span
-                  key={d.id}
-                  aria-label={`${d.name}${isDone ? " (submitted)" : ""}`}
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors min-h-[44px] flex items-center",
-                    isActive ? "bg-[var(--accent)] text-white" : isDone ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
-                  )}
-                >
-                  {isDone && "✓ "}{d.name}
-                </span>
-              );
-            })}
+          <div className="min-w-0">
+            {sectionName && (
+              <p className="truncate text-[11px] font-medium text-[var(--text-tertiary)]">{sectionName}</p>
+            )}
+            {round && (
+              <p className="text-[10px] font-semibold text-[var(--accent)]">
+                {round.roundType === "FINAL" ? (locale === "cs" ? "Finále" : "Final")
+                  : round.roundType === "SEMIFINAL" ? (locale === "cs" ? "Semifinále" : "Semifinal")
+                  : round.roundType === "QUARTER_FINAL" ? (locale === "cs" ? "Čtvrtfinále" : "Quarter-final")
+                  : `${locale === "cs" ? "Kolo" : "Round"} ${round.roundNumber}`}
+              </p>
+            )}
           </div>
-
-          {/* Right controls */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
+            {!isOnline && <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
             <button onClick={toggleLocale}
               aria-label={locale === "cs" ? "Switch to English" : "Přepnout do češtiny"}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] px-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
@@ -628,8 +616,39 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
               {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </button>
-            {isOnline ? <Wifi className="h-4 w-4 text-[var(--success)]" aria-hidden="true" /> : <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
+            {!showViolationSheet && (
+              <button
+                onClick={() => { setViolationStep("pair"); setViolationPairId(null); setShowViolationSheet(true); }}
+                disabled={violationCooldown}
+                aria-label={locale === "cs" ? "Nahlásit porušení pravidel" : "Report violation"}
+                className={cn(
+                  "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-sm font-semibold transition-all cursor-pointer",
+                  violationCooldown ? "bg-green-500/20 text-green-500" : "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                )}
+              >
+                <TriangleAlert className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
           </div>
+        </div>
+        {/* Row 2: dance tabs */}
+        <div className="mx-auto mt-1.5 max-w-lg flex gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+          {dances.map((d, i) => {
+            const isDone = submittedDanceNames.has(d.name);
+            const isActive = i === activeDanceIdx;
+            return (
+              <span
+                key={d.id}
+                aria-label={`${d.name}${isDone ? " (submitted)" : ""}`}
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors min-h-[36px] flex items-center",
+                  isActive ? "bg-[var(--accent)] text-white" : isDone ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
+                )}
+              >
+                {isDone && "✓ "}{d.name}
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -800,23 +819,7 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         locale={locale}
       />
 
-      {/* Floating violation report button */}
-      {!showViolationSheet && (
-        <button
-          onClick={() => { setViolationStep("pair"); setViolationPairId(null); setShowViolationSheet(true); }}
-          disabled={violationCooldown}
-          aria-label={locale === "cs" ? "Nahlásit porušení pravidel" : "Report violation"}
-          className={cn(
-            "fixed bottom-24 right-4 z-40 flex min-h-[52px] min-w-[52px] items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold shadow-lg transition-all cursor-pointer",
-            violationCooldown
-              ? "bg-green-500 text-white opacity-70"
-              : "bg-amber-500 text-white hover:bg-amber-600 active:scale-95"
-          )}
-        >
-          <TriangleAlert className="h-4 w-4" aria-hidden="true" />
-          <span>{locale === "cs" ? "Hlásit" : "Report"}</span>
-        </button>
-      )}
+      {/* Floating violation report button — removed; button is now in header */}
 
       {/* Violation bottom sheet */}
       {showViolationSheet && (
