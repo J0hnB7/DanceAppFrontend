@@ -9,6 +9,7 @@ export interface NotificationDto {
   recipientEmail?: string;
   sentAt?: string;
   status: "PENDING" | "SENT" | "FAILED";
+  bodyContent?: string;
 }
 
 export interface ComposeNotificationRequest {

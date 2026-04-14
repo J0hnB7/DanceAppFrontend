@@ -5,7 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Send, Mail, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Send, Mail, CheckCircle2, XCircle, Clock, X } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { notificationsApi, type ComposeNotificationRequest } from "@/lib/api/notifications";
+import { notificationsApi, type ComposeNotificationRequest, type NotificationDto } from "@/lib/api/notifications";
 import { sectionsApi } from "@/lib/api/sections";
 import { formatTime, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -46,6 +46,7 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
   const { id } = use(params);
   const qc = useQueryClient();
   const { t } = useLocale();
+  const [detailNotif, setDetailNotif] = useState<NotificationDto | null>(null);
 
   const { data: notifications } = useQuery({
     queryKey: ["notifications", id],
@@ -187,7 +188,11 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
           ) : (
             <div className="flex flex-col gap-2">
               {notifications.map((n) => (
-                <Card key={n.id}>
+                <Card
+                  key={n.id}
+                  className="cursor-pointer transition-colors hover:bg-[var(--surface-secondary)]"
+                  onClick={() => setDetailNotif(n)}
+                >
                   <CardContent className="py-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -208,6 +213,69 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
               ))}
             </div>
           )}
+
+          {/* Email detail modal */}
+            {detailNotif && (
+              <div
+                className="fixed inset-0 z-[150] flex items-end justify-center bg-black/50 sm:items-center"
+                onClick={() => setDetailNotif(null)}
+              >
+                <div
+                  className="w-full max-w-lg rounded-t-2xl bg-[var(--surface)] p-5 shadow-xl sm:rounded-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+                        {t("notifications.subjectLabel")}
+                      </p>
+                      <p className="mt-0.5 text-base font-semibold text-[var(--text-primary)]">
+                        {detailNotif.subject}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setDetailNotif(null)}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--surface-secondary)]"
+                      aria-label="Zavřít"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <div className="mb-4 flex flex-wrap gap-3 text-xs text-[var(--text-secondary)]">
+                    <span>
+                      <span className="font-medium">{t("notifications.recipientsLabel")}:</span>{" "}
+                      {detailNotif.recipientType === "ALL_PAIRS"
+                        ? t("notifications.allPairsLabel")
+                        : detailNotif.recipientType === "INDIVIDUAL"
+                        ? detailNotif.recipientEmail
+                        : t("notifications.sectionRecipient")}
+                    </span>
+                    {detailNotif.sentAt && (
+                      <span>
+                        <span className="font-medium">{t("notifications.sentAt")}:</span>{" "}
+                        {new Date(detailNotif.sentAt).toLocaleString("cs-CZ")}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] p-4">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+                      {t("notifications.messageLabel")}
+                    </p>
+                    {detailNotif.bodyContent ? (
+                      <p className="whitespace-pre-wrap text-sm text-[var(--text-primary)]">
+                        {detailNotif.bodyContent}
+                      </p>
+                    ) : (
+                      <p className="text-sm italic text-[var(--text-tertiary)]">
+                        {t("notifications.templateEmail")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
       </div>
     </AppShell>

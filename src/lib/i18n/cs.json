@@ -1442,7 +1442,9 @@
     "allPairsLabel": "Všichni soutěžící",
     "sectionRecipient": "Kategorie",
     "subjectRequired": "Předmět je povinný",
-    "messageMinLength": "Zpráva musí mít alespoň 10 znaků"
+    "messageMinLength": "Zpráva musí mít alespoň 10 znaků",
+    "sentAt": "Odesláno",
+    "templateEmail": "Tento e-mail byl odeslán ze systémové šablony — obsah není uložen."
   },
   "danceOffs": {
     "title": "Dance-off",

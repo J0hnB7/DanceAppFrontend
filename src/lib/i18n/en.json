@@ -1442,7 +1442,9 @@
     "allPairsLabel": "All competitors",
     "sectionRecipient": "Section",
     "subjectRequired": "Subject required",
-    "messageMinLength": "Message must be at least 10 characters"
+    "messageMinLength": "Message must be at least 10 characters",
+    "sentAt": "Sent",
+    "templateEmail": "This email was sent from a system template — content is not stored."
   },
   "danceOffs": {
     "title": "Dance-offs",
