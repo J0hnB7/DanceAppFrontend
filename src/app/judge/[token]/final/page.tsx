@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Bell, CloudOff, Wifi, WifiOff, AlertTriangle, Sun, Moon, TriangleAlert } from "lucide-react";
+import { CheckCircle2, Bell, CloudOff, WifiOff, AlertTriangle, Sun, Moon, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
@@ -56,25 +56,51 @@ function PlacementRow({
   placements,
   maxPlacement,
   onSet,
+  onClear,
 }: {
   pair: PairDto;
   placements: Record<string, number>;
   maxPlacement: number;
   onSet: (pairId: string, placement: number) => void;
+  onClear: (pairId: string) => void;
 }) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress = useRef(false);
+
+  const handlePointerDown = () => {
+    didLongPress.current = false;
+    timerRef.current = setTimeout(() => {
+      didLongPress.current = true;
+      onClear(pair.id);
+      if (navigator.vibrate) navigator.vibrate(30);
+    }, 600);
+  };
+  const handlePointerUp = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  };
+  const handlePointerLeave = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  };
+
   const assigned = new Set(Object.values(placements));
   const current = placements[pair.id];
 
   return (
     <div className={cn(
-      "flex items-center gap-3 rounded-xl border px-4 py-3 transition-all",
+      "flex items-center gap-2 rounded-xl border px-3 py-2 transition-all",
       current
         ? "border-[var(--accent)]/30 bg-[var(--surface)]"
         : "border-[var(--border)] bg-[var(--surface)]"
     )}>
-      {/* Couple info */}
-      <div className="min-w-[60px] shrink-0">
-        <span className="text-[22px] font-black tabular-nums text-[var(--text-primary)]">
+      {/* Couple info — long-press to clear this pair's placement */}
+      <div
+        className="min-w-[52px] shrink-0 select-none cursor-pointer"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <span className="text-[20px] font-black tabular-nums text-[var(--text-primary)]">
           {pair.startNumber}
         </span>
         {(pair.dancer1LastName || pair.dancer2LastName) && (
@@ -84,8 +110,8 @@ function PlacementRow({
         )}
       </div>
 
-      {/* Placement buttons */}
-      <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto">
+      {/* Placement buttons — scrollable when many pairs */}
+      <div className="flex flex-1 min-w-0 items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
         {Array.from({ length: maxPlacement }, (_, i) => i + 1).map((p) => {
           const isSelected = current === p;
           const isUsed = assigned.has(p) && !isSelected;
@@ -97,7 +123,7 @@ function PlacementRow({
               aria-label={`Place ${p}${isSelected ? " (selected)" : isUsed ? " (taken)" : ""}`}
               aria-pressed={isSelected}
               className={cn(
-                "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-sm font-bold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
+                "flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg text-sm font-bold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
                 isSelected
                   ? "bg-[var(--accent)] text-white shadow-md"
                   : isUsed
@@ -388,36 +414,20 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
         </div>
       )}
 
-      {/* ── Header ── (matches round page) */}
+      {/* ── Header ── */}
       <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2 shadow-sm">
-        {sectionName && (
-          <p className="mx-auto max-w-lg truncate pb-1 text-[11px] font-medium text-[var(--text-tertiary)]">
-            {sectionName}
-          </p>
-        )}
+        {/* Row 1: section + round label + controls */}
         <div className="mx-auto max-w-lg flex items-center justify-between gap-2">
-          {/* Dance tabs */}
-          <div className="flex gap-1 overflow-x-auto">
-            {dances.map((d, i) => {
-              const isDone = submittedDanceNames.has(d.name) || submitted.has(d.id);
-              const isActive = i === activeDanceIdx;
-              return (
-                <span
-                  key={d.id}
-                  aria-label={`${d.name}${isDone ? " (submitted)" : ""}`}
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors min-h-[44px] flex items-center",
-                    isActive ? "bg-[var(--accent)] text-white" : isDone ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
-                  )}
-                >
-                  {isDone && "✓ "}{d.name}
-                </span>
-              );
-            })}
+          <div className="min-w-0">
+            {sectionName && (
+              <p className="truncate text-[11px] font-medium text-[var(--text-tertiary)]">{sectionName}</p>
+            )}
+            <p className="text-[10px] font-semibold text-[var(--accent)]">
+              {locale === "cs" ? "Finále" : "Final"}
+            </p>
           </div>
-
-          {/* Right controls */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
+            {!isOnline && <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
             <button onClick={toggleLocale}
               aria-label={locale === "cs" ? "Switch to English" : "Přepnout do češtiny"}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] px-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
@@ -428,8 +438,39 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
               {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </button>
-            {isOnline ? <Wifi className="h-4 w-4 text-[var(--success)]" aria-hidden="true" /> : <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
+            {!showViolationSheet && (
+              <button
+                onClick={() => { setViolationStep("pair"); setViolationPairId(null); setShowViolationSheet(true); }}
+                disabled={violationCooldown}
+                aria-label={locale === "cs" ? "Nahlásit porušení pravidel" : "Report violation"}
+                className={cn(
+                  "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-sm font-semibold transition-all cursor-pointer",
+                  violationCooldown ? "bg-green-500/20 text-green-500" : "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                )}
+              >
+                <TriangleAlert className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
           </div>
+        </div>
+        {/* Row 2: dance tabs */}
+        <div className="mx-auto mt-1.5 max-w-lg flex gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+          {dances.map((d, i) => {
+            const isDone = submittedDanceNames.has(d.name) || submitted.has(d.id);
+            const isActive = i === activeDanceIdx;
+            return (
+              <span
+                key={d.id}
+                aria-label={`${d.name}${isDone ? " (submitted)" : ""}`}
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition-colors min-h-[36px] flex items-center",
+                  isActive ? "bg-[var(--accent)] text-white" : isDone ? "bg-[var(--success)]/15 text-[var(--success)]" : "bg-[var(--surface-secondary)] text-[var(--text-secondary)]"
+                )}
+              >
+                {isDone && "✓ "}{d.name}
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -505,6 +546,11 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
                   placements={activePlacements}
                   maxPlacement={pairs.length}
                   onSet={(pairId, placement) => setPlacement(activeDanceId, pairId, placement)}
+                  onClear={(pairId) => setPlacements((prev) => {
+                    const next = { ...prev[activeDanceId] };
+                    delete next[pairId];
+                    return { ...prev, [activeDanceId]: next };
+                  })}
                 />
               ))}
             </div>
@@ -542,24 +588,6 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
             </p>
           </div>
         </div>
-      )}
-
-      {/* Floating violation report button */}
-      {!showViolationSheet && (
-        <button
-          onClick={() => { setViolationStep("pair"); setViolationPairId(null); setShowViolationSheet(true); }}
-          disabled={violationCooldown}
-          aria-label={locale === "cs" ? "Nahlásit porušení pravidel" : "Report violation"}
-          className={cn(
-            "fixed bottom-24 right-4 z-40 flex min-h-[52px] min-w-[52px] items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold shadow-lg transition-all cursor-pointer",
-            violationCooldown
-              ? "bg-green-500 text-white opacity-70"
-              : "bg-amber-500 text-white hover:bg-amber-600 active:scale-95"
-          )}
-        >
-          <TriangleAlert className="h-4 w-4" aria-hidden="true" />
-          <span>{locale === "cs" ? "Hlásit" : "Report"}</span>
-        </button>
       )}
 
       {/* Violation bottom sheet */}

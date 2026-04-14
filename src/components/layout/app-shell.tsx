@@ -71,7 +71,7 @@ export function AppShell({ children, headerActions, sidebar, noPadding }: AppShe
             }`}
           >
             <div className="relative flex h-full flex-col">
-              <Sidebar />
+              <Sidebar onNavClick={() => setMobileOpen(false)} />
               <button
                 onClick={() => setMobileOpen(false)}
                 aria-label="Zavřít menu"

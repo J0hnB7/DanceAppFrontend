@@ -5,6 +5,10 @@
 
 ---
 
+## LogoMark — sdílené logo
+
+`src/components/ui/logo-mark.tsx` — `<LogoMark size={24} />` renderuje `public/logo.png`. Používej všude místo "PP" gradient divu. Import: `import { LogoMark } from "@/components/ui/logo-mark"`.
+
 ## Stack
 
 - **Next.js 16.1.6** (App Router), TypeScript strict, Tailwind CSS v4
@@ -259,6 +263,13 @@ useEffect(() => {
 - 2-col grid na mobilu = ~173px/sloupec, ale hodnota v `text-xl` (20px) může přesáhnout — vždy přidej `truncate`.
 - **Fix:** Vertikální layout: `flex-col items-center` s `px-3 py-3`. Ikona (mobile) → `text-sm font-bold truncate` → `text-[10px] truncate` label. Na `sm+` se vrátí horizontální layout (`sm:flex-row sm:justify-between`).
 - Vzor (payments/presence): ikona viditelná jen na mobilu (`sm:hidden`), na desktopu (`hidden sm:block`) vpravo.
+
+## Default Sidebar — mobile close on navigation
+
+- `Sidebar` akceptuje voliteľný prop `onNavClick?: () => void` — zavolá sa pri kliknutí na každý nav link
+- AppShell ho nastaví ako `() => setMobileOpen(false)` v mobile draweri → sidebar sa automaticky zavrie po navigácii
+- Bez tohto prop sidebar zostane otvorený po kliknutí na link (bug: menu "zaseknuté" vľavo)
+- Pattern: `<Sidebar onNavClick={() => setMobileOpen(false)} />` v AppShell mobile drawer
 
 ## AppShell — mobilný top bar (2026-04-14)
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -109,7 +110,7 @@ function LoginPageInner() {
 
           {/* logo */}
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", position: "relative", zIndex: 1 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".72rem", fontWeight: 900, color: "#fff", letterSpacing: "-.05em" }}>PP</div>
+            <LogoMark size={32} />
             <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.1rem", color: "#fff", letterSpacing: "-.03em" }}>ProPodium</span>
           </Link>
 
@@ -147,7 +148,7 @@ function LoginPageInner() {
               marginBottom: 32, textAlign: "center",
               flexDirection: "column", alignItems: "center", gap: 8,
             }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".72rem", fontWeight: 900, color: "#fff" }}>PP</div>
+              <LogoMark size={36} />
               <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.1rem", color: "#111827" }}>ProPodium</span>
             </div>
 
@@ -159,7 +160,7 @@ function LoginPageInner() {
               {/* header */}
               <div style={{ marginBottom: 28 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>PP</div>
+                  <LogoMark size={28} />
                   <h1 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "1.25rem", fontWeight: 800, color: "#111827", letterSpacing: "-.03em" }}>
                     {t("auth.signIn")}
                   </h1>

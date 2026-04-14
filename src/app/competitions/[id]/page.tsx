@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
@@ -73,7 +74,7 @@ function PublicNav() {
       <div style={{ maxWidth: 860, margin: "0 auto", width: "100%", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/competitions" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" style={{ marginRight: 2 }}><polyline points="15 18 9 12 15 6"/></svg>
-          <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff" }}>PP</div>
+          <LogoMark size={24} />
           <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1rem", color: "#111827", letterSpacing: "-.02em" }}>ProPodium</span>
         </Link>
         <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>{t("publicCompetition.organizerLogin")}</Link>
@@ -627,7 +628,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
         {/* Footer */}
         <div style={{ borderTop: "1px solid #E5E7EB", background: "#fff", padding: "24px", textAlign: "center" }}>
           <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>PP</div>
+            <LogoMark size={22} />
             <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".9rem", color: "#111827" }}>ProPodium</span>
           </Link>
           <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2026 ProPodium. Navrženo pro tanec.</p>

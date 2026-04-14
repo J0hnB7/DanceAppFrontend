@@ -979,13 +979,6 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
-                onClick={() => router.push(`/dashboard/competitions/${id}/presence`)}
-              >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-                {t("competitionDetail.openCheckIn")}
-              </Button>
-              <Button
-                size="sm"
                 variant="muted"
                 title="Uzavře registraci — noví soutěžící se nebudou moci přihlásit"
                 onClick={() => updateCompetition.mutate({ registrationOpen: !competition.registrationOpen })}
@@ -1060,11 +1053,11 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                 </div>
               </div>
               <button
-                onClick={() => router.push(`/dashboard/competitions/${id}/sections/new`)}
+                onClick={() => router.push(`/dashboard/competitions/${id}/sections`)}
                 className="shrink-0 flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)]"
               >
-                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-                {t("common.add")}
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                {t("common.view")}
               </button>
             </article>
 

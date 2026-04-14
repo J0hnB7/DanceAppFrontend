@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { User, Trophy, ChevronDown, ChevronUp, LogOut } from "lucide-react";
 import { dancerApi, type MyCompetitionEntry } from "@/lib/api/dancer";
 import { useAuthStore } from "@/store/auth-store";
@@ -161,7 +162,7 @@ export default function MyCompetitionsPage() {
         <nav style={{ background: "#fff", borderBottom: "1px solid #E5E7EB", padding: "0 24px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-              <div style={{ width: 26, height: 26, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 900, color: "#fff" }}>PP</div>
+              <LogoMark size={26} />
               <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".95rem", color: "#111827" }}>ProPodium</span>
             </Link>
             <div style={{ display: "flex", gap: 4 }}>

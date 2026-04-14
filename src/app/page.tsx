@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { LogoMark } from "@/components/ui/logo-mark";
 import Link from "next/link";
 import { useLocale } from "@/contexts/locale-context";
 import {
@@ -153,7 +154,7 @@ export default function Home() {
           letterSpacing: "-.03em", textDecoration: "none", display: "flex", alignItems: "center", gap: 7,
           color: navLight ? "#111827" : "#fff",
         }}>
-          <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff", letterSpacing: "-.05em" }}>PP</div>
+          <LogoMark size={24} />
           ProPodium
         </Link>
         <ul className="nav-links-hide" style={{ display: "flex", gap: 28, listStyle: "none" }}>
@@ -361,7 +362,7 @@ export default function Home() {
       <footer style={{ background: "#fff", padding: "44px 5vw", borderTop: "1px solid #E5E7EB" }}>
         <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 18 }}>
           <Link href="/" style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1.05rem", color: "#111827", display: "flex", alignItems: "center", gap: 7, textDecoration: "none" }}>
-            <div style={{ width: 24, height: 24, borderRadius: 7, background: "linear-gradient(135deg,#4F46E5,#06B6D4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#fff" }}>PP</div>
+            <LogoMark size={24} />
             ProPodium
           </Link>
           <ul style={{ display: "flex", gap: 24, listStyle: "none" }}>

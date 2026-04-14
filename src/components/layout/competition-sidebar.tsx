@@ -137,7 +137,6 @@ export function CompetitionSidebar({
       label: t("nav.groupLive"),
       items: [
         { id: "live", label: t("nav.liveManagement"), icon: icons.live, href: `${base}/live`, badge: "LIVE", badgeType: "live" },
-        { id: "scoring", label: t("nav.liveRound"), icon: icons.live, href: `${base}/scoring` },
         { id: "results", label: t("nav.results"), icon: icons.results, href: `${base}/results` },
         { id: "diplomas", label: t("nav.diplomas"), icon: icons.diplomas, href: `${base}/diplomas` },
       ],
