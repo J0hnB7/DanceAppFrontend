@@ -171,25 +171,27 @@ export default function SectionsPage({
               variant="outline"
               onClick={() => importRef.current?.click()}
               loading={importing}
-              title="Import kategorií z Excel souboru (sloupce: Název, Styl, Věková kategorie, Úroveň, Typ soutěžícího, Typ soutěže, Počet rozhodčích, Max párů finále, Startovné, Měna)"
+              title="Import kategorií z Excel souboru"
+              aria-label="Import XLSX"
             >
-              <Sheet className="mr-1.5 h-4 w-4" />
-              Import XLSX
+              <Sheet className="h-4 w-4 sm:mr-1.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Import XLSX</span>
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={handleExport}
               title="Export kategorií do Excel souboru"
+              aria-label="Export XLSX"
             >
-              <Download className="mr-1.5 h-4 w-4" />
-              Export XLSX
+              <Download className="h-4 w-4 sm:mr-1.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Export XLSX</span>
             </Button>
             <Button
               size="sm"
               onClick={() => router.push(`/dashboard/competitions/${id}/sections/new`)}
             >
-              <Plus className="mr-1.5 h-4 w-4" />
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
               {t("section.new")}
             </Button>
           </div>

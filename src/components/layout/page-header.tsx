@@ -18,7 +18,7 @@ export function PageHeader({ title, description, actions, className, backHref }:
   const { t } = useLocale();
 
   return (
-    <div className={cn("mb-6 flex items-start justify-between gap-4", className)}>
+    <div className={cn("mb-6 flex flex-wrap items-start justify-between gap-3", className)}>
       <div className="flex items-start gap-3">
         {backHref && (
           <button
