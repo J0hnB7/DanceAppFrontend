@@ -256,7 +256,9 @@ useEffect(() => {
 
 - 3-col grid na mobilu = ~111px/sloupec. `CardContent` má `p-5` (20px sides) → jen ~69px pro content.
 - Horizontální layout (ikona + label + hodnota) potřebuje ≥120px → NEFUNGUJE v 3-col gridu.
-- **Fix:** Vertikální layout: `flex-col items-center` s `px-2 py-3`. Ikona → číslo → label (truncate, text-[10px]).
+- 2-col grid na mobilu = ~173px/sloupec, ale hodnota v `text-xl` (20px) může přesáhnout — vždy přidej `truncate`.
+- **Fix:** Vertikální layout: `flex-col items-center` s `px-3 py-3`. Ikona (mobile) → `text-sm font-bold truncate` → `text-[10px] truncate` label. Na `sm+` se vrátí horizontální layout (`sm:flex-row sm:justify-between`).
+- Vzor (payments/presence): ikona viditelná jen na mobilu (`sm:hidden`), na desktopu (`hidden sm:block`) vpravo.
 
 ## AppShell — mobilný top bar (2026-04-14)
 
@@ -271,6 +273,19 @@ useEffect(() => {
 - Ak overlay > sidebar → sidebar sa zasunie ale je neviditeľný za tmavým prekrytím (z-index bug)
 - Dashboard page header: `flex-col sm:flex-row` pre mobile (nie `flex items-start justify-between`)
 - Landing nav: pri ≤640px skry sekundárne nav tlačidlá, nechaj len primárny CTA
+
+## CSS proměnné — light vs dark mode (2026-04-14)
+
+- `--accent-subtle` light mode = `#DBEAFE` (blue-100). Dark = `rgba(96,165,250,0.12)`. Nikdy nepoužívej 8% opacity v light mode — je neviditelné.
+- `--success-subtle` light mode = `#D1FAE5` (emerald-100). Dark = `rgba(16,185,129,0.1)`.
+- `--success-text` light mode = `#047857` (emerald-700). Dark = `#34D399`.
+- **Hardcoded dark-only barvy** (napr. `text-[#6EE7B7]`, `bg-[rgba(16,185,129,0.1)]`) jsou zapsané pro dark mode. V light mode jsou neviditelné. Vždy použij `dark:` varianty nebo CSS proměnné: `text-emerald-800 dark:text-emerald-300`.
+
+## PageHeader — mobile pravidlo
+
+- `PageHeader` má `flex flex-wrap` → akce se zalamují na druhý řádek pokud se nevejdou
+- 3+ tlačítka v `actions`: na mobile skryj text s `hidden sm:inline`, zobraz jen ikonu + `aria-label`
+- Pattern: `<Icon className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline">Label</span>`
 
 ## Railway / Docker deployment
 
