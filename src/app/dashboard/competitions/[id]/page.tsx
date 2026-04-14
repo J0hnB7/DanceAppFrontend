@@ -845,9 +845,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
 
       <Tabs value={tab} onValueChange={setTab}>
         {/* ══ HERO ══ */}
-        <div className="relative border-b border-[var(--border)] bg-[var(--surface-secondary)]">
-          {/* Fade to page bg */}
-          <div className="pointer-events-none absolute -bottom-5 left-0 right-0 h-5" style={{ background: "linear-gradient(to bottom, var(--surface-secondary), var(--background))" }} />
+        <div className="border-b border-[var(--border)] bg-[var(--surface)]">
 
           <div className="px-8 pb-5 pt-6 max-md:px-4">
             {/* Title row + badge */}
@@ -901,9 +899,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
             </div>
 
             {/* ══ STEPPER ══ */}
-            <div className="relative overflow-x-auto max-md:[-webkit-overflow-scrolling:touch]" style={{ scrollbarWidth: "none" }}>
-              {/* Fade hint on mobile */}
-              <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 hidden w-10 max-md:block" style={{ background: "linear-gradient(to right, transparent, var(--surface))" }} />
+            <div className="overflow-x-auto max-md:[-webkit-overflow-scrolling:touch]" style={{ scrollbarWidth: "none" }}>
               <div className="flex items-start max-md:min-w-[520px] max-md:pb-1">
                 {phases.map((label, i) => (
                   <React.Fragment key={i}>
