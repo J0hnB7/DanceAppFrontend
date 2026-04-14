@@ -845,28 +845,28 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
 
       <Tabs value={tab} onValueChange={setTab}>
         {/* ══ HERO ══ */}
-        <div className="relative" style={{ background: "linear-gradient(180deg, #0A1628 0%, #0F1B2E 100%)" }}>
+        <div className="relative border-b border-[var(--border)] bg-[var(--surface)]">
           {/* Fade to page bg */}
-          <div className="pointer-events-none absolute -bottom-5 left-0 right-0 h-5" style={{ background: "linear-gradient(to bottom, #0F1B2E, var(--background))" }} />
+          <div className="pointer-events-none absolute -bottom-5 left-0 right-0 h-5" style={{ background: "linear-gradient(to bottom, var(--surface), var(--background))" }} />
 
           <div className="px-8 pb-5 pt-6 max-md:px-4">
             {/* Title row + badge */}
             <div className="mb-5 flex items-start justify-between gap-4 max-md:flex-col max-md:gap-3">
               <div>
                 <div className="mb-1.5 flex items-center gap-2">
-                  <h1 className="text-[22px] font-bold text-[#F1F5F9] max-md:text-lg" style={{ fontFamily: "var(--font-sora)" }}>
+                  <h1 className="text-[22px] font-bold text-[var(--text-primary)] max-md:text-lg" style={{ fontFamily: "var(--font-sora)" }}>
                     {competition.name}
                   </h1>
                   <button
                     onClick={openEditDialog}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/10 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border)]"
                     aria-label="Upravit základní info soutěže"
                   >
                     <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </div>
                 {/* Meta items with SVG icons */}
-                <div className="flex flex-wrap gap-3 text-[13px] text-white/50">
+                <div className="flex flex-wrap gap-3 text-[13px] text-[var(--text-secondary)]">
                   {competition.venue && (
                     <span className="flex items-center gap-1">
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></svg>
@@ -903,14 +903,14 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
             {/* ══ STEPPER ══ */}
             <div className="relative overflow-x-auto max-md:[-webkit-overflow-scrolling:touch]" style={{ scrollbarWidth: "none" }}>
               {/* Fade hint on mobile */}
-              <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 hidden w-10 max-md:block" style={{ background: "linear-gradient(to right, transparent, #0F1B2E)" }} />
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 hidden w-10 max-md:block" style={{ background: "linear-gradient(to right, transparent, var(--surface))" }} />
               <div className="flex items-start max-md:min-w-[520px] max-md:pb-1">
                 {phases.map((label, i) => (
                   <React.Fragment key={i}>
                     {i > 0 && (
                       <div
                         className="mt-3.5 h-0.5 flex-1 rounded-[1px] transition-colors duration-500"
-                        style={{ background: i <= currentPhaseIdx ? "#3B82F6" : "rgba(255,255,255,0.1)" }}
+                        style={{ background: i <= currentPhaseIdx ? "#3B82F6" : "var(--border)" }}
                       />
                     )}
                     <div className="flex flex-col items-center gap-1.5">
@@ -921,7 +921,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                             ? { borderColor: "#3B82F6", background: "rgba(59,130,246,0.6)", color: "#fff" }
                             : i === currentPhaseIdx
                             ? { borderColor: "#3B82F6", background: "#3B82F6", color: "#fff", boxShadow: "0 0 12px rgba(59,130,246,0.5)" }
-                            : { borderColor: "rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.03)" }
+                            : { borderColor: "var(--border)", background: "var(--surface-secondary)" }
                         }
                       >
                         {i < currentPhaseIdx ? (
@@ -934,10 +934,10 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                         className="whitespace-nowrap text-[11px] transition-colors duration-500"
                         style={
                           i === currentPhaseIdx
-                            ? { color: "#F1F5F9", fontWeight: 600 }
+                            ? { color: "var(--text-primary)", fontWeight: 600 }
                             : i < currentPhaseIdx
-                            ? { color: "rgba(255,255,255,0.55)" }
-                            : { color: "rgba(255,255,255,0.2)" }
+                            ? { color: "var(--text-secondary)" }
+                            : { color: "var(--text-tertiary)" }
                         }
                       >
                         {label}
