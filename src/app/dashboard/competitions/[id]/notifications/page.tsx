@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { notificationsApi } from "@/lib/api/notifications";
+import { notificationsApi, type ComposeNotificationRequest } from "@/lib/api/notifications";
 import { sectionsApi } from "@/lib/api/sections";
 import { formatTime, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -29,7 +29,7 @@ import { useLocale } from "@/contexts/locale-context";
 const schema = z.object({
   recipientType: z.enum(["ALL_PAIRS", "SECTION", "INDIVIDUAL"]),
   sectionId: z.string().optional(),
-  recipientEmail: z.string().optional(),
+  recipientEmail: z.string().email().optional().or(z.literal("")),
   subject: z.string().min(1),
   body: z.string().min(10),
 });
@@ -58,14 +58,16 @@ export default function NotificationsPage({ params }: { params: Promise<{ id: st
   });
 
   const send = useMutation({
-    mutationFn: (data: NotifForm) =>
-      notificationsApi.send(id, {
+    mutationFn: (data: NotifForm) => {
+      const req: ComposeNotificationRequest = {
         subject: data.subject,
         body: data.body,
         recipientType: data.recipientType,
-        sectionId: data.sectionId,
-        recipientEmail: data.recipientEmail,
-      }),
+      };
+      if (data.recipientType === "SECTION" && data.sectionId) req.sectionId = data.sectionId;
+      if (data.recipientType === "INDIVIDUAL" && data.recipientEmail) req.recipientEmail = data.recipientEmail;
+      return notificationsApi.send(id, req);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications", id] });
       reset();
