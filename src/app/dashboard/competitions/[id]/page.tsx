@@ -893,8 +893,8 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
               </div>
               {/* Status badge */}
               {competition.registrationOpen && (
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[rgba(16,185,129,0.3)] bg-[rgba(16,185,129,0.1)] px-3.5 py-1.5 text-xs font-semibold text-[#6EE7B7]" role="status">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#34D399] animate-pulse" />
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-100 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300" role="status">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse dark:bg-[#34D399]" />
                   {t("competitionDetail.registrationOpen")}
                 </span>
               )}

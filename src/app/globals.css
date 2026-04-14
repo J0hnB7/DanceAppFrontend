@@ -53,7 +53,7 @@
   --accent: #3B82F6;
   --accent-hover: #2563EB;
   --accent-light: #60A5FA;
-  --accent-subtle: rgba(59,130,246,0.08);
+  --accent-subtle: #DBEAFE;
 
   /* ── Gradient accent ─────────────────────────────────── */
   --gradient-blue: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
@@ -66,11 +66,11 @@
 
   /* ── Status ──────────────────────────────────────────── */
   --success: #10B981;
-  --success-subtle: #ECFDF5;
-  --success-text: #059669;
+  --success-subtle: #D1FAE5;
+  --success-text: #047857;
   --warning: #F59E0B;
-  --warning-subtle: #FFFBEB;
-  --warning-text: #B45309;
+  --warning-subtle: #FEF3C7;
+  --warning-text: #92400E;
   --destructive: #DC2626;
   --destructive-subtle: #FEF2F2;
   --destructive-text: #DC2626;
