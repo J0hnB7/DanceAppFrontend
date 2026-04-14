@@ -16,6 +16,9 @@
 
 - Middleware přejmenován na `proxy` → soubor `src/proxy.ts`, export funkce `proxy()` (ne `middleware()`)
 - `useSearchParams()` musí být zabalen do `<Suspense>` na úrovni page exportu
+- **Turbopack je default** — custom `webpack` config bez `turbopack: {}` = build error "Call retries were exceeded". Fix: `turbopack: {}` v `next.config.ts`, odeber custom webpack funkcie
+- **`output: "standalone"` NESMIE byť na Vercel** — len pre Docker/Railway. Na Vercel spôsobuje 500 na všetkých dynamických `ƒ` stránkach
+- **`sentry.edge.config.ts` MUSÍ existovať** — `instrumentation.ts` ho importuje v edge runtime (middleware). Ak chýba → `Module not found` → middleware crash → všetky nekešované (dynamic) routes vracajú 500. Static routes fungujú lebo sú servované z CDN cache a middleware obchádzajú.
 
 ## Node.js
 
@@ -249,12 +252,29 @@ useEffect(() => {
 - `useEffect(() => setMounted(true), [])` — legitimate SSR hydration guard, but flagged by `react-hooks/set-state-in-effect`; add `// eslint-disable-next-line react-hooks/set-state-in-effect` above it
 - `Date.now()` impure-in-render: `useMemo` does NOT satisfy the rule — use `useState(() => Date.now())` lazy init instead
 
+## AppShell — mobilný top bar (2026-04-14)
+
+- AppShell zobrazuje mobilný top bar (hamburger + ProPodium logo) **IBA** keď `sidebar === undefined` (defaultný Sidebar)
+- Keď je custom `sidebar` (napr. `CompetitionSidebar`), AppShell **NESMIE** pridávať vlastný mobile top bar — CompetitionSidebar má vlastný fixed top bar → dvaja top bary
+- `noPadding` stránky s custom sidebar (competition detail) potrebujú `max-lg:pt-14` na main content kvôli fixed CompetitionSidebar top baru
+- **CompetitionSidebar mobile top bar**: hamburger vľavo, názov soutěže v strede, bez "DA" badge
+
+## Mobile sidebar z-index pravidlo (2026-04-14)
+
+- Sidebar MUSÍ mať vyšší z-index ako overlay: `sidebar z-[160]` > `overlay z-[150]`
+- Ak overlay > sidebar → sidebar sa zasunie ale je neviditeľný za tmavým prekrytím (z-index bug)
+- Dashboard page header: `flex-col sm:flex-row` pre mobile (nie `flex items-start justify-between`)
+- Landing nav: pri ≤640px skry sekundárne nav tlačidlá, nechaj len primárny CTA
+
 ## Railway / Docker deployment
 
 - `NEXT_PUBLIC_*` proměnné jsou **build-time** — v Dockerfile musí být jako `ARG` + `ENV ARG=$ARG`
 - `.gitignore` má `.env*` glob — pro `.env.example` přidej výjimku `!.env.example`
-- `output: "standalone"` v `next.config.ts` nutné pro Dockerfile (kopíruje jen `.next/standalone/`)
+- `output: "standalone"` v `next.config.ts` nutné pro Dockerfile (kopíruje jen `.next/standalone/`) — **ale NIKDY na Vercel** (spôsobuje 500 na dynamic routes)
 - Healthcheck v Dockerfile: `/api/*` jsou rewrites na backend — nepoužívej jako healthcheck endpoint
+- **NEXT_PUBLIC_MOCK_API musí být `false` v produkci** — pokud `true`, frontend nikdy nevolá backend (login vrátí "Invalid credentials")
+- **`tests/mocks/jap-2026-data.ts` nesmí být v `.gitignore`** — importuje ho `src/mocks/db.ts`, Vercel build jinak selže
+- **DNS AAAA záznam:** Po přidání domény na Vercel smaž AAAA (IPv6) záznamy u Websupport — jinak `ERR_CONNECTION_CLOSED` a SSL certifikát se nevydá
 
 ## Spec soubory
 
