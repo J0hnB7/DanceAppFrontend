@@ -20,6 +20,7 @@ import { organizersApi } from "@/lib/api/organizers";
 import type { OrganizerUser } from "@/lib/api/organizers";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
+import { getErrorMessage } from "@/lib/utils";
 import { getInitials, getAvatarColor } from "@/lib/utils";
 
 export default function AdminOrganizersPage() {
@@ -43,8 +44,8 @@ export default function AdminOrganizersPage() {
       setInviteName("");
       setInviteEmail("");
     },
-    onError: () => {
-      toast({ title: t("organizers.inviteError"), variant: "destructive" });
+    onError: (err: unknown) => {
+      toast({ title: getErrorMessage(err, t("organizers.inviteError")), variant: "destructive" });
     },
   });
 
