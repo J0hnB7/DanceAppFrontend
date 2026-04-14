@@ -432,7 +432,7 @@ export function CompetitionSidebar({
       <aside
         id="comp-sidebar"
         className={cn(
-          "fixed inset-y-0 left-0 z-[100] flex w-60 flex-col overflow-hidden bg-[#0B0F1A] transition-transform duration-250 lg:relative lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-[160] flex w-60 flex-col overflow-hidden bg-[#0B0F1A] transition-transform duration-250 lg:relative lg:z-auto lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "max-lg:-translate-x-full"
         )}
       >
