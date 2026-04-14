@@ -66,10 +66,7 @@ export default function DashboardPage() {
   return (
     <AppShell>
       {/* Header */}
-      <div
-        className="flex items-start justify-between gap-4"
-        style={{ marginBottom: 20 }}
-      >
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1
             style={{

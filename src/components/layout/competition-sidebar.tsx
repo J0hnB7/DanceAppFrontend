@@ -397,26 +397,20 @@ export function CompetitionSidebar({
     <>
       {/* Mobile top bar */}
       <header className="fixed inset-x-0 top-0 z-[200] hidden items-center gap-3 border-b border-[rgba(255,255,255,0.07)] bg-[#0B0F1A] px-4 py-2.5 max-lg:flex">
-        <div
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#3B82F6] to-[#06B6D4] text-[10px] font-bold text-white"
-          style={{ fontFamily: "var(--font-sora)" }}
-        >
-          DA
-        </div>
-        <span className="flex-1 truncate text-sm font-bold text-[#F1F5F9]" style={{ fontFamily: "var(--font-sora)" }}>
-          {competitionName ?? "Soutěž"}
-        </span>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label={t("nav.openMenu")}
           aria-expanded={mobileOpen}
           aria-controls="comp-sidebar"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-[#94A3B8] transition-all duration-150 hover:bg-[rgba(255,255,255,0.06)] hover:text-[#F1F5F9]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#94A3B8] transition-all duration-150 hover:bg-[rgba(255,255,255,0.06)] hover:text-[#F1F5F9]"
         >
           <span className="h-5 w-5">
             {mobileOpen ? icons.close : icons.hamburger}
           </span>
         </button>
+        <span className="flex-1 truncate text-sm font-bold text-[#F1F5F9]" style={{ fontFamily: "var(--font-sora)" }}>
+          {competitionName ?? "Soutěž"}
+        </span>
       </header>
 
       {/* Mobile overlay */}
