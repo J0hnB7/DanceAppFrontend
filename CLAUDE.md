@@ -252,6 +252,12 @@ useEffect(() => {
 - `useEffect(() => setMounted(true), [])` — legitimate SSR hydration guard, but flagged by `react-hooks/set-state-in-effect`; add `// eslint-disable-next-line react-hooks/set-state-in-effect` above it
 - `Date.now()` impure-in-render: `useMemo` does NOT satisfy the rule — use `useState(() => Date.now())` lazy init instead
 
+## Mobile grid stat cards — layout pravidlo
+
+- 3-col grid na mobilu = ~111px/sloupec. `CardContent` má `p-5` (20px sides) → jen ~69px pro content.
+- Horizontální layout (ikona + label + hodnota) potřebuje ≥120px → NEFUNGUJE v 3-col gridu.
+- **Fix:** Vertikální layout: `flex-col items-center` s `px-2 py-3`. Ikona → číslo → label (truncate, text-[10px]).
+
 ## AppShell — mobilný top bar (2026-04-14)
 
 - AppShell zobrazuje mobilný top bar (hamburger + ProPodium logo) **IBA** keď `sidebar === undefined` (defaultný Sidebar)
