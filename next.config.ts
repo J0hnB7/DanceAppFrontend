@@ -30,18 +30,12 @@ const nextConfig: NextConfig = {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
   async rewrites() {
-    return {
-      beforeFiles: [
-        { source: "/", destination: "/landing.html" },
-      ],
-      afterFiles: [
-        {
-          source: "/api/:path*",
-          destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
-        },
-      ],
-      fallback: [],
-    };
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
+      },
+    ];
   },
   images: {
     remotePatterns: [
