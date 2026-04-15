@@ -127,11 +127,12 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
   return (
     <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
       <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(`/dashboard/competitions/${competitionId}`)}
               className="shrink-0 rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
+              aria-label={t("common.back")}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -163,14 +164,14 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
             <p className="text-sm text-[var(--text-secondary)]">{t("payments.noInvoices")}</p>
           </Card>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+            <table className="w-full min-w-[480px] text-sm">
               <thead className="bg-[var(--surface-secondary)] text-xs text-[var(--text-tertiary)]">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">{t("payments.invoiceNumber")}</th>
                   <th className="px-4 py-3 text-right font-medium">{t("payments.amount")}</th>
                   <th className="px-4 py-3 text-left font-medium">{t("payments.status")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("payments.paidAt")}</th>
+                  <th className="hidden px-4 py-3 text-left font-medium sm:table-cell">{t("payments.paidAt")}</th>
                   <th className="px-4 py-3 text-right font-medium">{t("payments.actions")}</th>
                 </tr>
               </thead>
@@ -186,7 +187,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
                     <td className="px-4 py-3">
                       <Badge variant={STATUS_COLORS[inv.status]}>{inv.status}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">
+                    <td className="hidden px-4 py-3 text-[var(--text-secondary)] text-xs sm:table-cell">
                       {inv.paidAt ? formatDate(inv.paidAt) : "—"}
                     </td>
                     <td className="px-4 py-3">
