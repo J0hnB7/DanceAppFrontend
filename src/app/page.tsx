@@ -248,13 +248,14 @@ export default function Home() {
           <li><Link href="/competitions">{t("nav-results")}</Link></li>
         </ul>
 
+        {/* Soutěže — center on mobile, hidden on desktop (nav-links handles it) */}
+        <Link href="/competitions" className="lp-nav-competitions-btn">{t("nav-competitions")}</Link>
+
         <div className="lp-nav-right">
-          <Link href="/competitions" className="lp-nav-competitions-btn">{t("nav-competitions")}</Link>
           <button className="lp-lang-btn" onClick={toggle} aria-label="Switch language">
             {lang === "cs" ? "EN" : "CS"}
           </button>
-          <Link href="/login" className="lp-btn-ghost">{t("nav-login")}</Link>
-          <Link href="/register" className="lp-btn-primary">{t("nav-register")}</Link>
+          <Link href="/login" className="lp-btn-primary">{t("nav-login")}</Link>
         </div>
       </nav>
 
@@ -422,12 +423,7 @@ export default function Home() {
       <footer className="lp-footer">
         <div className="lp-footer-inner">
           <Link href="/" className="lp-footer-logo">
-            <span className="lp-footer-logo-mark" aria-hidden="true">
-              <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
-                <path d="M2 11L7 3L12 11" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="7" cy="11" r="1.4" fill="#fff" />
-              </svg>
-            </span>
+            <LogoMark size={20} />
             ProPodium
           </Link>
           <ul className="lp-footer-links" role="list">
@@ -838,11 +834,13 @@ const CSS = `
   .lp-footer-links a:hover { color: #6b7280; }
   .lp-footer-copy { font-size: .72rem; color: #d1d5db; letter-spacing: -.01em; margin: 0; }
 
-  /* Soutěže button — hidden on desktop (nav-links handle it), shown on mobile */
+  /* Soutěže — centered absolutely in nav on mobile, hidden on desktop */
   .lp-nav-competitions-btn {
-    display: none; padding: 6px 14px; font-size: .82rem; font-weight: 400;
+    display: none;
+    position: absolute; left: 50%; transform: translateX(-50%);
+    padding: 4px 14px; font-size: .82rem; font-weight: 400;
     letter-spacing: -.01em; color: rgba(255,255,255,.55); text-decoration: none;
-    transition: color .15s; border-radius: 7px;
+    transition: color .15s;
   }
   .lp-nav-competitions-btn:hover { color: #fff; }
   .lp-nav.scrolled .lp-nav-competitions-btn { color: #6b7280; }
