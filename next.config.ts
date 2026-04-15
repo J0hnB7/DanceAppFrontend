@@ -8,10 +8,10 @@ const csp = [
   isDev
     ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
     : "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   `connect-src 'self' ${(process.env.NEXT_PUBLIC_API_URL ?? "").trim()} wss: ws: https://*.ingest.sentry.io https://sentry.io`,
-  "font-src 'self'",
+  "font-src 'self' https://fonts.gstatic.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
@@ -30,12 +30,18 @@ const nextConfig: NextConfig = {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
-      },
-    ];
+    return {
+      beforeFiles: [
+        { source: "/", destination: "/landing.html" },
+      ],
+      afterFiles: [
+        {
+          source: "/api/:path*",
+          destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
+        },
+      ],
+      fallback: [],
+    };
   },
   images: {
     remotePatterns: [
