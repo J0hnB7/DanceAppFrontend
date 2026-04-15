@@ -434,6 +434,9 @@ export default function Home() {
             <li><Link href="/privacy">{t("footer-gdpr")}</Link></li>
           </ul>
           <p className="lp-footer-copy">{t("footer-copy")}</p>
+          <button className="lp-lang-btn lp-footer-lang-btn" onClick={toggle} aria-label="Switch language">
+            {lang === "cs" ? "EN" : "CS"}
+          </button>
         </div>
       </footer>
     </>
@@ -810,7 +813,7 @@ const CSS = `
   .lp-btn-cta-g:hover { background: rgba(255,255,255,.1); color: rgba(255,255,255,.9); }
 
   /* ── FOOTER ── */
-  .lp-footer { border-top: 1px solid #e5e7eb; padding: 24px 28px; background: #ffffff; }
+  .lp-footer { border-top: 1px solid #1f2937; padding: 24px 28px; background: #0a1628; }
   .lp-footer-inner {
     max-width: 960px; margin: 0 auto;
     display: flex; align-items: center; justify-content: space-between;
@@ -821,7 +824,7 @@ const CSS = `
     font-size: .8rem; font-weight: 500; letter-spacing: -.01em;
     color: #9ca3af; text-decoration: none; transition: color .2s;
   }
-  .lp-footer-logo:hover { color: #6b7280; }
+  .lp-footer-logo:hover { color: #d1d5db; }
   .lp-footer-logo-mark {
     width: 20px; height: 20px; border-radius: 5px;
     background: #6366f1; display: flex; align-items: center; justify-content: center;
@@ -831,13 +834,13 @@ const CSS = `
     font-size: .76rem; color: #9ca3af;
     text-decoration: none; transition: color .2s; letter-spacing: -.01em;
   }
-  .lp-footer-links a:hover { color: #6b7280; }
-  .lp-footer-copy { font-size: .72rem; color: #d1d5db; letter-spacing: -.01em; margin: 0; }
+  .lp-footer-links a:hover { color: #d1d5db; }
+  .lp-footer-copy { font-size: .72rem; color: #6b7280; letter-spacing: -.01em; margin: 0; }
 
   /* Soutěže — centered absolutely in nav on mobile, hidden on desktop */
   .lp-nav-competitions-btn {
     display: none;
-    position: absolute; left: 50%; transform: translateX(-50%);
+    position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content;
     padding: 4px 14px; font-size: .82rem; font-weight: 400;
     letter-spacing: -.01em; color: rgba(255,255,255,.55); text-decoration: none;
     transition: color .15s;
@@ -846,11 +849,16 @@ const CSS = `
   .lp-nav.scrolled .lp-nav-competitions-btn { color: #6b7280; }
   .lp-nav.scrolled .lp-nav-competitions-btn:hover { color: #0f0f14; }
 
+  .lp-footer-lang-btn { display: none; }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 860px) {
     .lp-nav-links { display: none; }
     .lp-nav-competitions-btn { display: block; }
     .lp-sec-cols { grid-template-columns: 1fr !important; }
+    .lp-lang-btn:not(.lp-footer-lang-btn) { display: none; }
+    .lp-footer-lang-btn { display: inline-block; color: #6b7280; background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); }
+    .lp-footer-lang-btn:hover { color: #d1d5db; background: rgba(255,255,255,.12); }
   }
   @media (max-width: 680px) {
     .lp-feat-grid { grid-template-columns: 1fr 1fr; }
