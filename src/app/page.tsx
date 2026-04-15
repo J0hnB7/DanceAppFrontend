@@ -249,6 +249,7 @@ export default function Home() {
         </ul>
 
         <div className="lp-nav-right">
+          <Link href="/competitions" className="lp-nav-competitions-btn">{t("nav-competitions")}</Link>
           <button className="lp-lang-btn" onClick={toggle} aria-label="Switch language">
             {lang === "cs" ? "EN" : "CS"}
           </button>
@@ -260,20 +261,14 @@ export default function Home() {
       {/* ── HERO ── */}
       <section className="lp-hero" aria-labelledby="lp-hero-h">
         <div className="lp-hero-content">
-          <div className="lp-hero-pill lp-a0" role="note">
-            <span className="lp-pill-dot" aria-hidden="true" />
-            {t("hero-pill")}
-          </div>
-
-          <h1 id="lp-hero-h" className="lp-a1">
+          <h1 id="lp-hero-h" className="lp-a0">
             {t("hero-h1-a")}<br />
             <em>{t("hero-h1-b")}</em>
           </h1>
 
-          <p className="lp-hero-sub lp-a2">{t("hero-sub")}</p>
+          <p className="lp-hero-sub lp-a1">{t("hero-sub")}</p>
 
-          <div className="lp-hero-actions lp-a3">
-            <Link href="/register" className="lp-btn-hero-p">{t("hero-cta1")}</Link>
+          <div className="lp-hero-actions lp-a2">
             <a href="#roles" className="lp-btn-hero-s">{t("hero-cta2")}</a>
           </div>
 
@@ -697,7 +692,7 @@ const CSS = `
   .lp-sec-header { max-width: 560px; margin: 0 auto 52px; text-align: center; }
 
   /* ── ROLES ── */
-  .lp-roles { padding: 72px 24px; }
+  .lp-roles { padding: 72px 24px; background: #ffffff; }
   .lp-roles-header { max-width: 560px; margin: 0 auto 56px; text-align: center; }
   .lp-roles-grid {
     max-width: 960px; margin: 0 auto;
@@ -757,7 +752,7 @@ const CSS = `
   .lp-feat-block p { font-size: .82rem; color: #6b7280; line-height: 1.6; margin: 0; }
 
   /* ── SECURITY ── */
-  .lp-security { padding: 72px 24px; }
+  .lp-security { padding: 72px 24px; background: #ffffff; }
   .lp-sec-cols {
     max-width: 960px; margin: 0 auto;
     display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
@@ -843,9 +838,20 @@ const CSS = `
   .lp-footer-links a:hover { color: #6b7280; }
   .lp-footer-copy { font-size: .72rem; color: #d1d5db; letter-spacing: -.01em; margin: 0; }
 
+  /* Soutěže button — hidden on desktop (nav-links handle it), shown on mobile */
+  .lp-nav-competitions-btn {
+    display: none; padding: 6px 14px; font-size: .82rem; font-weight: 400;
+    letter-spacing: -.01em; color: rgba(255,255,255,.55); text-decoration: none;
+    transition: color .15s; border-radius: 7px;
+  }
+  .lp-nav-competitions-btn:hover { color: #fff; }
+  .lp-nav.scrolled .lp-nav-competitions-btn { color: #6b7280; }
+  .lp-nav.scrolled .lp-nav-competitions-btn:hover { color: #0f0f14; }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 860px) {
     .lp-nav-links { display: none; }
+    .lp-nav-competitions-btn { display: block; }
     .lp-sec-cols { grid-template-columns: 1fr !important; }
   }
   @media (max-width: 680px) {
