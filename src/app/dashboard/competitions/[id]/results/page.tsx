@@ -70,7 +70,7 @@ function RoundContent({ round }: { round: RoundDto }) {
 
   const isCompleted = round.status === "COMPLETED" || round.status === "CALCULATED";
 
-  const { data: detailData, isLoading: detailLoading } = useQuery({
+  const { data: detailData, isLoading: detailLoading, isError: detailError } = useQuery({
     queryKey: ["round-detail", round.id],
     queryFn: () => roundsApi.getRoundDetail(round.id),
     enabled: isCompleted,
@@ -81,6 +81,10 @@ function RoundContent({ round }: { round: RoundDto }) {
   }
 
   if (detailLoading) return <Skeleton className="h-24 w-full" />;
+
+  if (detailError) {
+    return <p className="text-sm text-[var(--destructive)]">{t("common.error")}</p>;
+  }
 
   if (detailData && detailData.pairs.length > 0) {
     if (isFinalDetail(detailData)) {

@@ -18,6 +18,7 @@ import { ResultsSection } from "@/components/public/ResultsSection";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
+import axios from "axios";
 
 const schema = z.object({
   sectionIds: z.array(z.string()).min(1),
@@ -155,8 +156,12 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
       setResult(res.data);
       if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
-      const apiErr = err as { message?: string };
-      toast({ title: apiErr?.message ?? t("publicRegister.failed"), variant: "destructive" });
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        toast({ title: t("publicCompetition.capacityFull"), variant: "destructive" });
+      } else {
+        const apiErr = err as { message?: string };
+        toast({ title: apiErr?.message ?? t("publicRegister.failed"), variant: "destructive" });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -514,35 +519,40 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                 </div>
               )}
 
-              {competition.paymentConfig && (competition.paymentConfig as Record<string, string>).iban && (
-                <div style={cardStyle}>
-                  {sectionLabel("💳", t("publicCompetition.paymentInfo"))}
-                  <div style={{ padding: "0 20px 16px", display: "flex", gap: 20, alignItems: "flex-start" }}>
-                    <div style={{ flex: 1 }}>
-                      {[
-                        (competition.paymentConfig as Record<string, string>).holder && [t("publicCompetition.accountHolder"), (competition.paymentConfig as Record<string, string>).holder],
-                        ["IBAN", (competition.paymentConfig as Record<string, string>).iban],
-                        (competition.paymentConfig as Record<string, string>).bic && ["BIC/SWIFT", (competition.paymentConfig as Record<string, string>).bic],
-                      ].filter(Boolean).map((row) => (
-                        <div key={row![0]} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #F3F4F6" }}>
-                          <span style={{ fontSize: ".85rem", color: "#6B7280" }}>{row![0]}</span>
-                          <span style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827", fontFamily: row![0] === "IBAN" || row![0] === "BIC/SWIFT" ? "monospace" : undefined }}>{row![1]}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {(competition.paymentConfig as Record<string, string>).qrCode && (
-                      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                        <img
-                          src={(competition.paymentConfig as Record<string, string>).qrCode}
-                          alt={t("publicCompetition.scanQrCode")}
-                          style={{ width: 120, height: 120, borderRadius: 10, border: "1px solid #E5E7EB", objectFit: "contain", background: "#fff", padding: 4 }}
-                        />
-                        <span style={{ fontSize: ".7rem", color: "#9CA3AF", fontWeight: 500 }}>{t("publicCompetition.scanQrCode")}</span>
+              {(() => {
+                const pc = competition.paymentConfig != null && typeof competition.paymentConfig === "object"
+                  ? competition.paymentConfig as Record<string, string>
+                  : null;
+                return pc?.iban ? (
+                  <div style={cardStyle}>
+                    {sectionLabel("💳", t("publicCompetition.paymentInfo"))}
+                    <div style={{ padding: "0 20px 16px", display: "flex", gap: 20, alignItems: "flex-start" }}>
+                      <div style={{ flex: 1 }}>
+                        {[
+                          pc.holder && [t("publicCompetition.accountHolder"), pc.holder],
+                          ["IBAN", pc.iban],
+                          pc.bic && ["BIC/SWIFT", pc.bic],
+                        ].filter(Boolean).map((row) => (
+                          <div key={row![0]} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #F3F4F6" }}>
+                            <span style={{ fontSize: ".85rem", color: "#6B7280" }}>{row![0]}</span>
+                            <span style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827", fontFamily: row![0] === "IBAN" || row![0] === "BIC/SWIFT" ? "monospace" : undefined }}>{row![1]}</span>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                      {pc.qrCode && (
+                        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                          <img
+                            src={pc.qrCode}
+                            alt={t("publicCompetition.scanQrCode")}
+                            style={{ width: 120, height: 120, borderRadius: 10, border: "1px solid #E5E7EB", objectFit: "contain", background: "#fff", padding: 4 }}
+                          />
+                          <span style={{ fontSize: ".7rem", color: "#9CA3AF", fontWeight: 500 }}>{t("publicCompetition.scanQrCode")}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : null;
+              })()}
 
               {/* 5c — dancer info */}
               <div style={{ ...cardStyle, ["--surface" as string]: "#fff", ["--text-primary" as string]: "#111827", ["--text-secondary" as string]: "#374151", ["--text-tertiary" as string]: "#6B7280", ["--border" as string]: "#E5E7EB", ["--accent" as string]: "#4F46E5", ["--radius-md" as string]: "8px", ["--destructive" as string]: "#DC2626" }}>
@@ -608,15 +618,15 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                 <p style={{ marginTop: -8, fontSize: ".78rem", color: "#DC2626" }}>{t("publicRegister.validation.gdprRequired")}</p>
               )}
 
-              <button type="submit" disabled={submitting} aria-label={submitting ? t("publicCompetition.submitting") : t("publicCompetition.submitRegistration")} style={{
+              <button type="submit" disabled={submitting || spotsLeft === 0} aria-label={submitting ? t("publicCompetition.submitting") : t("publicCompetition.submitRegistration")} style={{
                 padding: "14px 28px", borderRadius: 10, fontSize: "1rem", fontWeight: 700,
                 background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "#fff",
-                border: "2px solid transparent", cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? .7 : 1,
+                border: "2px solid transparent", cursor: (submitting || spotsLeft === 0) ? "not-allowed" : "pointer", opacity: (submitting || spotsLeft === 0) ? .7 : 1,
                 boxShadow: "0 4px 14px rgba(79,70,229,.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 transition: "opacity .2s", outline: "none",
               }} onFocus={(e) => { e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79,70,229,.4)"; }} onBlur={(e) => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(79,70,229,.4)"; }}>
-                {submitting ? t("publicCompetition.submitting") : t("publicCompetition.submitRegistration")}
-                {!submitting && (
+                {spotsLeft === 0 ? t("publicCompetition.capacityFull") : submitting ? t("publicCompetition.submitting") : t("publicCompetition.submitRegistration")}
+                {!submitting && spotsLeft !== 0 && (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                 )}
               </button>

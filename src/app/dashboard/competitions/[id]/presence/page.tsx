@@ -118,7 +118,10 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
       );
       return { prev };
     },
-    onError: (_err, _vars, ctx) => qc.setQueryData(["presence", id], ctx?.prev),
+    onError: (err: unknown, _vars, ctx) => {
+      qc.setQueryData(["presence", id], ctx?.prev);
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
+    },
     onSettled: () => qc.invalidateQueries({ queryKey: ["presence", id] }),
   });
 
@@ -149,7 +152,10 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
       );
       return { prev };
     },
-    onError: (_err, _vars, ctx) => qc.setQueryData(["presence", id], ctx?.prev),
+    onError: (err: unknown, _vars, ctx) => {
+      qc.setQueryData(["presence", id], ctx?.prev);
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
+    },
     onSettled: () => qc.invalidateQueries({ queryKey: ["presence", id] }),
   });
 
@@ -315,7 +321,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
         <div className="mb-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
           <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-2.5">
             <Lock className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
-            <p className="text-xs font-semibold text-[var(--text-secondary)]">Uzavretie prezencie po sekciách</p>
+            <p className="text-xs font-semibold text-[var(--text-secondary)]">{t("presence.sectionPresenceTitle")}</p>
           </div>
           <div className="divide-y divide-[var(--border)]">
             {sections.map((s) => {
@@ -327,20 +333,20 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                 <div key={s.id} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-medium text-[var(--text-primary)]">{s.name}</p>
-                    <p className="text-xs text-[var(--text-tertiary)]">{sPresent} prítomných / {sTotal} registrovaných</p>
+                    <p className="text-xs text-[var(--text-tertiary)]">{t("presence.sectionPresenceCount", { present: sPresent, total: sTotal })}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {s.presenceClosed ? (
                       <>
                         <span className="flex items-center gap-1 rounded-full bg-[var(--surface-secondary)] px-2 py-0.5 text-xs text-[var(--text-tertiary)]">
-                          <Lock className="h-3 w-3" /> Uzavretá
+                          <Lock className="h-3 w-3" /> {t("presence.sectionPresenceClosed")}
                         </span>
                         <button
                           onClick={() => reopenSectionPresence.mutate(s.id)}
                           disabled={reopenSectionPresence.isPending}
                           className="rounded-md border border-[var(--border)] bg-[var(--surface-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--border)] disabled:opacity-50"
                         >
-                          Otvoriť
+                          {t("presence.sectionPresenceReopen")}
                         </button>
                       </>
                     ) : (
@@ -348,18 +354,18 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
                         onClick={() => { setSectionFilter(s.id); setShowCloseDialog(true); }}
                         className="rounded-md border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 px-2.5 py-1 text-xs font-medium text-[var(--destructive)] hover:bg-[var(--destructive)]/10"
                       >
-                        Uzavrieť
+                        {t("presence.sectionPresenceClose")}
                       </button>
                     )}
                     <button
                       onClick={() => {
-                        if (window.confirm(`Zmazať sekciu "${s.name}"? Táto akcia je nevratná.`)) {
+                        if (window.confirm(t("presence.sectionPresenceDeleteConfirm", { name: s.name }))) {
                           deleteSection.mutate(s.id);
                         }
                       }}
                       disabled={deleteSection.isPending}
                       className="rounded-md p-1 text-[var(--text-tertiary)] hover:bg-[var(--destructive)]/10 hover:text-[var(--destructive)] disabled:opacity-40"
-                      title="Zmazať sekciu"
+                      title={t("presence.sectionPresenceDeleteTitle")}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
