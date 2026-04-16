@@ -116,7 +116,8 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
     queryKey: ["section-summary", section.id],
     queryFn: () =>
       apiClient.get<SectionSummary>(`/sections/${section.id}/final-summary`).then((r) => r.data),
-    enabled: manualOpen !== false,
+    enabled: manualOpen === true,
+    staleTime: 60_000,
   });
 
   const rankings = data?.rankings ?? [];
