@@ -813,7 +813,7 @@ const CSS = `
   .lp-btn-cta-g:hover { background: rgba(255,255,255,.1); color: rgba(255,255,255,.9); }
 
   /* ── FOOTER ── */
-  .lp-footer { border-top: 1px solid rgba(255,255,255,.07); padding: 24px 28px; background: #0f0f14; }
+  .lp-footer { padding: 24px 28px; background: #0f0f14; }
   .lp-footer-inner {
     max-width: 960px; margin: 0 auto;
     display: flex; align-items: center; justify-content: space-between;
