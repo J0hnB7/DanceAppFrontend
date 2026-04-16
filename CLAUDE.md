@@ -92,6 +92,8 @@ src/
 - Soubory: `src/lib/i18n/cs.json` + `en.json` — vždy přidej klíč do OBOU!
 - Překlady v komponentách: `const { t } = useLocale()` z `@/contexts/locale-context`
 - `t('key')` nebo `t('key', { n: 5, name: 'foo' })` pro parametry
+- `useLocale()` vrací i `locale` (`"cs"` | `"en"`) — použij pro browser APIs: `const { t, locale } = useLocale()`
+- Locale-aware date: `toLocaleDateString(locale === "cs" ? "cs-CZ" : "en-GB", { ... })`
 
 ## Design systém — POZOR na dva světy
 
@@ -217,15 +219,33 @@ npx tsc --noEmit
 ## Sentry
 
 - Config: `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
-- DSN: `process.env.NEXT_PUBLIC_SENTRY_DSN`
+- DSN: `process.env.NEXT_PUBLIC_SENTRY_DSN` — nastavené v `.env.local` + Vercel prod
+- Org: `bystriansky`, Project: `javascript-nextjs`
 - Instrumentace: `src/instrumentation.ts` + `src/instrumentation-client.ts`
+- **CSP:** `worker-src 'self' blob:` musí byť v `next.config.ts` — Sentry SDK používa blob worker
 - Pro prod errory: `/seer` command nebo Sentry MCP přímo
+
+## Public pages — jazykový toggle (2026-04-16)
+
+- `/competitions` a `/competitions/[id]` majú CZ/EN toggle v nave
+- Štýl: `{ padding: "4px 10px", borderRadius: 6, background: "#f3f4f6", border: "1px solid #e5e7eb" }` — rovnaký ako landing page
+- Toggle volá `setLocale()` z `useLocale()` — ukladá do localStorage
+- Všetky 86 prekladových kľúčov `publicCompetition.*` existujú v cs.json aj en.json
+- **Pozor:** Hardcoded Czech strings v public pages = bug. Vždy použi `t()` z `useLocale()`
 
 ## Backend API
 
 - Backend: `http://localhost:8080`, Frontend dev: `http://localhost:3000`
 - Všechny endpointy mají prefix `/api/v1/`
 - API moduly: `src/lib/api/` — `competitions`, `rounds`, `sections`, `pairs`, `live`, `schedule`, `judge-tokens`, `scoring`, `auth`, `payments`, `gdpr`, atd.
+
+## Playwright — MSW + auth gotcha (2026-04-15)
+
+MSW service workers **nefungují v headless Playwright** — worker se nezaregistruje.
+`page.route("**/api/v1/**", ...)` interceptuje síťové volání OK, ale React auth store
+(Zustand) vyžaduje accessToken v paměti — samotný `refreshToken` cookie nestačí.
+Jednoduché řešení: nastav `NEXT_PUBLIC_MOCK_API=true` v `.env.local` a **znovu spusť**
+dev server; pak `page.goto(url)` funguje přímo bez přihlašování. Nezapomeň vrátit na `false`.
 
 ## Playwright — login pattern (2026-04-10)
 
@@ -317,6 +337,10 @@ Header má **2 řádky**:
 - **NEXT_PUBLIC_MOCK_API musí být `false` v produkci** — pokud `true`, frontend nikdy nevolá backend (login vrátí "Invalid credentials")
 - **`tests/mocks/jap-2026-data.ts` nesmí být v `.gitignore`** — importuje ho `src/mocks/db.ts`, Vercel build jinak selže
 - **DNS AAAA záznam:** Po přidání domény na Vercel smaž AAAA (IPv6) záznamy u Websupport — jinak `ERR_CONNECTION_CLOSED` a SSL certifikát se nevydá
+
+## Vercel deploy — vždy --prod
+
+`npx vercel --prod` — `NEXT_PUBLIC_API_URL` je nastavená jen pro `production` target. Plain `npx vercel` (preview) vždy selže: `"destination undefined/api/:path*"` → "Invalid rewrite found". Vercel CLI není globálně nainstalovaný, použi `npx vercel`.
 
 ## Spec soubory
 
