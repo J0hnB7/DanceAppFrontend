@@ -917,7 +917,26 @@
     "viewFull": "Full details",
     "pairs": "pairs",
     "prelimDetailCaption": "Detailed results for {{round}} — callback marks",
-    "finalDetailCaption": "Detailed results for {{round}} — placement marks"
+    "finalDetailCaption": "Detailed results for {{round}} — placement marks",
+    "pairDetailAriaLabel": "Pair detail",
+    "pairDetailLoading": "Loading…",
+    "pairDetailClose": "Close",
+    "pairDetailLoadingBody": "Loading pair details…",
+    "pairDetailError": "Failed to load details.",
+    "pairDetailNoRounds": "No round details available for this pair.",
+    "pairDetailPlacement": "Placement: {{place}}",
+    "pairDetailPlacementWithSum": "Placement: {{place}} · Sum: {{sum}}",
+    "pairDetailCallbacks": "Place: {{place}}",
+    "pairDetailCallbacksWithSum": "Place: {{place}} · Marks: {{sum}}",
+    "pairDetailDance": "Dance",
+    "pairDetailColPlacement": "Placement",
+    "recalculate": "Recalculate",
+    "recalculating": "Recalculating…",
+    "recalculateTitle": "Recalculate placement for all pairs",
+    "calculateAllTitle": "Recalculate overall standings for all categories",
+    "calculateAllLabel": "Create overall standings for all categories",
+    "calculateAllBtn": "Create overall standings ({{count}})",
+    "calculatingAllBtn": "Recalculating… {{done}}/{{total}}"
   },
   "diplomas": {
     "title": "Diplomas",
@@ -1103,7 +1122,14 @@
     "searchPlaceholder": "Search by name or number...",
     "recentActions": "Recent actions — click Back if you made a mistake",
     "noRecentActions": "No actions yet. History will appear after the first check-in.",
-    "undo": "Undo"
+    "undo": "Undo",
+    "sectionPresenceTitle": "Close presence by section",
+    "sectionPresenceCount": "{{present}} present / {{total}} registered",
+    "sectionPresenceClosed": "Closed",
+    "sectionPresenceReopen": "Reopen",
+    "sectionPresenceClose": "Close",
+    "sectionPresenceDeleteConfirm": "Delete section \"{{name}}\"? This action cannot be undone.",
+    "sectionPresenceDeleteTitle": "Delete section"
   },
   "scoreboard": {
     "liveResults": "LIVE RESULTS",

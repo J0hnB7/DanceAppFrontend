@@ -917,7 +917,26 @@
     "viewFull": "Celý přehled",
     "pairs": "párů",
     "prelimDetailCaption": "Detailní výsledky kola {{round}} — callback marks",
-    "finalDetailCaption": "Detailní výsledky kola {{round}} — placement marks"
+    "finalDetailCaption": "Detailní výsledky kola {{round}} — placement marks",
+    "pairDetailAriaLabel": "Detail páru",
+    "pairDetailLoading": "Načítám…",
+    "pairDetailClose": "Zavřít",
+    "pairDetailLoadingBody": "Načítám detail páru…",
+    "pairDetailError": "Nepodařilo se načíst detail.",
+    "pairDetailNoRounds": "Pro tento pár nejsou dostupné detaily kol.",
+    "pairDetailPlacement": "Umístění: {{place}}",
+    "pairDetailPlacementWithSum": "Umístění: {{place}} · Součet: {{sum}}",
+    "pairDetailCallbacks": "Místo: {{place}}",
+    "pairDetailCallbacksWithSum": "Místo: {{place}} · Křížků: {{sum}}",
+    "pairDetailDance": "Tanec",
+    "pairDetailColPlacement": "Umístění",
+    "recalculate": "Přepočítat",
+    "recalculating": "Přepočítávám…",
+    "recalculateTitle": "Přepočítat pořadí všech párů",
+    "calculateAllTitle": "Přepočítat celkové pořadí pro všechny kategorie",
+    "calculateAllLabel": "Vytvořit celkové pořadí pro všechny kategorie",
+    "calculateAllBtn": "Vytvořit celkové pořadí ({{count}})",
+    "calculatingAllBtn": "Přepočítávám… {{done}}/{{total}}"
   },
   "diplomas": {
     "title": "Diplomy",
@@ -1103,7 +1122,14 @@
     "searchPlaceholder": "Hledat podle jména nebo čísla...",
     "recentActions": "Poslední akce — klikni Zpět pokud jsi udělal chybu",
     "noRecentActions": "Zatím žádné akce. Historie se zobrazí po prvním check-inu.",
-    "undo": "Zpět"
+    "undo": "Zpět",
+    "sectionPresenceTitle": "Uzavření prezence po sekcích",
+    "sectionPresenceCount": "{{present}} přítomných / {{total}} registrovaných",
+    "sectionPresenceClosed": "Uzavřena",
+    "sectionPresenceReopen": "Otevřít",
+    "sectionPresenceClose": "Uzavřít",
+    "sectionPresenceDeleteConfirm": "Smazat sekci \"{{name}}\"? Tato akce je nevratná.",
+    "sectionPresenceDeleteTitle": "Smazat sekci"
   },
   "scoreboard": {
     "liveResults": "ŽIVÉ VÝSLEDKY",

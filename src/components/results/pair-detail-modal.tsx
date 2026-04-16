@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { roundsApi, type PairDetail } from "@/lib/api/rounds";
 import { X } from "lucide-react";
+import { useLocale } from "@/contexts/locale-context";
 
 interface Props {
   open: boolean;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function PairDetailModal({ open, sectionId, pairId, onClose, useThemeVars = false }: Props) {
+  const { t } = useLocale();
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -44,7 +46,7 @@ export function PairDetailModal({ open, sectionId, pairId, onClose, useThemeVars
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Detail páru"
+      aria-label={t("results.pairDetailAriaLabel")}
       onClick={onClose}
       style={{
         position: "fixed",
@@ -122,12 +124,12 @@ export function PairDetailModal({ open, sectionId, pairId, onClose, useThemeVars
                 )}
               </>
             ) : (
-              <div style={{ color: textSecondary }}>Načítám…</div>
+              <div style={{ color: textSecondary }}>{t("results.pairDetailLoading")}</div>
             )}
           </div>
           <button
             onClick={onClose}
-            aria-label="Zavřít"
+            aria-label={t("results.pairDetailClose")}
             style={{
               width: 44,
               height: 44,
@@ -149,17 +151,17 @@ export function PairDetailModal({ open, sectionId, pairId, onClose, useThemeVars
         <div style={{ padding: 20 }}>
           {isLoading && (
             <div style={{ textAlign: "center", padding: 40, color: textSecondary }}>
-              Načítám detail páru…
+              {t("results.pairDetailLoadingBody")}
             </div>
           )}
           {isError && (
             <div style={{ textAlign: "center", padding: 40, color: "#B91C1C" }}>
-              Nepodařilo se načíst detail.
+              {t("results.pairDetailError")}
             </div>
           )}
           {data && data.rounds.length === 0 && (
             <div style={{ textAlign: "center", padding: 40, color: textSecondary }}>
-              Pro tento pár nejsou dostupné detaily kol.
+              {t("results.pairDetailNoRounds")}
             </div>
           )}
           {data &&
@@ -187,8 +189,12 @@ export function PairDetailModal({ open, sectionId, pairId, onClose, useThemeVars
                   <div style={{ fontWeight: 700, color: textPrimary }}>{block.roundLabel}</div>
                   <div style={{ fontSize: "0.85rem", color: textSecondary }}>
                     {block.placementRound
-                      ? `Umístění: ${block.place}${block.totalSum != null ? " · Součet: " + block.totalSum : ""}`
-                      : `Místo: ${block.place}${block.totalSum != null ? " · Křížků: " + block.totalSum : ""}`}
+                      ? (block.totalSum != null
+                          ? t("results.pairDetailPlacementWithSum", { place: block.place, sum: block.totalSum })
+                          : t("results.pairDetailPlacement", { place: block.place }))
+                      : (block.totalSum != null
+                          ? t("results.pairDetailCallbacksWithSum", { place: block.place, sum: block.totalSum })
+                          : t("results.pairDetailCallbacks", { place: block.place }))}
                   </div>
                 </header>
                 <div style={{ overflowX: "auto" }}>
@@ -212,7 +218,7 @@ export function PairDetailModal({ open, sectionId, pairId, onClose, useThemeVars
                             minWidth: 100,
                           }}
                         >
-                          Tanec
+                          {t("results.pairDetailDance")}
                         </th>
                         {block.judges.map((j) => (
                           <th
@@ -242,7 +248,7 @@ export function PairDetailModal({ open, sectionId, pairId, onClose, useThemeVars
                               borderBottom: `1px solid ${border}`,
                             }}
                           >
-                            Umístění
+                            {t("results.pairDetailColPlacement")}
                           </th>
                         )}
                       </tr>

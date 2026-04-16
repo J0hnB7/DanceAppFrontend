@@ -440,7 +440,7 @@ function SectionAccordionItem({
               onClick={handleRecalculate}
               disabled={recalculating}
               className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface)] transition-colors disabled:opacity-50 cursor-pointer"
-              title="Přepočítat pořadí všech párů"
+              title={t("results.recalculateTitle")}
             >
               {recalculating ? (
                 <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -454,7 +454,7 @@ function SectionAccordionItem({
                   <path d="M8 16H3v5" />
                 </svg>
               )}
-              {recalculating ? "Přepočítávám…" : "Přepočítat"}
+              {recalculating ? t("results.recalculating") : t("results.recalculate")}
             </button>
           )}
           <button
@@ -543,8 +543,8 @@ export default function ResultsHubPage({
             onClick={handleCalculateAll}
             disabled={calculatingAll}
             className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors disabled:opacity-50 cursor-pointer min-h-[44px]"
-            title="Přepočítat celkové pořadí pro všechny kategorie"
-            aria-label="Vytvořit celkové pořadí pro všechny kategorie"
+            title={t("results.calculateAllTitle")}
+            aria-label={t("results.calculateAllLabel")}
           >
             {calculatingAll ? (
               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -554,8 +554,8 @@ export default function ResultsHubPage({
               <Trophy className="h-4 w-4" aria-hidden="true" />
             )}
             {calculatingAll && calcProgress
-              ? `Přepočítávám… ${calcProgress.done}/${calcProgress.total}`
-              : `Vytvořit celkové pořadí (${eligibleForCalc.length})`}
+              ? t("results.calculatingAllBtn", { done: calcProgress.done, total: calcProgress.total })
+              : t("results.calculateAllBtn", { count: eligibleForCalc.length })}
           </button>
         </div>
       )}

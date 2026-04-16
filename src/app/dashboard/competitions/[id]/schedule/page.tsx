@@ -138,7 +138,7 @@ function PublishStep({ competitionId }: { competitionId: string }) {
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: competitionId } = use(params);
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [step, setStep] = useState<Step>(0);
   const [fullscreen, setFullscreen] = useState(false);
   const { loadSchedule, scheduleStatus, slots } = useScheduleStore();
@@ -246,7 +246,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
                   )}
                   {competition.eventDate && (
                     <span className="text-xs text-[var(--text-secondary)]">
-                      {new Date(competition.eventDate).toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}
+                      {new Date(competition.eventDate).toLocaleDateString(locale === "cs" ? "cs-CZ" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}
                     </span>
                   )}
                   {(competition.registeredPairsCount ?? 0) > 0 && (
