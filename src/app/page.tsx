@@ -813,7 +813,7 @@ const CSS = `
   .lp-btn-cta-g:hover { background: rgba(255,255,255,.1); color: rgba(255,255,255,.9); }
 
   /* ── FOOTER ── */
-  .lp-footer { border-top: 1px solid #e5e7eb; padding: 24px 28px; background: rgba(255,255,255,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .lp-footer { border-top: 1px solid rgba(255,255,255,.07); padding: 24px 28px; background: #0f0f14; }
   .lp-footer-inner {
     max-width: 960px; margin: 0 auto;
     display: flex; align-items: center; justify-content: space-between;
@@ -822,9 +822,9 @@ const CSS = `
   .lp-footer-logo {
     display: flex; align-items: center; gap: 7px;
     font-size: .8rem; font-weight: 500; letter-spacing: -.01em;
-    color: #0f0f14; text-decoration: none; transition: color .2s;
+    color: #9ca3af; text-decoration: none; transition: color .2s;
   }
-  .lp-footer-logo:hover { color: #6b7280; }
+  .lp-footer-logo:hover { color: #d1d5db; }
   .lp-footer-logo-mark {
     width: 20px; height: 20px; border-radius: 5px;
     background: #6366f1; display: flex; align-items: center; justify-content: center;
@@ -834,7 +834,7 @@ const CSS = `
     font-size: .76rem; color: #6b7280;
     text-decoration: none; transition: color .2s; letter-spacing: -.01em;
   }
-  .lp-footer-links a:hover { color: #0f0f14; }
+  .lp-footer-links a:hover { color: #d1d5db; }
   .lp-footer-copy { font-size: .72rem; color: #6b7280; letter-spacing: -.01em; margin: 0; }
 
   /* Soutěže — centered absolutely in nav on mobile, hidden on desktop */
@@ -857,8 +857,8 @@ const CSS = `
     .lp-nav-competitions-btn { display: block; }
     .lp-sec-cols { grid-template-columns: 1fr !important; }
     .lp-lang-btn:not(.lp-footer-lang-btn) { display: none; }
-    .lp-footer-lang-btn { display: inline-block; color: #6b7280; background: #f3f4f6; border-color: #e5e7eb; }
-    .lp-footer-lang-btn:hover { color: #0f0f14; background: #f9fafb; }
+    .lp-footer-lang-btn { display: inline-block; color: #6b7280; background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); }
+    .lp-footer-lang-btn:hover { color: #d1d5db; background: rgba(255,255,255,.12); }
   }
   @media (max-width: 680px) {
     .lp-feat-grid { grid-template-columns: 1fr 1fr; }
