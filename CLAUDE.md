@@ -353,6 +353,24 @@ Header má **2 řádky**:
 
 `npx vercel --prod` — `NEXT_PUBLIC_API_URL` je nastavená jen pro `production` target. Plain `npx vercel` (preview) vždy selže: `"destination undefined/api/:path*"` → "Invalid rewrite found". Vercel CLI není globálně nainstalovaný, použi `npx vercel`.
 
+## Public pages — SecurityConfig permitAll (2026-04-16)
+
+Endpointy volané z public competition stránky bez autentifikácie MUSIA byť v `permitAll`:
+- `GET /competitions/*` — detailová stránka (bez toho 401 → "Competition not found")
+- `GET /competitions/*/news` — news feed (bez toho React Query 3× retry = 7s zdržanie)
+- `GET /competitions/*/sections` ✅ (bolo)
+- `GET /sections/*/final-summary` ✅ (bolo)
+- `GET /rounds/*/detail` ✅ (bolo)
+
+Pri pridávaní nového endpointu volaného z `/competitions/**`: vždy skontroluj SecurityConfig.
+
+## Favicon — browser cache (2026-04-16)
+
+Prehliadače hľadajú `/favicon.ico` ako prvé pred `<link rel="icon">` tagom. Bez `public/favicon.ico` drží browser cache zo starej verzie donekonečna.
+- `public/favicon.ico` generuj cez: `sips -z 32 32 logo.png --out /tmp/favicon-32.png` + Python ICO writer
+- `src/app/icon.png` + `apple-icon.png` pre Next.js App Router metadata (apple-touch-icon)
+- Hard refresh na mobile Safari: Settings → Safari → Advanced → Website Data → Delete
+
 ## ResultsSection — lazy-load gotcha (2026-04-16)
 
 `SectionResultCard` v `src/components/public/ResultsSection.tsx` používa `enabled` prop na React Query.
