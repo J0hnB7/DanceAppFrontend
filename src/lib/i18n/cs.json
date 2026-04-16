@@ -460,7 +460,12 @@
     "capacity": "Kapacita",
     "maxPairsOf": "max. {{max}} párů",
     "pairsRegisteredCount": "({{count}} přihlášeno)",
-    "registrationDeadlineLabel": "Uzávěrka:"
+    "registrationDeadlineLabel": "Uzávěrka:",
+    "generalDescription": "Obecný popis",
+    "accountHolder": "Majitel účtu",
+    "scanQrCode": "Naskenujte QR kód",
+    "submitting": "Odesílám…",
+    "statsRegistered": "Přihlášených soutěžících"
   },
   "publicRegister": {
     "backToCompetition": "Zpět na soutěž",

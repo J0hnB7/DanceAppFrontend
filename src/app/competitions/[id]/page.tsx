@@ -317,7 +317,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
             {/* stats chips */}
             <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
               <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px" }}>
-                <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Přihlášených soutěžících</div>
+                <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>{t("publicCompetition.statsRegistered")}</div>
                 <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.25rem", color: "#fff" }}>
                   {competition.registeredPairsCount ?? 0}
                   {competition.maxPairs && <span style={{ fontSize: ".75rem", fontWeight: 400, color: "rgba(255,255,255,.65)" }}> / {competition.maxPairs}</span>}
@@ -325,14 +325,14 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
               </div>
               {sections.length > 0 && (
                 <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px" }}>
-                  <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>Kategorie</div>
+                  <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 3 }}>{t("publicCompetition.categories")}</div>
                   <div style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1.25rem", color: "#fff" }}>{sections.length}</div>
                 </div>
               )}
               {capacityPct !== null && (
                 <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, padding: "10px 16px", minWidth: 160 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".65rem", color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>
-                    <span>Kapacita</span><span style={{ color: "#a5b4fc" }}>{capacityPct}%</span>
+                    <span>{t("publicCompetition.capacity")}</span><span style={{ color: "#a5b4fc" }}>{capacityPct}%</span>
                   </div>
                   <div style={{ background: "rgba(255,255,255,.12)", borderRadius: 100, height: 5 }}>
                     <div style={{ height: 5, borderRadius: 100, background: "linear-gradient(90deg,#818CF8,#a5b4fc)", width: `${Math.min(capacityPct, 100)}%` }} />
@@ -356,7 +356,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
           {/* General description */}
           {competition.contentDescription && (
             <div style={cardStyle}>
-              {sectionLabel("📝", t("publicCompetition.basicInfo").includes("info") ? "Obecný popis" : "Popis")}
+              {sectionLabel("📝", t("publicCompetition.generalDescription"))}
               <div style={{ padding: 20 }}>
                 <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>
                   {competition.contentDescription}
@@ -516,11 +516,11 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
 
               {competition.paymentConfig && (competition.paymentConfig as Record<string, string>).iban && (
                 <div style={cardStyle}>
-                  {sectionLabel("💳", "Platební údaje")}
+                  {sectionLabel("💳", t("publicCompetition.paymentInfo"))}
                   <div style={{ padding: "0 20px 16px", display: "flex", gap: 20, alignItems: "flex-start" }}>
                     <div style={{ flex: 1 }}>
                       {[
-                        (competition.paymentConfig as Record<string, string>).holder && ["Majitel účtu", (competition.paymentConfig as Record<string, string>).holder],
+                        (competition.paymentConfig as Record<string, string>).holder && [t("publicCompetition.accountHolder"), (competition.paymentConfig as Record<string, string>).holder],
                         ["IBAN", (competition.paymentConfig as Record<string, string>).iban],
                         (competition.paymentConfig as Record<string, string>).bic && ["BIC/SWIFT", (competition.paymentConfig as Record<string, string>).bic],
                       ].filter(Boolean).map((row) => (
@@ -534,10 +534,10 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                       <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
                         <img
                           src={(competition.paymentConfig as Record<string, string>).qrCode}
-                          alt="QR kód pro platbu"
+                          alt={t("publicCompetition.scanQrCode")}
                           style={{ width: 120, height: 120, borderRadius: 10, border: "1px solid #E5E7EB", objectFit: "contain", background: "#fff", padding: 4 }}
                         />
-                        <span style={{ fontSize: ".7rem", color: "#9CA3AF", fontWeight: 500 }}>Naskenujte QR kód</span>
+                        <span style={{ fontSize: ".7rem", color: "#9CA3AF", fontWeight: 500 }}>{t("publicCompetition.scanQrCode")}</span>
                       </div>
                     )}
                   </div>
@@ -608,14 +608,14 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                 <p style={{ marginTop: -8, fontSize: ".78rem", color: "#DC2626" }}>{t("publicRegister.validation.gdprRequired")}</p>
               )}
 
-              <button type="submit" disabled={submitting} aria-label={submitting ? "Odesílám registraci…" : t("publicCompetition.submitRegistration")} style={{
+              <button type="submit" disabled={submitting} aria-label={submitting ? t("publicCompetition.submitting") : t("publicCompetition.submitRegistration")} style={{
                 padding: "14px 28px", borderRadius: 10, fontSize: "1rem", fontWeight: 700,
                 background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "#fff",
                 border: "2px solid transparent", cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? .7 : 1,
                 boxShadow: "0 4px 14px rgba(79,70,229,.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 transition: "opacity .2s", outline: "none",
               }} onFocus={(e) => { e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79,70,229,.4)"; }} onBlur={(e) => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(79,70,229,.4)"; }}>
-                {submitting ? "Odesílám…" : t("publicCompetition.submitRegistration")}
+                {submitting ? t("publicCompetition.submitting") : t("publicCompetition.submitRegistration")}
                 {!submitting && (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                 )}

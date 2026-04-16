@@ -431,7 +431,7 @@
     "notFound": "Competition not found",
     "notFoundDesc": "The link may be invalid or the competition has been removed.",
     "allCompetitions": "All competitions",
-    "organizerLogin": "Přihlášení →",
+    "organizerLogin": "Login →",
     "registrationNotOpen": "Registration is not open",
     "registrationNotOpenDesc": "Registration is not currently active.",
     "basicInfo": "Basic information",
@@ -460,7 +460,12 @@
     "capacity": "Capacity",
     "maxPairsOf": "max. {{max}} pairs",
     "pairsRegisteredCount": "({{count}} registered)",
-    "registrationDeadlineLabel": "Deadline:"
+    "registrationDeadlineLabel": "Deadline:",
+    "generalDescription": "General description",
+    "accountHolder": "Account holder",
+    "scanQrCode": "Scan QR code",
+    "submitting": "Submitting…",
+    "statsRegistered": "Registered competitors"
   },
   "publicRegister": {
     "backToCompetition": "Back to competition",
@@ -607,7 +612,7 @@
     "gdprConsent": "I consent to processing of personal data for the purpose of organizing and running the competition.",
     "privacyPolicy": "Privacy policy",
     "submit": "Submit registration",
-    "organizerLogin": "Přihlášení →"
+    "organizerLogin": "Login →"
   },
   "settings": {
     "title": "Settings",
@@ -1812,7 +1817,7 @@
     "badge": "Competition calendar",
     "title": "Dance Events Calendar",
     "subtitle": "Register for a competition and track results.",
-    "organizerLogin": "Přihlášení →",
+    "organizerLogin": "Login →",
     "noDate": "No date",
     "filterTitle": "Filter competitions",
     "series": "Series",
