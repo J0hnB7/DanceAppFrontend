@@ -12,6 +12,7 @@ const csp = [
   "img-src 'self' data: blob: https:",
   `connect-src 'self' ${(process.env.NEXT_PUBLIC_API_URL ?? "").trim()} wss: ws: https://*.ingest.sentry.io https://sentry.io`,
   "font-src 'self' https://fonts.gstatic.com",
+  "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
