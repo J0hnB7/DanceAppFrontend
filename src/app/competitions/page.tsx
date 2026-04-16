@@ -41,7 +41,7 @@ const labelCls = "mb-1 block text-xs font-semibold text-[#6B7280] uppercase trac
 
 export default function PublicCompetitionsPage() {
   const router = useRouter();
-  const { t, locale } = useLocale();
+  const { t, locale, setLocale } = useLocale();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
@@ -148,9 +148,21 @@ export default function PublicCompetitionsPage() {
                 <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1rem", color: "#111827", letterSpacing: "-.02em" }}>ProPodium</span>
               </Link>
             </div>
-            <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
-              {t("publicCompetitions.organizerLogin")}
-            </Link>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {mounted && (
+                <button
+                  onClick={() => setLocale(locale === "en" ? "cs" : "en")}
+                  title={locale === "en" ? "Přepnout do češtiny" : "Switch to English"}
+                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: ".8rem", fontWeight: 600, color: "#6B7280", background: "none", border: "1px solid #E5E7EB", borderRadius: 7, padding: "5px 10px", cursor: "pointer", lineHeight: 1 }}
+                >
+                  <span style={{ fontSize: ".9rem" }}>{locale === "en" ? "🇨🇿" : "🇬🇧"}</span>
+                  {locale === "en" ? "CZ" : "EN"}
+                </button>
+              )}
+              <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
+                {t("publicCompetitions.organizerLogin")}
+              </Link>
+            </div>
           </div>
         </nav>
 
