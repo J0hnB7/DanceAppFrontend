@@ -119,6 +119,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
     queryKey: ["competition-news", id],
     queryFn: () => apiClient.get<CompetitionNewsItem[]>(`/competitions/${id}/news`).then((r) => r.data),
     staleTime: 0,
+    retry: false,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
     refetchInterval: 10_000,
