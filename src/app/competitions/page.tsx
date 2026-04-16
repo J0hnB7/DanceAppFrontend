@@ -366,12 +366,11 @@ export default function PublicCompetitionsPage() {
                     <h2 style={{
                       fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800,
                       fontSize: "1.25rem", letterSpacing: "-.02em",
-                      background: "linear-gradient(105deg,#4F46E5 0%,#7C3AED 100%)",
-                      WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+                      color: "#0A1628",
                     }}>
                       {month === noDateKey ? month : formatMonthHeading(month, locale)}
                     </h2>
-                    <span style={{ fontSize: ".75rem", fontWeight: 600, padding: "2px 9px", borderRadius: 100, background: "#EEF2FF", color: "#4F46E5" }}>
+                    <span style={{ fontSize: ".75rem", fontWeight: 600, padding: "2px 9px", borderRadius: 100, background: "rgba(10,22,40,.08)", color: "#0A1628" }}>
                       {comps.length}
                     </span>
                     <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,#E5E7EB,transparent)" }} />
@@ -408,7 +407,7 @@ export default function PublicCompetitionsPage() {
                               borderRadius: 10,
                               background: isLive
                                 ? "linear-gradient(135deg,#059669,#10B981)"
-                                : "linear-gradient(135deg,#4F46E5,#7C3AED)",
+                                : "#0A1628",
                               padding: "8px 6px", textAlign: "center",
                             }}>
                               <span style={{ fontSize: "10px", fontWeight: 700, lineHeight: 1, color: "rgba(255,255,255,.8)", textTransform: "uppercase" }}>{dayShort}</span>
