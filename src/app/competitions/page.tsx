@@ -191,7 +191,8 @@ export default function PublicCompetitionsPage() {
         {/* ── CONTENT ── */}
         <div style={{ maxWidth: 1160, margin: "0 auto", padding: "40px 24px 80px" }}>
 
-          {/* Filter panel */}
+          {/* Filter panel — hidden until ready for public release */}
+          <div style={{ display: "none" }}>
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E5E7EB", padding: 24, marginBottom: 32, boxShadow: "0 1px 3px rgba(0,0,0,.07),0 8px 24px rgba(0,0,0,.04)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".85rem" }}>🔍</div>
@@ -324,6 +325,7 @@ export default function PublicCompetitionsPage() {
               )}
             </div>
           </div>
+          </div>{/* end hidden filter wrapper */}
 
           {/* Competition list */}
           {isLoading ? (
