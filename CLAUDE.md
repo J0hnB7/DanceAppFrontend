@@ -353,6 +353,23 @@ Header má **2 řádky**:
 
 `npx vercel --prod` — `NEXT_PUBLIC_API_URL` je nastavená jen pro `production` target. Plain `npx vercel` (preview) vždy selže: `"destination undefined/api/:path*"` → "Invalid rewrite found". Vercel CLI není globálně nainstalovaný, použi `npx vercel`.
 
+## ResultsSection — lazy-load gotcha (2026-04-16)
+
+`SectionResultCard` v `src/components/public/ResultsSection.tsx` používa `enabled` prop na React Query.
+**NIKDY nepoužívaj `enabled: manualOpen !== false`** — `null !== false = true`, takže query beží pre každú sekciu hneď pri monte, aj keď je collapsed. Pri 15 sekciách = 15 simultánnych API calls → 20-30s loading.
+
+Správny vzor: `enabled: manualOpen === true` — query sa spustí len keď užívateľ sekciu otvorí.
+
+## Favicon — Next.js App Router (2026-04-16)
+
+`src/app/icon.png` + `src/app/apple-icon.png` → Next.js automaticky generuje `<link rel="icon">` a apple-touch-icon. Žiadne zmeny v `layout.tsx` nie sú potrebné.
+
+## Public competition detail — performance (2026-04-16)
+
+- `staleTime: 60_000` na competition + sections queries v `competitions/[id]/page.tsx` — cached data sa zobrazí okamžite pri opakovanej návšteve
+- Prefetch na hover: `onMouseEnter → queryClient.prefetchQuery(competitionKeys.detail(id))` v competitions list — data prichádzajú pred kliknutím
+- Vercel Cron na Hobby plane podporuje len denné joby — pre keepalive pingov použi UptimeRobot (free, 5min interval)
+
 ## Spec soubory
 
 - **Schedule modul:** `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`
