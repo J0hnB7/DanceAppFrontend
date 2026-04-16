@@ -82,9 +82,8 @@ function PublicNav() {
             <button
               onClick={() => setLocale(locale === "en" ? "cs" : "en")}
               title={locale === "en" ? "Přepnout do češtiny" : "Switch to English"}
-              style={{ display: "flex", alignItems: "center", gap: 5, fontSize: ".8rem", fontWeight: 600, color: "#6B7280", background: "none", border: "1px solid #E5E7EB", borderRadius: 7, padding: "5px 10px", cursor: "pointer", lineHeight: 1 }}
+              style={{ padding: "4px 10px", borderRadius: 6, fontSize: ".75rem", fontWeight: 500, letterSpacing: ".04em", color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", cursor: "pointer", fontFamily: "inherit" }}
             >
-              <span style={{ fontSize: ".9rem" }}>{locale === "en" ? "🇨🇿" : "🇬🇧"}</span>
               {locale === "en" ? "CZ" : "EN"}
             </button>
           )}
