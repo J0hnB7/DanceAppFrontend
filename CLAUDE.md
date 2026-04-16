@@ -224,6 +224,17 @@ npx tsc --noEmit
 - Instrumentace: `src/instrumentation.ts` + `src/instrumentation-client.ts`
 - **CSP:** `worker-src 'self' blob:` musí byť v `next.config.ts` — Sentry SDK používa blob worker
 - Pro prod errory: `/seer` command nebo Sentry MCP přímo
+- **Session Replay:** `replaysSessionSampleRate: 0.1`, `replaysOnErrorSampleRate: 1.0`, `maskAllInputs: true` — zapnuté od 2026-04-16
+
+## Sentry — source maps na Vercel (2026-04-16)
+
+Vercel build vyžaduje 3 env vars (nie len token):
+- `SENTRY_AUTH_TOKEN` — personal token s Release=Admin + Organization=Read scopmi
+- `SENTRY_ORG=bystriansky`
+- `SENTRY_PROJECT=javascript-nextjs`
+
+Token overenie lokálne: `SENTRY_AUTH_TOKEN=xxx SENTRY_ORG=bystriansky npx @sentry/cli releases list`
+**POZOR:** Token vždy čítaj cez JS DOM (`input.value`), nie zo screenshotu — screenshot skráti dlhé hodnoty → 401 Invalid token.
 
 ## Public pages — jazykový toggle (2026-04-16)
 
