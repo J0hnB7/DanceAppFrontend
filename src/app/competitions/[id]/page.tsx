@@ -106,11 +106,13 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   const { data: competition, isLoading } = useQuery({
     queryKey: competitionKeys.detail(id),
     queryFn: () => apiClient.get<CompetitionDto>(`/competitions/${id}`).then((r) => r.data),
+    staleTime: 60_000,
   });
 
   const { data: sections = [] } = useQuery({
     queryKey: ["sections", "public", id],
     queryFn: () => apiClient.get<SectionDto[]>(`/competitions/${id}/sections`).then((r) => r.data),
+    staleTime: 60_000,
   });
 
   const { data: newsItems = [] } = useQuery({

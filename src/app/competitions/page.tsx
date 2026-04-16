@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { LogoMark } from "@/components/ui/logo-mark";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api-client";
 import { useLocale } from "@/contexts/locale-context";
+import { competitionKeys } from "@/hooks/queries/use-competitions";
 
 interface CompetitionListItem {
   id: string;
@@ -41,7 +42,21 @@ const labelCls = "mb-1 block text-xs font-semibold text-[#6B7280] uppercase trac
 
 export default function PublicCompetitionsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { t, locale, setLocale } = useLocale();
+
+  const prefetchCompetition = useCallback((id: string) => {
+    queryClient.prefetchQuery({
+      queryKey: competitionKeys.detail(id),
+      queryFn: () => apiClient.get(`/competitions/${id}`).then((r) => r.data),
+      staleTime: 60_000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: ["sections", "public", id],
+      queryFn: () => apiClient.get(`/competitions/${id}/sections`).then((r) => r.data),
+      staleTime: 60_000,
+    });
+  }, [queryClient]);
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
@@ -390,6 +405,7 @@ export default function PublicCompetitionsPage() {
                           key={comp.id}
                           href={`/competitions/${comp.id}`}
                           className="comp-card"
+                          onMouseEnter={() => prefetchCompetition(comp.id)}
                           style={{
                             display: "flex", alignItems: "center", gap: 16,
                             background: "#fff", border: "1px solid #E5E7EB",
