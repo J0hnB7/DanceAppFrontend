@@ -257,6 +257,18 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
           }
           initialLoadRef.current = false;
         }
+
+        // Apply any floor-control event that arrived before dances were loaded
+        const pending = pendingFloorControlRef.current;
+        if (pending?.danceName) {
+          const idx = mappedDances.findIndex((d) => d.name === pending.danceName);
+          if (idx >= 0) {
+            pendingFloorControlRef.current = null;
+            setActiveDanceIdx(idx);
+            setSubmitted(submitted.has(pending.danceName));
+            setPairStates({});
+          }
+        }
       })
       .catch(() => router.push(`/judge/${token}/lobby`))
       .finally(() => setLoading(false));
@@ -275,6 +287,8 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   useEffect(() => { dancesRef.current = dances; }, [dances]);
   useEffect(() => { heatsRef.current  = heats;  }, [heats]);
   useEffect(() => { submittedDanceNamesRef.current = submittedDanceNames; }, [submittedDanceNames]);
+  // Pending floor-control: when dance list is empty at SSE time, apply after reload
+  const pendingFloorControlRef = useRef<{ danceName?: string; heatNumber?: number } | null>(null);
 
   // Subscribe to public SSE channel: floor-control + judge-ping
   useEffect(() => {
@@ -297,6 +311,9 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             const alreadySubmitted = submittedDanceNamesRef.current.has(data.danceName);
             setSubmitted(alreadySubmitted);
             setPairStates({});
+          } else {
+            // Dance not yet in list (dances still loading) — stash and apply after reload
+            pendingFloorControlRef.current = data;
           }
         }
         if (typeof data.heatNumber === "number" && data.heatNumber >= 1) {
