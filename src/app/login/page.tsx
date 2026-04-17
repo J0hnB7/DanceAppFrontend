@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/store/auth-store";
 import { useLocale } from "@/contexts/locale-context";
+import { GoogleLogin } from "@react-oauth/google";
+import { googleAuthApi } from "@/lib/api/google-auth";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -32,6 +34,7 @@ function LoginPageInner() {
   const [showPassword, setShowPassword] = useState(false);
   const [requireTotp, setRequireTotp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
 
   useEffect(() => setMounted(true), []);
   const t = (key: string, params?: Record<string, string | number>) => mounted ? _t(key, params) : "\u00A0";
@@ -215,6 +218,37 @@ function LoginPageInner() {
                 <button type="submit" className="login-btn" disabled={loading} style={{ marginTop: 4 }}>
                   {loading ? t("auth.signingIn") : t("auth.signIn")}
                 </button>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#9CA3AF", fontSize: ".8rem", margin: "4px 0" }}>
+                  <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
+                  {mounted ? (locale === "en" ? "or" : "nebo") : ""}
+                  <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  <GoogleLogin
+                    onSuccess={async (credentialResponse) => {
+                      if (!credentialResponse.credential) return;
+                      setGoogleError(null);
+                      try {
+                        const result = await googleAuthApi.signIn(credentialResponse.credential);
+                        await loginWithTokens(result.accessToken);
+                        if (result.requiresOnboarding) {
+                          router.replace("/onboarding");
+                        } else {
+                          router.replace(callbackUrl);
+                        }
+                      } catch {
+                        setGoogleError(t("auth.googleSignInFailed") || "Google sign-in failed");
+                      }
+                    }}
+                    onError={() => setGoogleError(t("auth.googleSignInFailed") || "Google sign-in failed")}
+                    width="368"
+                  />
+                </div>
+                {googleError && (
+                  <p style={{ fontSize: ".8rem", color: "#EF4444", textAlign: "center", marginTop: -4 }}>{googleError}</p>
+                )}
 
                 <p style={{ textAlign: "center", fontSize: ".83rem", color: "#6B7280", marginTop: 4 }}>
                   {t("auth.noAccountLink")}{" "}
