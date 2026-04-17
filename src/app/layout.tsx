@@ -7,6 +7,7 @@ import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { MockProvider } from "@/components/shared/mock-provider";
 import { LocaleProvider } from "@/contexts/locale-context";
 import { ThemeProvider } from "@/contexts/theme-context";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -44,18 +45,20 @@ export default function RootLayout({
   return (
     <html lang="sk" suppressHydrationWarning>
       <body className={`${inter.variable} ${sora.variable} ${jetbrainsMono.variable} antialiased`}>
-        <ThemeProvider>
-          <LocaleProvider>
-            <MockProvider>
-              <QueryProvider>
-                <ErrorBoundary>
-                  {children}
-                </ErrorBoundary>
-                <Toaster />
-              </QueryProvider>
-            </MockProvider>
-          </LocaleProvider>
-        </ThemeProvider>
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""}>
+          <ThemeProvider>
+            <LocaleProvider>
+              <MockProvider>
+                <QueryProvider>
+                  <ErrorBoundary>
+                    {children}
+                  </ErrorBoundary>
+                  <Toaster />
+                </QueryProvider>
+              </MockProvider>
+            </LocaleProvider>
+          </ThemeProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );

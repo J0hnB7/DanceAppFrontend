@@ -52,6 +52,26 @@ export interface SectionDto {
   mergedIntoId?: string;
   mergeId?: string;
   mergedLabel?: string;
+  scoringSystem?: string;
+  minBirthYear?: number | null;
+  maxBirthYear?: number | null;
+}
+
+export type RegistrationStatus = "PENDING_PARTNER" | "CONFIRMED" | "ORGANIZER_APPROVED" | "ORGANIZER_REJECTED";
+
+export interface RegistrationListItem {
+  pairSectionId: string;
+  pairId: string;
+  dancer1Name: string;
+  dancer2Name: string | null;
+  club: string | null;
+  gender: string | null;
+  competitionType: string | null;
+  registrationSource: string;
+  status: RegistrationStatus;
+  partnerConfirmedAt: string | null;
+  organizerDecision: string | null;
+  organizerDecisionAt: string | null;
 }
 
 export interface CreateSectionRequest {
@@ -72,6 +92,8 @@ export interface CreateSectionRequest {
   entryFee?: number;
   entryFeeCurrency?: string;
   paymentInfo?: string;
+  minBirthYear?: number | null;
+  maxBirthYear?: number | null;
 }
 
 export const sectionsApi = {
@@ -95,4 +117,26 @@ export const sectionsApi = {
 
   reorder: (competitionId: string, sectionIds: string[]) =>
     apiClient.patch(`/competitions/${competitionId}/sections/reorder`, { sectionIds }),
+
+  getEligible: (competitionId: string, birthYear?: number) =>
+    apiClient
+      .get<SectionDto[]>(
+        `/competitions/${competitionId}/sections/eligible${birthYear != null ? `?birthYear=${birthYear}` : ""}`
+      )
+      .then((r) => r.data),
+
+  listRegistrations: (competitionId: string, sectionId: string) =>
+    apiClient
+      .get<RegistrationListItem[]>(`/competitions/${competitionId}/sections/${sectionId}/registrations`)
+      .then((r) => r.data),
+
+  approveRegistration: (competitionId: string, pairSectionId: string) =>
+    apiClient
+      .post(`/competitions/${competitionId}/registrations/${pairSectionId}/approve`)
+      .then((r) => r.data),
+
+  rejectRegistration: (competitionId: string, pairSectionId: string) =>
+    apiClient
+      .post(`/competitions/${competitionId}/registrations/${pairSectionId}/reject`)
+      .then((r) => r.data),
 };

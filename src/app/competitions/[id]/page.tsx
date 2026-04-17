@@ -18,6 +18,9 @@ import { ResultsSection } from "@/components/public/ResultsSection";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
+import { useAuthStore } from "@/store/auth-store";
+import { selfRegistrationApi } from "@/lib/api/self-registration";
+import type { SelfRegistrationResponse } from "@/lib/api/self-registration";
 import axios from "axios";
 
 const schema = z.object({
@@ -102,6 +105,9 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   const router = useRouter();
   const [result, setResult] = useState<RegistrationResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const { user, isAuthenticated } = useAuthStore();
+  const [selfRegResult, setSelfRegResult] = useState<SelfRegistrationResponse | null>(null);
+  const [selfRegSubmitting, setSelfRegSubmitting] = useState<string | null>(null); // sectionId being submitted
 
   const { data: competition, isLoading } = useQuery({
     queryKey: competitionKeys.detail(id),
@@ -417,6 +423,75 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
 
           {/* Divider */}
           <div style={{ height: 1, background: "linear-gradient(90deg,transparent,#E5E7EB,transparent)" }} />
+
+          {/* Auth-gated self-registration (dancer accounts) */}
+          {isOpen && sections.length > 0 && (
+            <div style={cardStyle}>
+              {sectionLabel("🩰", isAuthenticated ? t("publicCompetition.selfRegister") : t("publicCompetition.loginToRegister"))}
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                {!isAuthenticated ? (
+                  <div style={{ padding: "12px 0", textAlign: "center" }}>
+                    <a href={`/login?returnTo=/competitions/${id}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: ".875rem", textDecoration: "none" }}>
+                      {t("publicCompetition.loginToRegister")}
+                    </a>
+                    <p style={{ fontSize: ".78rem", color: "#9CA3AF", marginTop: 8 }}>
+                      {t("publicCompetition.selfRegister")} — {t("publicCompetition.loginToRegister")}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {selfRegResult && (
+                      <div style={{ padding: "12px 14px", borderRadius: 9, background: "#ECFDF5", border: "1px solid #6EE7B7", marginBottom: 8 }}>
+                        <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#047857" }}>
+                          {selfRegResult.status === "PENDING_PARTNER"
+                            ? t("publicCompetition.selfRegisterPendingMsg", { number: String(selfRegResult.startNumber) })
+                            : t("publicCompetition.selfRegisterSuccess", { number: String(selfRegResult.startNumber) })}
+                        </p>
+                      </div>
+                    )}
+                    {sections.map((section) => {
+                      const isBusy = selfRegSubmitting === section.id;
+                      return (
+                        <div key={section.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 9, border: "1px solid #E5E7EB", padding: "10px 14px", background: "#fff" }}>
+                          <div>
+                            <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827" }}>{section.name}</p>
+                            <p style={{ fontSize: ".78rem", color: "#6B7280" }}>{section.ageCategory} · {section.level}</p>
+                          </div>
+                          <button
+                            disabled={isBusy || !!selfRegResult}
+                            onClick={async () => {
+                              setSelfRegSubmitting(section.id);
+                              try {
+                                const res = await selfRegistrationApi.register(id, section.id);
+                                setSelfRegResult(res);
+                                toast({ title: t("publicCompetition.selfRegisterSuccess", { number: String(res.startNumber) }) });
+                              } catch (err: unknown) {
+                                const detail = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
+                                if (axios.isAxiosError(err) && err.response?.status === 409) {
+                                  toast({ title: t("publicCompetition.registrationNotOpen"), variant: "destructive" });
+                                } else if (detail?.includes("complete your profile")) {
+                                  toast({ title: t("publicCompetition.completeProfileFirst"), variant: "destructive" });
+                                } else if (detail?.includes("Birth year")) {
+                                  toast({ title: t("publicCompetition.ageNotEligible"), variant: "destructive" });
+                                } else {
+                                  toast({ title: detail ?? t("publicRegister.failed"), variant: "destructive" });
+                                }
+                              } finally {
+                                setSelfRegSubmitting(null);
+                              }
+                            }}
+                            style={{ padding: "8px 16px", borderRadius: 8, fontSize: ".825rem", fontWeight: 700, background: "#4F46E5", color: "#fff", border: "none", cursor: (isBusy || !!selfRegResult) ? "not-allowed" : "pointer", opacity: (isBusy || !!selfRegResult) ? 0.6 : 1, whiteSpace: "nowrap", minHeight: 36 }}
+                          >
+                            {isBusy ? t("publicCompetition.submitting") : t("publicCompetition.selfRegister")}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Registration */}
           {isOpen ? (

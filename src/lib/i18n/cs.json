@@ -465,7 +465,14 @@
     "accountHolder": "Majitel účtu",
     "scanQrCode": "Naskenujte QR kód",
     "submitting": "Odesílám…",
-    "statsRegistered": "Přihlášených soutěžících"
+    "statsRegistered": "Přihlášených soutěžících",
+    "selfRegister": "Přihlásit se",
+    "selfRegisterPending": "Čeká na potvrzení partnera",
+    "selfRegisterSuccess": "Přihláška odeslána! Startovní číslo: #{{number}}",
+    "selfRegisterPendingMsg": "Přihláška odeslána (č. #{{number}}). Partner musí potvrdit registraci.",
+    "loginToRegister": "Přihlásit se pro registraci",
+    "completeProfileFirst": "Nejdřív vyplňte profil",
+    "ageNotEligible": "Nesplňujete věkové podmínky"
   },
   "publicRegister": {
     "backToCompetition": "Zpět na soutěž",
@@ -2060,7 +2067,12 @@
       "unlink": "Zrušit propojení",
       "unlinkConfirm": "Opravdu chcete zrušit propojení s partnerem/kou?",
       "saving": "Ukládám...",
-      "saveError": "Uložení se nezdařilo"
+      "saveError": "Uložení se nezdařilo",
+      "gender": "Pohlaví",
+      "genderMale": "Muž",
+      "genderFemale": "Žena",
+      "genderOther": "Jiné",
+      "genderUnspecified": "Neuvedeno"
     },
     "competitions": {
       "title": "Moje soutěže",
@@ -2085,6 +2097,31 @@
       "acceptError": "Přijetí pozvánky se nezdařilo",
       "invalidToken": "Pozvánka je neplatná, vypršela nebo již byla použita.",
       "invalidTitle": "Neplatná pozvánka"
+    },
+    "registrations": {
+      "title": "Registrace",
+      "colName": "Jméno",
+      "colClub": "Klub",
+      "colGender": "Pohlaví",
+      "colType": "Typ",
+      "colStatus": "Stav",
+      "colDate": "Datum",
+      "typeSolo": "Sólo",
+      "typeCouple": "Pár",
+      "statusPending": "Čeká na partnera",
+      "statusConfirmed": "Potvrzeno",
+      "statusApproved": "Schváleno",
+      "statusRejected": "Zamítnuto",
+      "filterAll": "Vše",
+      "filterPending": "Čekající",
+      "filterConfirmed": "Potvrzené",
+      "filterDecided": "Rozhodnuté",
+      "approve": "Schválit",
+      "reject": "Zamítnout",
+      "approveSuccess": "Registrace schválena",
+      "rejectSuccess": "Registrace zamítnuta",
+      "searchPlaceholder": "Hledat podle jména nebo klubu...",
+      "empty": "Žádné registrace"
     }
   }
 }

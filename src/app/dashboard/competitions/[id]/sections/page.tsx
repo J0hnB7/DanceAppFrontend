@@ -237,6 +237,11 @@ export default function SectionsPage({
               <div>
                 <p className="text-sm font-medium text-[var(--text-primary)]">
                   {section.name}
+                  {section.minBirthYear != null && section.maxBirthYear != null && (
+                    <span className="ml-2 rounded-full bg-[var(--surface-secondary)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
+                      {section.minBirthYear}–{section.maxBirthYear}
+                    </span>
+                  )}
                 </p>
                 <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
                   {section.ageCategory} · {section.level} · {section.danceStyle} ·{" "}

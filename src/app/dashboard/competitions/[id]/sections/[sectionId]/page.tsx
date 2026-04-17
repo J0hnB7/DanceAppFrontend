@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlayCircle, Plus, Trophy, BarChart3, Presentation, XCircle, ShieldAlert, Swords, AlertTriangle } from "lucide-react";
+import { PlayCircle, Plus, Trophy, BarChart3, Presentation, XCircle, ShieldAlert, Swords, AlertTriangle, ClipboardList } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
@@ -78,6 +78,18 @@ export default function SectionDetailPage({
       sidebar={<CompetitionSidebar competitionId={competitionId} />}
       headerActions={
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              router.push(
+                `/dashboard/competitions/${competitionId}/sections/${sectionId}/registrations`
+              )
+            }
+          >
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("registrations.title")}</span>
+          </Button>
           {hasResults && (
             <>
               <Button
