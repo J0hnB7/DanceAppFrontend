@@ -57,7 +57,7 @@ function LoginPageInner() {
       if (apiErr?.status === 403 && apiErr?.message?.includes("TOTP")) {
         setRequireTotp(true);
       } else {
-        setError("password", { message: apiErr?.message ?? t("auth.invalidEmailOrPassword") });
+        setError("password", { message: t("auth.invalidEmailOrPassword") });
       }
     } finally {
       setLoading(false);
