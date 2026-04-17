@@ -318,132 +318,71 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
               )}
 
               {/* Full rankings table */}
-              <div style={{ overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontSize: ".85rem",
-                    minWidth: danceNames.length > 0 ? 360 : 260,
-                  }}
-                  aria-label={`Výsledky — ${section.name}`}
-                >
-                  <thead>
-                    <tr style={{ background: "#F9FAFB" }}>
-                      <th
-                        style={{
-                          padding: "8px 10px",
-                          textAlign: "left",
-                          fontWeight: 700,
-                          color: "#6B7280",
-                          fontSize: ".72rem",
-                          letterSpacing: ".04em",
-                          textTransform: "uppercase",
-                          borderBottom: "1px solid #E5E7EB",
-                          width: 40,
-                        }}
-                      >
-                        Místo
-                      </th>
-                      <th
-                        style={{
-                          padding: "8px 10px",
-                          textAlign: "left",
-                          fontWeight: 700,
-                          color: "#6B7280",
-                          fontSize: ".72rem",
-                          letterSpacing: ".04em",
-                          textTransform: "uppercase",
-                          borderBottom: "1px solid #E5E7EB",
-                        }}
-                      >
-                        Pár
-                      </th>
-                      <th
-                        style={{
-                          padding: "8px 10px",
-                          textAlign: "right",
-                          fontWeight: 700,
-                          color: "#6B7280",
-                          fontSize: ".72rem",
-                          letterSpacing: ".04em",
-                          textTransform: "uppercase",
-                          borderBottom: "1px solid #E5E7EB",
-                          width: 72,
-                        }}
-                      >
-                        Body
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {segmentByRound(sorted).flatMap((segment) => [
-                      <tr key={`seg-${segment.round}`} style={{ background: "#F9FAFB" }}>
-                        <td colSpan={3} style={{ padding: "10px 12px", borderTop: "1px solid #E5E7EB", borderBottom: "1px solid #E5E7EB" }}>
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                            <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".85rem", color: "#111827" }}>
-                              {ROUND_LABEL[segment.round] ?? segment.round}
-                            </span>
-                            <span style={{ fontSize: ".7rem", color: "#6B7280" }}>
-                              {isPlacementRound(segment.round)
-                                ? "součet umístění (nižší = lepší)"
-                                : "počet křížků (vyšší = lepší)"}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>,
-                      ...segment.rows.map((r) => {
+              <table
+                style={{ width: "100%", borderCollapse: "collapse", fontSize: ".85rem" }}
+                aria-label={`Výsledky — ${section.name}`}
+              >
+                <thead>
+                  <tr style={{ background: "#F9FAFB" }}>
+                    <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 700, color: "#6B7280", fontSize: ".72rem", letterSpacing: ".04em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>
+                      Pár
+                    </th>
+                    <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "#6B7280", fontSize: ".72rem", letterSpacing: ".04em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB", width: 80 }}>
+                      Body
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {segmentByRound(sorted).flatMap((segment) => [
+                    <tr key={`seg-${segment.round}`} style={{ background: "#F9FAFB" }}>
+                      <td colSpan={2} style={{ padding: "10px 12px", borderTop: "1px solid #E5E7EB", borderBottom: "1px solid #E5E7EB" }}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".85rem", color: "#111827" }}>
+                            {ROUND_LABEL[segment.round] ?? segment.round}
+                          </span>
+                          <span style={{ fontSize: ".7rem", color: "#6B7280" }}>
+                            {isPlacementRound(segment.round)
+                              ? "součet umístění (nižší = lepší)"
+                              : "počet křížků (vyšší = lepší)"}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>,
+                    ...segment.rows.map((r) => {
                       const segIsPlacement = isPlacementRound(segment.round);
                       const rs = segIsPlacement ? RANK_STYLES[r.placeRank] : undefined;
                       const isExpanded = expandedRow === r.pairId;
                       const isTop = segIsPlacement && r.placeRank <= 3;
                       const isMatch = searchQuery ? matchesSearch(r, searchQuery) : false;
+                      const placeBg = segIsPlacement && r.placeRank === 1
+                        ? "#EAB308"
+                        : segIsPlacement && r.placeRank === 2
+                        ? "#9CA3AF"
+                        : segIsPlacement && r.placeRank === 3
+                        ? "#CD7F32"
+                        : "#F3F4F6";
                       return (
                         <React.Fragment key={r.pairId}>
                           <tr
                             onClick={() => setDetailPairId(r.pairId)}
                             style={{
-                              background: isMatch
-                                ? "rgba(79,70,229,.06)"
-                                : isTop ? (rs?.bg ?? "transparent") : "transparent",
+                              background: isMatch ? "rgba(79,70,229,.06)" : isTop ? (rs?.bg ?? "transparent") : "transparent",
                               borderBottom: isExpanded ? "none" : "1px solid #F3F4F6",
                               outline: isMatch ? "2px solid rgba(79,70,229,.2)" : "none",
                               cursor: "pointer",
                             }}
                           >
-                            <td style={{ padding: "10px 10px", verticalAlign: "middle" }}>
-                              <div
-                                style={{
-                                  minWidth: 40,
-                                  height: 28,
-                                  borderRadius: 14,
-                                  padding: "0 10px",
-                                  background: segIsPlacement && r.placeRank === 1
-                                    ? "#EAB308"
-                                    : segIsPlacement && r.placeRank === 2
-                                    ? "#9CA3AF"
-                                    : segIsPlacement && r.placeRank === 3
-                                    ? "#CD7F32"
-                                    : "#F3F4F6",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: ".75rem",
-                                  fontWeight: 800,
-                                  color: isTop ? "#fff" : "#6B7280",
-                                  flexShrink: 0,
-                                }}
-                              >
+                            {/* Left cell: placement badge + name */}
+                            <td style={{ padding: "8px 10px", verticalAlign: "middle" }}>
+                              <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 22, minWidth: 36, borderRadius: 11, padding: "0 8px", background: placeBg, fontSize: ".7rem", fontWeight: 800, color: isTop ? "#fff" : "#6B7280", marginBottom: 3 }}>
                                 {r.placeLabel}
                               </div>
-                            </td>
-                            <td style={{ padding: "10px 10px", color: "#111827", fontWeight: isTop ? 700 : 500, verticalAlign: "middle" }}>
-                              <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
-                                <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".8rem", color: "#9CA3AF", flexShrink: 0 }}>
+                              <div style={{ display: "flex", alignItems: "baseline", gap: 5, flexWrap: "wrap" }}>
+                                <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".78rem", color: "#9CA3AF", flexShrink: 0 }}>
                                   #{r.startNumber}
                                 </span>
                                 {r.dancerName && (
-                                  <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)" }}>
+                                  <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: isTop ? 700 : 500, color: "#111827" }}>
                                     {r.dancerName}
                                   </span>
                                 )}
@@ -451,65 +390,21 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                                   <span style={{ fontSize: ".72rem", color: "#9CA3AF" }}>{r.club}</span>
                                 )}
                                 {r.tieResolution && r.tieResolution !== "NONE" && (
-                                  <span
-                                    style={{
-                                      fontSize: ".65rem",
-                                      color: "#6B7280",
-                                      background: "#F3F4F6",
-                                      borderRadius: 4,
-                                      padding: "1px 5px",
-                                    }}
-                                    title="Výsledek rozhodnut dance-off"
-                                  >
-                                    D/O
-                                  </span>
+                                  <span style={{ fontSize: ".65rem", color: "#6B7280", background: "#F3F4F6", borderRadius: 4, padding: "1px 5px" }} title="Výsledek rozhodnut dance-off">D/O</span>
                                 )}
                               </div>
                             </td>
-                            <td
-                              style={{
-                                padding: "10px 10px",
-                                textAlign: "right",
-                                color: isTop ? (rs?.color ?? "#374151") : "#374151",
-                                fontWeight: 700,
-                                fontVariantNumeric: "tabular-nums",
-                                verticalAlign: "middle",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
+                            {/* Right cell: body value + expand chevron */}
+                            <td style={{ padding: "8px 10px", textAlign: "right", color: isTop ? (rs?.color ?? "#374151") : "#374151", fontWeight: 700, fontVariantNumeric: "tabular-nums", verticalAlign: "middle", whiteSpace: "nowrap" }}>
                               {r.totalSum.toFixed(1)}
                               {danceNames.length > 0 && (
                                 <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpandedRow(isExpanded ? null : r.pairId);
-                                  }}
-                                  style={{
-                                    background: "none",
-                                    border: "1px solid #E5E7EB",
-                                    borderRadius: 6,
-                                    padding: "3px 6px",
-                                    cursor: "pointer",
-                                    color: "#6B7280",
-                                    minHeight: 28,
-                                    minWidth: 28,
-                                    marginLeft: 6,
-                                    verticalAlign: "middle",
-                                    transition: "border-color .15s, color .15s",
-                                  }}
+                                  onClick={(e) => { e.stopPropagation(); setExpandedRow(isExpanded ? null : r.pairId); }}
+                                  style={{ background: "none", border: "1px solid #E5E7EB", borderRadius: 6, padding: "3px 6px", cursor: "pointer", color: "#6B7280", minHeight: 28, minWidth: 28, marginLeft: 6, verticalAlign: "middle", transition: "border-color .15s, color .15s" }}
                                   aria-label={isExpanded ? "Skrýt per-dance" : "Zobrazit per-dance"}
                                   aria-expanded={isExpanded}
                                 >
-                                  <svg
-                                    width="11"
-                                    height="11"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .15s", display: "inline-block", verticalAlign: "middle" }}
-                                    aria-hidden="true"
-                                  >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .15s", display: "inline-block", verticalAlign: "middle" }} aria-hidden="true">
                                     <polyline points="6 9 12 15 18 9" />
                                   </svg>
                                 </button>
@@ -518,23 +413,12 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                           </tr>
                           {isExpanded && danceNames.length > 0 && (
                             <tr style={{ borderBottom: "1px solid #F3F4F6" }}>
-                              <td colSpan={4} style={{ padding: "0 10px 10px 48px" }}>
+                              <td colSpan={2} style={{ padding: "0 10px 10px 10px" }}>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                   {danceNames.map((dance) => (
-                                    <div
-                                      key={dance}
-                                      style={{
-                                        background: "#F9FAFB",
-                                        border: "1px solid #E5E7EB",
-                                        borderRadius: 8,
-                                        padding: "4px 10px",
-                                        fontSize: ".75rem",
-                                      }}
-                                    >
+                                    <div key={dance} style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, padding: "4px 10px", fontSize: ".75rem" }}>
                                       <span style={{ color: "#6B7280" }}>{dance}</span>
-                                      <span style={{ fontWeight: 700, color: "#111827", marginLeft: 6 }}>
-                                        {(r.perDance[dance] ?? 0).toFixed(1)}
-                                      </span>
+                                      <span style={{ fontWeight: 700, color: "#111827", marginLeft: 6 }}>{(r.perDance[dance] ?? 0).toFixed(1)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -544,10 +428,9 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                         </React.Fragment>
                       );
                     }),
-                    ])}
-                  </tbody>
-                </table>
-              </div>
+                  ])}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
