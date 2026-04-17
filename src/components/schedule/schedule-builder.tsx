@@ -174,9 +174,40 @@ function AddBreakDialog({ competitionId, afterSlotId, onClose }: {
 
 // ── Heat Pairs Row ─────────────────────────────────────────────────────────────
 
+function PairsTable({ pairs }: { pairs: import("@/lib/api/schedule").HeatPairEntry[] }) {
+  return (
+    <table className="w-full text-xs">
+      <tbody className="divide-y divide-[var(--border)]">
+        {pairs.map((p) => (
+          <tr key={p.pairId} className="hover:bg-[var(--surface-secondary)] transition-colors">
+            <td className="py-1 pr-2 w-8 font-mono font-bold text-[var(--text-secondary)] tabular-nums">
+              {p.startNumber}
+            </td>
+            <td className="py-1 pr-2 text-[var(--text-primary)] font-medium">
+              {p.dancer1}
+            </td>
+            <td className="py-1 pr-2 text-[var(--text-secondary)]">
+              / {p.dancer2}
+            </td>
+            <td className="py-1 text-[var(--text-tertiary)] text-right truncate max-w-[100px]">
+              {p.club}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function HeatPairsRow({ heat, totalHeats }: { heat: HeatAssignmentGroup; totalHeats: number }) {
   const { t } = useLocale();
   const [open, setOpen] = useState(totalHeats === 1); // auto-open if only 1 heat
+  const danceNames = heat.pairsByDance ? Object.keys(heat.pairsByDance) : null;
+  const [selectedDance, setSelectedDance] = useState<string | null>(null);
+  const activeDance = selectedDance ?? danceNames?.[0] ?? null;
+  const displayPairs = (danceNames && activeDance && heat.pairsByDance)
+    ? (heat.pairsByDance[activeDance] ?? heat.pairs)
+    : heat.pairs;
 
   return (
     <div>
@@ -206,26 +237,24 @@ function HeatPairsRow({ heat, totalHeats }: { heat: HeatAssignmentGroup; totalHe
       </button>
       {open && (
         <div className="px-3 pb-2">
-          <table className="w-full text-xs">
-            <tbody className="divide-y divide-[var(--border)]">
-              {heat.pairs.map((p) => (
-                <tr key={p.pairId} className="hover:bg-[var(--surface-secondary)] transition-colors">
-                  <td className="py-1 pr-2 w-8 font-mono font-bold text-[var(--text-secondary)] tabular-nums">
-                    {p.startNumber}
-                  </td>
-                  <td className="py-1 pr-2 text-[var(--text-primary)] font-medium">
-                    {p.dancer1}
-                  </td>
-                  <td className="py-1 pr-2 text-[var(--text-secondary)]">
-                    / {p.dancer2}
-                  </td>
-                  <td className="py-1 text-[var(--text-tertiary)] text-right truncate max-w-[100px]">
-                    {p.club}
-                  </td>
-                </tr>
+          {danceNames && danceNames.length > 1 && (
+            <div className="flex gap-1 flex-wrap mb-2 mt-1">
+              {danceNames.map((name) => (
+                <button
+                  key={name}
+                  onClick={() => setSelectedDance(name)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors cursor-pointer ${
+                    name === activeDance
+                      ? "bg-[var(--accent)] text-white border-[var(--accent)]"
+                      : "bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--surface-secondary)]"
+                  }`}
+                >
+                  {name}
+                </button>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
+          <PairsTable pairs={displayPairs} />
         </div>
       )}
     </div>

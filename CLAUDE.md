@@ -478,6 +478,24 @@ es.addEventListener("round-status", (e: MessageEvent) => {
 - Cleanup: `useEffect(() => () => clearTimeout(timerRef.current), [])` při unmountu
 - `onPointerDown/Up/Leave` pouze na `isSelected && !isDone` buttonech; `onContextMenu={(e) => e.preventDefault()}` zachováno
 
+## Judge page routing — symetrie round type redirectu (2026-04-17)
+
+Obě judge stránky musí přesměrovat když `loadActiveRound()` vrátí špatný typ kola:
+- `round/page.tsx`: `if (roundType === "FINAL") router.replace('/final')` ✅ již existovalo
+- `final/page.tsx`: `if (roundType !== "FINAL") router.replace('/round')` ← chybělo; přidáno commit ce2cdbb
+
+**Scénář bug:** Po dokončení LATIN Finále soudci zůstali na `/final` stránce. Při spuštění STANDARD Kolo 1 přišel `heat-sent` SSE → `loadActiveRound()` načetl PRELIMINARY kolo, ale **nepřesměroval** → soudci viděli PRELIMINARY kolo s finálním UI (umístění 1–18 místo callbacks x/-).
+
+**Pravidlo:** Každá `loadActiveRound()` `.then()` větev musí obsahovat type guard a redirect na správnou stránku. Bez symetrie = špatné scoring UI mezi sekcemi na stejné soutěži.
+
+## Live page — heat draw musí předcházet activateSlot (2026-04-17)
+
+Backend `/slots/{id}/activate` vrátí **403** pokud slot nemá heat assignments. `live/page.tsx` useEffect musí být **sekvenční** (ne paralelní):
+1. `getHeatAssignments` → pokud 404, auto-draw (`drawHeats`) → `setHeats`
+2. Teprve potom: fetch rounds → pokud nenalezeno, `activateSlot`
+
+Paralelní spuštění (původní kód) = 403 na activate protože heaty ještě neexistovaly. Opraveno v `setupRound()` async funkci (commit ce2cdbb).
+
 ## Spec soubory
 
 - **Schedule modul:** `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`

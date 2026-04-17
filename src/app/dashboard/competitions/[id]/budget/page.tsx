@@ -449,14 +449,14 @@ function SummaryCard({
 
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-3 sm:p-4">
         <div className="text-xs font-medium text-[var(--text-tertiary)]">
           {label}
         </div>
         {loading ? (
           <div className="mt-1 h-6 w-24 animate-pulse rounded bg-[var(--surface-secondary)]" />
         ) : (
-          <div className={cn("mt-1 text-xl font-bold", accentClass)}>
+          <div className={cn("mt-1 break-words text-base font-bold leading-tight sm:text-xl", accentClass)}>
             {value}
           </div>
         )}

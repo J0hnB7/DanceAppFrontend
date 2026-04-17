@@ -383,6 +383,12 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     };
   }, [adjudicatorId]);
 
+  // Auto-sync pending offline marks when internet returns
+  useEffect(() => {
+    if (!isOnline || !adjudicatorId || !deviceToken) return;
+    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token).catch(() => {});
+  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const activeDance = dances[activeDanceIdx];
   const activeHeat  = heats.length > 0 ? heats[activeHeatIdx] : null;
 

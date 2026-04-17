@@ -536,9 +536,9 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                           ["IBAN", pc.iban],
                           pc.bic && ["BIC/SWIFT", pc.bic],
                         ].filter(Boolean).map((row) => (
-                          <div key={row![0]} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #F3F4F6" }}>
-                            <span style={{ fontSize: ".85rem", color: "#6B7280" }}>{row![0]}</span>
-                            <span style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827", fontFamily: row![0] === "IBAN" || row![0] === "BIC/SWIFT" ? "monospace" : undefined }}>{row![1]}</span>
+                          <div key={row![0]} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid #F3F4F6", gap: 12 }}>
+                            <span style={{ fontSize: ".85rem", color: "#6B7280", flexShrink: 0, paddingTop: 1 }}>{row![0]}</span>
+                            <span style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827", fontFamily: row![0] === "IBAN" || row![0] === "BIC/SWIFT" ? "monospace" : undefined, textAlign: "right", wordBreak: "break-all" }}>{row![1]}</span>
                           </div>
                         ))}
                       </div>

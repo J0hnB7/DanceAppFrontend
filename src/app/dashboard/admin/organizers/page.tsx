@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserPlus, Mail, Building2, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Sidebar } from "@/components/layout/sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,7 +54,7 @@ export default function AdminOrganizersPage() {
   };
 
   return (
-    <AppShell sidebar={<Sidebar />}>
+    <AppShell>
       <PageHeader
         title={t("organizers.title")}
         description={t("organizers.description")}

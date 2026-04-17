@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
 import axios from "axios";
 import { useOnline } from "@/hooks/use-online";
+import { judgeOfflineStore } from "@/lib/judge-offline-store";
 import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -315,6 +316,12 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
       if (heartbeatIntervalRef.current) { clearInterval(heartbeatIntervalRef.current); heartbeatIntervalRef.current = null; }
     };
   }, [adjudicatorId]);
+
+  // Auto-sync pending offline marks when internet returns
+  useEffect(() => {
+    if (!isOnline || !adjudicatorId || !deviceToken) return;
+    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token).catch(() => {});
+  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setPlacement = (danceId: string, pairId: string, placement: number) => {
     setPlacements((prev) => ({

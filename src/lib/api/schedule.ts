@@ -95,7 +95,8 @@ export interface HeatPairEntry {
 
 export interface HeatAssignmentGroup {
   heatNumber: number;
-  pairs: HeatPairEntry[];
+  pairs: HeatPairEntry[];        // order for first dance (backward compat)
+  pairsByDance?: Record<string, HeatPairEntry[]>; // per-dance shuffle; null = old data
 }
 
 export const scheduleApi = {

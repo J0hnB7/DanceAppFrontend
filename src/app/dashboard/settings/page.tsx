@@ -46,7 +46,7 @@ export default function SettingsPage() {
   const { t } = useLocale();
   const { user, checkAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
-  const [totpSetup, setTotpSetup] = useState<{ secret: string; qrCode: string } | null>(null);
+  const [totpSetup, setTotpSetup] = useState<{ secret: string; qrCodeBase64: string } | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -235,7 +235,7 @@ export default function SettingsPage() {
                     {t("settings.scanQrCode")}
                   </p>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={totpSetup.qrCode} alt="TOTP QR code" className="rounded-[var(--radius-md)]" />
+                  <img src={`data:image/png;base64,${totpSetup.qrCodeBase64}`} alt="TOTP QR code" className="rounded-[var(--radius-md)]" />
                 </div>
                 <p className="text-xs text-[var(--text-tertiary)]">
                   {t("settings.orEnterSecret")} <code className="font-mono">{totpSetup.secret}</code>

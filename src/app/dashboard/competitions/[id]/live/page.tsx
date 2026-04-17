@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { competitionsApi } from "@/lib/api/competitions";
-import { scheduleApi, type ScheduleSlot } from "@/lib/api/schedule";
+import { scheduleApi, type ScheduleSlot, type HeatAssignmentGroup } from "@/lib/api/schedule";
 import { liveApi } from "@/lib/api/live";
 import { useScheduleStore } from "@/store/schedule-store";
 import { useLiveStore } from "@/store/live-store";
@@ -48,6 +48,7 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
 
   const [dances, setDances] = useState<DanceItem[]>([]);
   const [heats, setHeats] = useState<HeatItem[]>([]);
+  const [rawHeatGroups, setRawHeatGroups] = useState<HeatAssignmentGroup[]>([]);
   const [heatSubmissions, setHeatSubmissions] = useState<Record<string, { submitted: number; total: number }>>({});
   const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
   const [heatIdMap, setHeatIdMap] = useState<Record<string, string>>({});
@@ -120,13 +121,15 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
       }).catch(() => { /* already have dances from sync path */ });
     }
 
-    const mapGroups = (groups: { heatNumber: number; pairs: { startNumber: number }[] }[]) =>
-      groups.map((g) => ({
+    const mapGroups = (groups: HeatAssignmentGroup[]) => {
+      setRawHeatGroups(groups);
+      return groups.map((g) => ({
         id: `${selectedRoundId}-h${g.heatNumber}`,
         number: g.heatNumber,
         pairNumbers: g.pairs.map((p) => p.startNumber),
         status: "pending" as const,
       }));
+    };
 
     setSectionId(slot.sectionId ?? null);
 
@@ -134,7 +137,7 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
     // activate requires heat assignments (403 otherwise), so order matters.
     const setupRound = async () => {
       // 1. Get or draw heat assignments
-      let heatGroups: { heatNumber: number; pairs: { startNumber: number }[] }[];
+      let heatGroups: HeatAssignmentGroup[];
       try {
         const groups = await scheduleApi.getHeatAssignments(competitionId, selectedRoundId);
         heatGroups = groups.length > 0 ? groups : await scheduleApi.drawHeats(competitionId, selectedRoundId);
@@ -144,11 +147,11 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
           try {
             heatGroups = await scheduleApi.drawHeats(competitionId, selectedRoundId);
           } catch {
-            if (!cancelled) setHeats([]);
+            if (!cancelled) { setHeats([]); setRawHeatGroups([]); }
             return;
           }
         } else {
-          if (!cancelled) setHeats([]);
+          if (!cancelled) { setHeats([]); setRawHeatGroups([]); }
           return;
         }
       }
@@ -248,7 +251,15 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
   const enrichedHeats: HeatItem[] = heats.map((h) => {
     const realId = heatIdMap[h.id];
     const sub = realId ? heatSubmissions[realId] : undefined;
-    return sub ? { ...h, submittedJudges: sub.submitted, totalJudges: sub.total } : h;
+    // Use per-dance order when available and a dance is selected
+    const rawGroup = rawHeatGroups.find((g) => g.heatNumber === h.number);
+    let pairNumbers = h.pairNumbers;
+    if (rawGroup?.pairsByDance && selectedDanceName) {
+      const dancePairs = rawGroup.pairsByDance[selectedDanceName] ?? rawGroup.pairs;
+      pairNumbers = dancePairs.map((p) => p.startNumber);
+    }
+    const updated = { ...h, pairNumbers };
+    return sub ? { ...updated, submittedJudges: sub.submitted, totalJudges: sub.total } : updated;
   });
 
   return (
