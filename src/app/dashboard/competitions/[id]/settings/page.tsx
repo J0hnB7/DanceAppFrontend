@@ -67,6 +67,7 @@ export default function SettingsPage({
 
   const [name, setName] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [startTime, setStartTime] = useState("");
   const [venue, setVenue] = useState("");
   const [registrationDeadline, setRegistrationDeadline] = useState("");
   const [propoziceText, setPropoziceText] = useState("");
@@ -90,6 +91,7 @@ export default function SettingsPage({
     if (competition) {
       setName(competition.name ?? "");
       setEventDate(competition.eventDate ?? "");
+      setStartTime(competition.startTime ?? "");
       setVenue(competition.venue ?? "");
       setRegistrationDeadline(competition.registrationDeadline ? competition.registrationDeadline.slice(0, 16) : "");
       setPropoziceText(competition.propozice ?? "");
@@ -152,7 +154,7 @@ export default function SettingsPage({
               />
             </div>
             <Separator />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">Datum konání</p>
                 <input
@@ -164,6 +166,15 @@ export default function SettingsPage({
                     setEventDate(newVal);
                     setShowDateConfirmDialog(true);
                   }}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-sm font-medium text-[var(--text-primary)]">Čas zahájení</p>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => { setStartTime(e.target.value); scheduleSave({ startTime: e.target.value || null }); }}
                   className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
               </div>

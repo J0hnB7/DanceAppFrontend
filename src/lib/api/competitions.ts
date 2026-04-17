@@ -38,6 +38,7 @@ export interface CompetitionDto {
   roleMode?: RoleMode;
   /** Backend field for date */
   eventDate: string;
+  startTime?: string;
   /** Backend field for location */
   venue: string;
   description?: string;
@@ -99,6 +100,7 @@ export interface CreateCompetitionRequest {
 export interface UpdateCompetitionRequest {
   name?: string;
   eventDate?: string;
+  startTime?: string;
   venue?: string;
   description?: string;
   federation?: FederationType;
