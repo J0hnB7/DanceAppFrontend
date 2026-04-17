@@ -369,34 +369,17 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                           letterSpacing: ".04em",
                           textTransform: "uppercase",
                           borderBottom: "1px solid #E5E7EB",
-                          width: 60,
+                          width: 72,
                         }}
                       >
                         Body
                       </th>
-                      {danceNames.length > 0 && (
-                        <th
-                          style={{
-                            padding: "8px 10px",
-                            textAlign: "center",
-                            fontWeight: 700,
-                            color: "#6B7280",
-                            fontSize: ".72rem",
-                            letterSpacing: ".04em",
-                            textTransform: "uppercase",
-                            borderBottom: "1px solid #E5E7EB",
-                            width: 36,
-                          }}
-                        >
-                          Tance
-                        </th>
-                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {segmentByRound(sorted).flatMap((segment) => [
                       <tr key={`seg-${segment.round}`} style={{ background: "#F9FAFB" }}>
-                        <td colSpan={danceNames.length > 0 ? 4 : 3} style={{ padding: "10px 12px", borderTop: "1px solid #E5E7EB", borderBottom: "1px solid #E5E7EB" }}>
+                        <td colSpan={3} style={{ padding: "10px 12px", borderTop: "1px solid #E5E7EB", borderBottom: "1px solid #E5E7EB" }}>
                           <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
                             <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".85rem", color: "#111827" }}>
                               {ROUND_LABEL[segment.round] ?? segment.round}
@@ -491,12 +474,11 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                                 fontWeight: 700,
                                 fontVariantNumeric: "tabular-nums",
                                 verticalAlign: "middle",
+                                whiteSpace: "nowrap",
                               }}
                             >
                               {r.totalSum.toFixed(1)}
-                            </td>
-                            {danceNames.length > 0 && (
-                              <td style={{ padding: "10px 10px", textAlign: "center", verticalAlign: "middle" }}>
+                              {danceNames.length > 0 && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -506,32 +488,33 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                                     background: "none",
                                     border: "1px solid #E5E7EB",
                                     borderRadius: 6,
-                                    padding: "3px 7px",
+                                    padding: "3px 6px",
                                     cursor: "pointer",
-                                    fontSize: ".7rem",
                                     color: "#6B7280",
                                     minHeight: 28,
                                     minWidth: 28,
+                                    marginLeft: 6,
+                                    verticalAlign: "middle",
                                     transition: "border-color .15s, color .15s",
                                   }}
                                   aria-label={isExpanded ? "Skrýt per-dance" : "Zobrazit per-dance"}
                                   aria-expanded={isExpanded}
                                 >
                                   <svg
-                                    width="12"
-                                    height="12"
+                                    width="11"
+                                    height="11"
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2.5"
-                                    style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .15s" }}
+                                    style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .15s", display: "inline-block", verticalAlign: "middle" }}
                                     aria-hidden="true"
                                   >
                                     <polyline points="6 9 12 15 18 9" />
                                   </svg>
                                 </button>
-                              </td>
-                            )}
+                              )}
+                            </td>
                           </tr>
                           {isExpanded && danceNames.length > 0 && (
                             <tr style={{ borderBottom: "1px solid #F3F4F6" }}>

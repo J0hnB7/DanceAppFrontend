@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api-client";
 import { useLocale } from "@/contexts/locale-context";
 import { competitionKeys } from "@/hooks/queries/use-competitions";
@@ -41,7 +40,6 @@ const selectCls =
 const labelCls = "mb-1 block text-xs font-semibold text-[#6B7280] uppercase tracking-wide";
 
 export default function PublicCompetitionsPage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { t, locale, setLocale } = useLocale();
 
@@ -136,6 +134,7 @@ export default function PublicCompetitionsPage() {
         @keyframes orb{0%,100%{transform:translate(0,0)}33%{transform:translate(15px,-25px)}66%{transform:translate(-12px,18px)}}
         .comp-card{transition:box-shadow .2s,transform .2s,border-color .2s}
         .comp-card:hover{box-shadow:0 4px 6px rgba(0,0,0,.04),0 20px 48px rgba(0,0,0,.10)!important;transform:translateY(-2px);border-color:rgba(79,70,229,.3)!important}
+        @media(max-width:640px){.lang-toggle-nav{display:none!important}.lang-toggle-footer{display:inline-flex!important}}
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#F9FAFB" }}>
@@ -148,24 +147,14 @@ export default function PublicCompetitionsPage() {
           height: 60, display: "flex", alignItems: "center",
         }}>
           <div style={{ maxWidth: 1160, margin: "0 auto", width: "100%", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <button
-                onClick={() => router.back()}
-                aria-label={t("publicCompetitions.back")}
-                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".85rem", color: "#6B7280", background: "none", border: "none", cursor: "pointer", padding: "10px 8px", minHeight: 44, minWidth: 44 }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
-                {t("publicCompetitions.back")}
-              </button>
-              <span style={{ color: "#E5E7EB" }}>|</span>
-              <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-                <LogoMark size={24} />
-                <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1rem", color: "#111827", letterSpacing: "-.02em" }}>ProPodium</span>
-              </Link>
-            </div>
+            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+              <LogoMark size={24} />
+              <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: "1rem", color: "#111827", letterSpacing: "-.02em" }}>ProPodium</span>
+            </Link>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {mounted && (
                 <button
+                  className="lang-toggle-nav"
                   onClick={() => setLocale(locale === "en" ? "cs" : "en")}
                   title={locale === "en" ? "Přepnout do češtiny" : "Switch to English"}
                   style={{ padding: "4px 10px", borderRadius: 6, fontSize: ".75rem", fontWeight: 500, letterSpacing: ".04em", color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", cursor: "pointer", fontFamily: "inherit" }}
@@ -497,6 +486,16 @@ export default function PublicCompetitionsPage() {
             <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".9rem", color: "#111827" }}>ProPodium</span>
           </Link>
           <p style={{ fontSize: ".73rem", color: "#9CA3AF", marginTop: 6 }}>© 2026 ProPodium. {t("publicCompetitions.footer")}</p>
+          {mounted && (
+            <button
+              className="lang-toggle-footer"
+              onClick={() => setLocale(locale === "en" ? "cs" : "en")}
+              title={locale === "en" ? "Přepnout do češtiny" : "Switch to English"}
+              style={{ display: "none", marginTop: 12, padding: "4px 10px", borderRadius: 6, fontSize: ".75rem", fontWeight: 500, letterSpacing: ".04em", color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              {locale === "en" ? "CZ" : "EN"}
+            </button>
+          )}
         </div>
 
       </div>
