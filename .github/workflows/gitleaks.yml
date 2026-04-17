@@ -2,7 +2,7 @@ name: Secret Scan (gitleaks)
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feature/**", "fix/**", "hotfix/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
