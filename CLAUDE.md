@@ -263,6 +263,7 @@ Token overenie lokálne: `SENTRY_AUTH_TOKEN=xxx SENTRY_ORG=bystriansky npx @sent
 
 - **Potvrzený drift:** `InvoiceDto.amount` vs BE `totalAmount` — frontend mapuje `inv.amount ?? inv.totalAmount ?? 0` (`payments.ts:86`). Nepředpokládej, že FE název pole = BE název.
 - **`RoundStatus` stale values:** `rounds.ts:3` obsahuje `"OPEN" | "CLOSED"` — v BE enumu **neexistují**. BE používá `PENDING | IN_PROGRESS | COMPLETED | CALCULATED`. Ignoruj `OPEN`/`CLOSED` ve switch/conditions.
+- **`PairDto.competitionId` je `optional`** — backend ho v response neposílá vždy. NIKDY nepoužívej `pair.competitionId` pro URL konstrukci (→ `undefined` → URL `/competitions//pairs/...` → 404). Vždy předej `competitionId` z route params jako explicitní prop do komponent (vzor: `ContactModal`).
 - Při přidávání nového BE pole → vždy ručně aktualizuj odpovídající interfejs v `src/lib/api/`.
 
 ## Playwright — MSW + auth gotcha (2026-04-15)
