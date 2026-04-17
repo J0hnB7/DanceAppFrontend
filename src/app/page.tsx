@@ -77,7 +77,7 @@ const TRANSLATIONS: Record<Lang, T> = {
     "sec-2-desc":
       "Každé kliknutí rozhodčího i admina se zaznamenává. Máte tak stoprocentní jistotu správnosti výsledků.",
     "sec-3-title": "Připojení na jeden kód",
-    "sec-3-desc": "Rozhodčí se připojí naskenováním QR kódu — bez jakéhokoli hesla.",
+    "sec-3-desc": "Rozhodčí se připojí naskenováním QR kódu a hesla.",
     // CTA
     "cta-eyebrow": "Připraveni začít?",
     "cta-title-a": "Uspořádejte svou příští",
@@ -85,11 +85,8 @@ const TRANSLATIONS: Record<Lang, T> = {
     "cta-desc": "Zbavte se chaosu a papírování. Začněte používat systém, který tanci rozumí.",
     "cta-btn": "Chci nezávaznou ukázku",
     // FOOTER
-    "footer-for-whom": "Pro koho",
-    "footer-results": "Výsledky",
-    "footer-security": "Bezpečnost",
-    "footer-contact": "Kontakt",
-    "footer-gdpr": "GDPR",
+    "footer-competitions": "Soutěže",
+    "footer-gdpr": "Zpracování osobních údajů",
     "footer-copy": "© 2026 ProPodium. Navrženo pro tanec.",
   },
   en: {
@@ -167,11 +164,8 @@ const TRANSLATIONS: Record<Lang, T> = {
     "cta-desc": "Leave the chaos and paperwork behind. Start using a system built for dance.",
     "cta-btn": "Request a free demo",
     // FOOTER
-    "footer-for-whom": "For whom",
-    "footer-results": "Results",
-    "footer-security": "Security",
-    "footer-contact": "Contact",
-    "footer-gdpr": "GDPR",
+    "footer-competitions": "Competitions",
+    "footer-gdpr": "Privacy Policy",
     "footer-copy": "© 2026 ProPodium. Built for dance.",
   },
 };
@@ -427,10 +421,7 @@ export default function Home() {
             ProPodium
           </Link>
           <ul className="lp-footer-links" role="list">
-            <li><a href="#roles">{t("footer-for-whom")}</a></li>
-            <li><Link href="/competitions">{t("footer-results")}</Link></li>
-            <li><a href="#security">{t("footer-security")}</a></li>
-            <li><a href="mailto:info@propodium.cz">{t("footer-contact")}</a></li>
+            <li><Link href="/competitions">{t("footer-competitions")}</Link></li>
             <li><Link href="/privacy">{t("footer-gdpr")}</Link></li>
           </ul>
           <p className="lp-footer-copy">{t("footer-copy")}</p>
@@ -866,7 +857,7 @@ const CSS = `
   @media (max-width: 640px) {
     .lp-roles-grid { grid-template-columns: 1fr !important; }
     .lp-btn-ghost { display: none; }
-    .lp-footer-links { display: none; }
+    .lp-footer-links { display: flex; flex-wrap: wrap; gap: 12px; }
   }
   @media (max-width: 420px) {
     .lp-feat-grid { grid-template-columns: 1fr; }
