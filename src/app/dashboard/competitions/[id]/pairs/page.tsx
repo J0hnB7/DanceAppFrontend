@@ -219,13 +219,13 @@ function NoteCell({ pair, competitionId }: { pair: PairDto; competitionId: strin
 }
 
 // ── ContactModal ──────────────────────────────────────────────────────────────
-function ContactModal({ pair, onClose }: { pair: PairDto; onClose: () => void }) {
+function ContactModal({ pair, competitionId, onClose }: { pair: PairDto; competitionId: string; onClose: () => void }) {
   const { t } = useLocale();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
   const send = useMutation({
-    mutationFn: () => pairsApi.contactEmail(pair.competitionId ?? "", pair.id, { subject, message }),
+    mutationFn: () => pairsApi.contactEmail(competitionId, pair.id, { subject, message }),
     onSuccess: () => {
       toast({ title: t("pairs.emailSent"), variant: "success" });
       onClose();
@@ -864,7 +864,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
 
       {/* Contact modal */}
       {contactPair && (
-        <ContactModal pair={contactPair} onClose={() => setContactPair(null)} />
+        <ContactModal pair={contactPair} competitionId={id} onClose={() => setContactPair(null)} />
       )}
 
       {/* Registration toggle confirm */}
