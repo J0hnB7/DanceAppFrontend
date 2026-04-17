@@ -465,7 +465,14 @@
     "accountHolder": "Account holder",
     "scanQrCode": "Scan QR code",
     "submitting": "Submitting…",
-    "statsRegistered": "Registered competitors"
+    "statsRegistered": "Registered competitors",
+    "selfRegister": "Register",
+    "selfRegisterPending": "Pending partner confirmation",
+    "selfRegisterSuccess": "Registered! Start number: #{{number}}",
+    "selfRegisterPendingMsg": "Registered (no. #{{number}}). Your partner must confirm.",
+    "loginToRegister": "Log in to register",
+    "completeProfileFirst": "Complete your profile first",
+    "ageNotEligible": "Age requirements not met"
   },
   "publicRegister": {
     "backToCompetition": "Back to competition",

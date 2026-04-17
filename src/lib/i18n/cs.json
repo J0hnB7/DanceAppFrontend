@@ -465,7 +465,14 @@
     "accountHolder": "Majitel účtu",
     "scanQrCode": "Naskenujte QR kód",
     "submitting": "Odesílám…",
-    "statsRegistered": "Přihlášených soutěžících"
+    "statsRegistered": "Přihlášených soutěžících",
+    "selfRegister": "Přihlásit se",
+    "selfRegisterPending": "Čeká na potvrzení partnera",
+    "selfRegisterSuccess": "Přihláška odeslána! Startovní číslo: #{{number}}",
+    "selfRegisterPendingMsg": "Přihláška odeslána (č. #{{number}}). Partner musí potvrdit registraci.",
+    "loginToRegister": "Přihlásit se pro registraci",
+    "completeProfileFirst": "Nejdřív vyplňte profil",
+    "ageNotEligible": "Nesplňujete věkové podmínky"
   },
   "publicRegister": {
     "backToCompetition": "Zpět na soutěž",
