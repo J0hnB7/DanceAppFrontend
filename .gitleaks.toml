@@ -1,0 +1,19 @@
+title = "DanceApp Frontend Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known false positives in example files and local-only configs"
+paths = [
+  # Local-only build plugin file (gitignored) — contains real token but never committed
+  '''\.env\.sentry-build-plugin''',
+  # Example env file — only masked placeholder values
+  '''\.env\.example''',
+]
+regexes = [
+  # Masked placeholder patterns in .env.example
+  '''xxx@oXXX''',
+  # Next.js public env placeholder
+  '''NEXT_PUBLIC_.*=your-''',
+]
