@@ -350,6 +350,14 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         }
       } catch { /* ignore malformed */ }
     });
+    es.addEventListener("round-status", (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { status?: string };
+        if (data.status === "RUNNING") {
+          loadActiveRoundRef.current();
+        }
+      } catch { /* ignore malformed */ }
+    });
     return () => es.close();
   }, [competitionId, adjudicatorId]);
 

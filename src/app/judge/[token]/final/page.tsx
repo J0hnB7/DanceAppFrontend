@@ -57,29 +57,35 @@ function PlacementRow({
   maxPlacement,
   onSet,
   onClear,
+  isDone,
 }: {
   pair: PairDto;
   placements: Record<string, number>;
   maxPlacement: number;
   onSet: (pairId: string, placement: number) => void;
   onClear: (pairId: string) => void;
+  isDone: boolean;
 }) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
+  const [holding, setHolding] = useState(false);
 
-  const handlePointerDown = () => {
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const startHold = (pairId: string) => {
     didLongPress.current = false;
+    setHolding(true);
     timerRef.current = setTimeout(() => {
       didLongPress.current = true;
-      onClear(pair.id);
+      setHolding(false);
+      onClear(pairId);
       if (navigator.vibrate) navigator.vibrate(30);
-    }, 600);
+    }, 1000);
   };
-  const handlePointerUp = () => {
+
+  const cancelHold = () => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-  };
-  const handlePointerLeave = () => {
-    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    setHolding(false);
   };
 
   const assigned = new Set(Object.values(placements));
@@ -92,14 +98,8 @@ function PlacementRow({
         ? "border-[var(--accent)]/30 bg-[var(--surface)]"
         : "border-[var(--border)] bg-[var(--surface)]"
     )}>
-      {/* Couple info — long-press to clear this pair's placement */}
-      <div
-        className="min-w-[52px] shrink-0 select-none cursor-pointer"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerLeave}
-        onContextMenu={(e) => e.preventDefault()}
-      >
+      {/* Couple info */}
+      <div className="min-w-[52px] shrink-0 select-none">
         <span className="text-[20px] font-black tabular-nums text-[var(--text-primary)]">
           {pair.startNumber}
         </span>
@@ -118,14 +118,24 @@ function PlacementRow({
           return (
             <button
               key={p}
-              onClick={() => onSet(pair.id, p)}
-              disabled={isUsed}
+              onClick={() => {
+                if (didLongPress.current) { didLongPress.current = false; return; }
+                if (!isDone) onSet(pair.id, p);
+              }}
+              disabled={isUsed || isDone}
               aria-label={`Place ${p}${isSelected ? " (selected)" : isUsed ? " (taken)" : ""}`}
               aria-pressed={isSelected}
+              onPointerDown={isSelected && !isDone ? () => startHold(pair.id) : undefined}
+              onPointerUp={isSelected && !isDone ? cancelHold : undefined}
+              onPointerLeave={isSelected && !isDone ? cancelHold : undefined}
+              onContextMenu={(e) => e.preventDefault()}
               className={cn(
                 "flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg text-sm font-bold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
                 isSelected
-                  ? "bg-[var(--accent)] text-white shadow-md"
+                  ? cn(
+                      "bg-[var(--accent)] text-white shadow-md",
+                      holding && "animate-pulse ring-2 ring-white/70 ring-offset-1 ring-offset-[var(--accent)]"
+                    )
                   : isUsed
                   ? "cursor-not-allowed bg-[var(--surface-secondary)] text-[var(--text-tertiary)] opacity-25"
                   : "bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
@@ -545,6 +555,7 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
                   pair={pair}
                   placements={activePlacements}
                   maxPlacement={pairs.length}
+                  isDone={isDoneThisDance}
                   onSet={(pairId, placement) => setPlacement(activeDanceId, pairId, placement)}
                   onClear={(pairId) => setPlacements((prev) => {
                     const next = { ...prev[activeDanceId] };
