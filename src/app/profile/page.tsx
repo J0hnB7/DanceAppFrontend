@@ -27,6 +27,7 @@ const profileSchema = z.object({
     }, { message: "Zadejte platný rok" }),
   club: z.string().optional(),
   partnerNameText: z.string().optional(),
+  gender: z.string().optional(),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -63,6 +64,7 @@ export default function ProfilePage() {
         birthYear: p.birthYear?.toString() ?? "",
         club: p.club ?? "",
         partnerNameText: p.partnerName ?? "",
+        gender: p.gender ?? "",
       });
       setLoading(false);
     }).catch(() => {
@@ -80,6 +82,7 @@ export default function ProfilePage() {
         birthYear: parseInt(values.birthYear, 10),
         club: values.club || undefined,
         partnerNameText: values.partnerNameText || undefined,
+        gender: values.gender || undefined,
       });
       setProfile(updated);
       setEditMode(false);
@@ -227,6 +230,18 @@ export default function ProfilePage() {
                       placeholder={t("dancer.onboarding.clubPlaceholder")}
                       {...register("club")}
                     />
+                    <div>
+                      <label htmlFor="gender" style={{ display: "block", fontWeight: 600, marginBottom: 4, fontSize: ".88rem", color: "#374151" }}>
+                        {t("dancer.profile.gender")}
+                      </label>
+                      <select id="gender" {...register("gender")}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", color: "#111827", fontSize: 16, fontFamily: "inherit" }}>
+                        <option value="">{t("dancer.profile.genderUnspecified")}</option>
+                        <option value="MALE">{t("dancer.profile.genderMale")}</option>
+                        <option value="FEMALE">{t("dancer.profile.genderFemale")}</option>
+                        <option value="OTHER">{t("dancer.profile.genderOther")}</option>
+                      </select>
+                    </div>
 
                     {saveError && (
                       <p style={{ fontSize: ".85rem", color: "#EF4444", padding: "8px 12px", background: "#FEF2F2", borderRadius: 8 }}>{saveError}</p>
@@ -249,6 +264,11 @@ export default function ProfilePage() {
                     [t("dancer.register.lastName"), profile?.lastName],
                     [t("dancer.onboarding.birthYear"), profile?.birthYear?.toString() ?? "—"],
                     [t("dancer.onboarding.club"), profile?.club ?? "—"],
+                    [t("dancer.profile.gender"), profile?.gender
+                      ? profile.gender === "MALE" ? t("dancer.profile.genderMale")
+                        : profile.gender === "FEMALE" ? t("dancer.profile.genderFemale")
+                        : t("dancer.profile.genderOther")
+                      : "—"],
                   ] as [string, string | undefined][]).map(([label, value]) => (
                     <div key={label}>
                       <p style={{ fontSize: ".75rem", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 }}>{label}</p>

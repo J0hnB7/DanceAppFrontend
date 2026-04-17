@@ -2060,7 +2060,12 @@
       "unlink": "Zrušit propojení",
       "unlinkConfirm": "Opravdu chcete zrušit propojení s partnerem/kou?",
       "saving": "Ukládám...",
-      "saveError": "Uložení se nezdařilo"
+      "saveError": "Uložení se nezdařilo",
+      "gender": "Pohlaví",
+      "genderMale": "Muž",
+      "genderFemale": "Žena",
+      "genderOther": "Jiné",
+      "genderUnspecified": "Neuvedeno"
     },
     "competitions": {
       "title": "Moje soutěže",

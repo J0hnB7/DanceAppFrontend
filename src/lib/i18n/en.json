@@ -2060,7 +2060,12 @@
       "unlink": "Unlink",
       "unlinkConfirm": "Are you sure you want to unlink your partner?",
       "saving": "Saving...",
-      "saveError": "Failed to save"
+      "saveError": "Failed to save",
+      "gender": "Gender",
+      "genderMale": "Male",
+      "genderFemale": "Female",
+      "genderOther": "Other",
+      "genderUnspecified": "Unspecified"
     },
     "competitions": {
       "title": "My Competitions",

@@ -22,6 +22,7 @@ export interface DancerProfileRequest {
   birthYear?: number;
   club?: string;
   partnerNameText?: string;
+  gender?: string;
 }
 
 export interface DancerProfileResponse {
@@ -33,6 +34,7 @@ export interface DancerProfileResponse {
   partnerUserId: string | null;
   partnerName: string | null;
   onboardingCompleted: boolean;
+  gender: string | null;
 }
 
 export interface PartnerInviteResponse {
