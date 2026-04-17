@@ -268,6 +268,15 @@ After `page.click('button[type="submit"]')` on login form:
 - `networkidle` fires before the Next.js redirect completes; `wait_for_url` is reliable
 - Section accordions on results page expand via `page.locator("text=SectionName").first.click()`, not `button[aria-expanded]`
 
+## Playwright — dashboard wizard gotchas (2026-04-17)
+
+- **VenueAutocomplete** — renderuje `<input>` bez `name` atributu. Selector `[name=venue]` nefunguje. Použij přesný placeholder: `input[placeholder="Praha, sportovní hala..."]`. Pro fill: `pressSequentially()` místo `fill()`.
+- **datetime-local input** — `fill()` potřebuje formát `2026-05-17T08:00`, ne `2026-05-17`.
+- **Wizard step 2 (Šablona)** — "Pokračovat" je `disabled` dokud není vybrána šablona. Klikni nejdřív `button:has-text("Prázdná šablona")`.
+- **waitForURL po vytvoření** — `/dashboard/competitions/new` splňuje `/dashboard/competitions/` podmínku. Vždy exclude `/new`: `url.href.includes('/competitions/') && !url.href.includes('/new')`.
+- **getByText strict mode** — pokud text existuje ve více elementech (heading + popis), použij `getByRole('heading', { name: '...' })`.
+- **waitForURL callback** — dostane `URL` objekt, ne string. Vždy `url.href.includes(...)`, ne `url.includes(...)`.
+
 ## Modal accessibility — Escape key pattern
 
 All dialogs/modals must close on Escape. Standard pattern:
