@@ -52,6 +52,9 @@ export interface SectionDto {
   mergedIntoId?: string;
   mergeId?: string;
   mergedLabel?: string;
+  scoringSystem?: string;
+  minBirthYear?: number | null;
+  maxBirthYear?: number | null;
 }
 
 export interface CreateSectionRequest {
@@ -72,6 +75,8 @@ export interface CreateSectionRequest {
   entryFee?: number;
   entryFeeCurrency?: string;
   paymentInfo?: string;
+  minBirthYear?: number | null;
+  maxBirthYear?: number | null;
 }
 
 export const sectionsApi = {
@@ -95,4 +100,11 @@ export const sectionsApi = {
 
   reorder: (competitionId: string, sectionIds: string[]) =>
     apiClient.patch(`/competitions/${competitionId}/sections/reorder`, { sectionIds }),
+
+  getEligible: (competitionId: string, birthYear?: number) =>
+    apiClient
+      .get<SectionDto[]>(
+        `/competitions/${competitionId}/sections/eligible${birthYear != null ? `?birthYear=${birthYear}` : ""}`
+      )
+      .then((r) => r.data),
 };

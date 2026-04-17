@@ -36,6 +36,8 @@ const schema = z.object({
   entryFee: z.string().optional(),
   entryFeeCurrency: z.string().optional(),
   paymentInfo: z.string().optional(),
+  minBirthYear: z.string().optional(),
+  maxBirthYear: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -177,6 +179,8 @@ export default function NewSectionPage({ params }: { params: Promise<{ id: strin
         entryFee: fee && !isNaN(fee) ? fee : undefined,
         entryFeeCurrency: fee ? (values.entryFeeCurrency || "CZK") : undefined,
         paymentInfo: values.paymentInfo || undefined,
+        minBirthYear: values.minBirthYear ? parseInt(values.minBirthYear) : undefined,
+        maxBirthYear: values.maxBirthYear ? parseInt(values.maxBirthYear) : undefined,
       });
     } catch (err: unknown) {
       const msg = getErrorMessage(err, t("common.error"));
@@ -262,6 +266,39 @@ export default function NewSectionPage({ params }: { params: Promise<{ id: strin
                   control={control}
                   placeholder={t("newSection.seriesPlaceholder")}
                 />
+              </div>
+
+              {/* Birth year filter */}
+              <div className="border-t border-[var(--border)] pt-4">
+                <p className="mb-3 text-sm font-medium text-[var(--text-primary)]">Věkové omezení (ročník)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="minBirthYear" className="mb-1.5 block text-sm font-medium text-[var(--text-primary)]">
+                      Ročník od
+                    </label>
+                    <Input
+                      id="minBirthYear"
+                      type="number"
+                      min="1900"
+                      max="2030"
+                      placeholder="bez omezení"
+                      {...register("minBirthYear")}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="maxBirthYear" className="mb-1.5 block text-sm font-medium text-[var(--text-primary)]">
+                      Ročník do
+                    </label>
+                    <Input
+                      id="maxBirthYear"
+                      type="number"
+                      min="1900"
+                      max="2030"
+                      placeholder="bez omezení"
+                      {...register("maxBirthYear")}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Entry fee */}
