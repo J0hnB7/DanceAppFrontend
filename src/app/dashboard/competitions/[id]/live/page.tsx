@@ -128,33 +128,55 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
         status: "pending" as const,
       }));
 
-    scheduleApi.getHeatAssignments(competitionId, selectedRoundId)
-      .then(async (groups) => {
-        setHeats(groups.length > 0 ? mapGroups(groups) : mapGroups(await scheduleApi.drawHeats(competitionId, selectedRoundId)));
-      })
-      .catch(() => setHeats([]));
-
     setSectionId(slot.sectionId ?? null);
 
-    if (slot.sectionId && slot.roundNumber) {
-      const sectionId = slot.sectionId;
-      const roundNumber = slot.roundNumber;
-      apiClient.get<{ id: string; roundNumber: number; status: string }[]>(
-        `/competitions/${competitionId}/sections/${sectionId}/rounds`
-      ).then(async (res) => {
-        const found = res.data.find((r) => r.roundNumber === roundNumber);
-        if (found) {
-          setActiveRoundId(found.id);
+    // Sequential: ensure heats exist first, then activate round if needed.
+    // activate requires heat assignments (403 otherwise), so order matters.
+    const setupRound = async () => {
+      // 1. Get or draw heat assignments
+      let heatGroups: { heatNumber: number; pairs: { startNumber: number }[] }[];
+      try {
+        const groups = await scheduleApi.getHeatAssignments(competitionId, selectedRoundId);
+        heatGroups = groups.length > 0 ? groups : await scheduleApi.drawHeats(competitionId, selectedRoundId);
+      } catch (e: unknown) {
+        const status = (e as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+          try {
+            heatGroups = await scheduleApi.drawHeats(competitionId, selectedRoundId);
+          } catch {
+            if (!cancelled) setHeats([]);
+            return;
+          }
         } else {
-          // Round entity doesn't exist yet — auto-activate the slot to create it
+          if (!cancelled) setHeats([]);
+          return;
+        }
+      }
+      if (!cancelled) setHeats(mapGroups(heatGroups!));
+
+      // 2. Get round entity, activate slot if it doesn't exist yet
+      if (!slot.sectionId || !slot.roundNumber) return;
+      try {
+        const res = await apiClient.get<{ id: string; roundNumber: number; status: string }[]>(
+          `/competitions/${competitionId}/sections/${slot.sectionId}/rounds`
+        );
+        const found = res.data.find((r) => r.roundNumber === slot.roundNumber);
+        if (found) {
+          if (!cancelled) setActiveRoundId(found.id);
+        } else {
+          // Round entity doesn't exist yet — heats are drawn above, safe to activate
           await scheduleApi.activateSlot(competitionId, selectedRoundId);
           const res2 = await apiClient.get<{ id: string; roundNumber: number; status: string }[]>(
-            `/competitions/${competitionId}/sections/${sectionId}/rounds`
+            `/competitions/${competitionId}/sections/${slot.sectionId}/rounds`
           );
-          setActiveRoundId(res2.data.find((r) => r.roundNumber === roundNumber)?.id ?? null);
+          if (!cancelled) setActiveRoundId(res2.data.find((r) => r.roundNumber === slot.roundNumber)?.id ?? null);
         }
-      }).catch(() => { if (!cancelled) setActiveRoundId(null); });
-    }
+      } catch {
+        if (!cancelled) setActiveRoundId(null);
+      }
+    };
+
+    setupRound();
 
     return () => { cancelled = true; };
   }, [selectedRoundId, slots, competitionId]);

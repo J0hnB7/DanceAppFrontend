@@ -212,6 +212,11 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
       })
       .then((r) => {
         const data = r.data;
+        // If the next active round is not FINAL, redirect to the correct scoring page
+        if (data.round.roundType !== "FINAL") {
+          router.replace(`/judge/${token}/round`);
+          return;
+        }
         setRound(data.round);
         setSectionName(data.sectionName ?? null);
         const mappedDances = (data.dances ?? []).map((d) => ({ ...d, name: d.danceName ?? d.name ?? "" }));
