@@ -221,6 +221,12 @@ npx tsc --noEmit
 
 `frontend/.env.sentry-build-plugin` je gitignorovaný a obsahuje živý `SENTRY_AUTH_TOKEN=sntryu_...` (Release=Admin scope). NIKDY necommituj. Pokud náhodou commitnut: ihned revoke na sentry.io → Settings → Auth Tokens. Soubor slouží jen pro lokální `sentry-cli` operace; v CI je token jako Vercel secret `SENTRY_AUTH_TOKEN`.
 
+## Secret scanning (gitleaks — C4-lite ✅ 2026-04-17)
+
+- **`.gitleaks.toml`** existuje — allowlist pro `.env.sentry-build-plugin` a `.env.example` placeholdery.
+- **Gitleaks workflow** triggeruje na `main + feature/** + fix/** + hotfix/**`.
+- **Rotation runbook**: `danceapp-backend/docs/runbooks/secret-rotation.md` — platí pro oba projekty.
+
 ## Sentry
 
 - Config: `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
