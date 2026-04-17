@@ -236,9 +236,12 @@ Vercel build vyžaduje 3 env vars (nie len token):
 Token overenie lokálne: `SENTRY_AUTH_TOKEN=xxx SENTRY_ORG=bystriansky npx @sentry/cli releases list`
 **POZOR:** Token vždy čítaj cez JS DOM (`input.value`), nie zo screenshotu — screenshot skráti dlhé hodnoty → 401 Invalid token.
 
-## Public pages — jazykový toggle (2026-04-16)
+## Public pages — jazykový toggle (2026-04-16, updated 2026-04-17)
 
-- `/competitions` a `/competitions/[id]` majú CZ/EN toggle v nave
+- `/competitions` a `/competitions/[id]` majú CZ/EN toggle v nave **na desktopu**, na mobile je skrytý a zobrazený vo footeri
+- Vzor pre mobile-only footer toggle: CSS trieda `lang-toggle-nav` (skrytá na mobile) + `lang-toggle-footer` (viditeľná len na mobile)
+- Media query v `<style>` tagu stránky: `@media(max-width:640px){.lang-toggle-nav{display:none!important}.lang-toggle-footer{display:inline-flex!important}}`
+- Footer button má `style={{ display: "none" }}` inline (default skrytý), CSS ho zobrazí na mobile
 - Štýl: `{ padding: "4px 10px", borderRadius: 6, background: "#f3f4f6", border: "1px solid #e5e7eb" }` — rovnaký ako landing page
 - Toggle volá `setLocale()` z `useLocale()` — ukladá do localStorage
 - Všetky 86 prekladových kľúčov `publicCompetition.*` existujú v cs.json aj en.json
@@ -370,6 +373,21 @@ Prehliadače hľadajú `/favicon.ico` ako prvé pred `<link rel="icon">` tagom. 
 - `public/favicon.ico` generuj cez: `sips -z 32 32 logo.png --out /tmp/favicon-32.png` + Python ICO writer
 - `src/app/icon.png` + `apple-icon.png` pre Next.js App Router metadata (apple-touch-icon)
 - Hard refresh na mobile Safari: Settings → Safari → Advanced → Website Data → Delete
+
+## ResultsSection — mobile table layout (2026-04-17)
+
+`src/components/public/ResultsSection.tsx` — tabulka výsledků musí být **2-sloupcová** (ne 3):
+- Sloupec 1: pořadí badge (nahoře, malý pill) + jméno (pod ním)
+- Sloupec 2: body + chevron expand button (vpravo, `width: 80`)
+- **Žádný `overflowX: auto` wrapper** — 2 sloupce se vejdou bez scrollu na 375px mobilu
+- MÍSTO jako separátní sloupec → přidá ~60px → tabulka přetéká; vždy merge do name cell
+
+**Jméno páru** (`dancerName`) je `"Muž Příjmení / Žena Příjmení"` — vždy split `" / "`:
+- `parts[0]` = muž (první řádek, `fontWeight: 700`)
+- `parts[1]` = žena (druhý řádek, `fontWeight: 600`)
+- `r.club` = klub (třetí řádek, `fontSize: ".72rem", color: "#9CA3AF"`)
+
+Backend: `dancer1Name + " / " + dancer2Name` v `ResultsService.java:694`, `RoundDetailService.java:342`.
 
 ## ResultsSection — lazy-load gotcha (2026-04-16)
 
