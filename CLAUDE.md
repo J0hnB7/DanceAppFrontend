@@ -333,6 +333,10 @@ useEffect(() => {
 - **Fix:** Vertikální layout: `flex-col items-center` s `px-3 py-3`. Ikona (mobile) → `text-sm font-bold truncate` → `text-[10px] truncate` label. Na `sm+` se vrátí horizontální layout (`sm:flex-row sm:justify-between`).
 - Vzor (payments/presence): ikona viditelná jen na mobilu (`sm:hidden`), na desktopu (`hidden sm:block`) vpravo.
 
+## AppShell — sidebar prop gotcha
+
+`<AppShell sidebar={<Sidebar />}>` → `usesDefaultSidebar = false` → Sidebar renderuje jako statický element vždy viditelný na mobile (žádný drawer, žádný hamburger). Správně pro všechny běžné dashboard stránky: `<AppShell>` bez prop. `sidebar` prop je jen pro `CompetitionSidebar` a jiné custom sidebary se svým vlastním mobile UI.
+
 ## Default Sidebar — mobile close on navigation
 
 - `Sidebar` akceptuje voliteľný prop `onNavClick?: () => void` — zavolá sa pri kliknutí na každý nav link
