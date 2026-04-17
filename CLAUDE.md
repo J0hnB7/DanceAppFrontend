@@ -71,6 +71,7 @@ src/
 
 - JWT v paměti (Zustand), refresh token v HttpOnly cookie
 - Route protection přes `src/proxy.ts` (kontroluje `refreshToken` cookie)
+- **`GET /auth/me` 401 v console při page load je normální** — access token se neperzistuje, `checkAuth()` vždy začne bez tokenu → 401 → interceptor zkusí refresh → retry s novým tokenem. Console 401 neznamená bug; refresh selže teprve když vyprší i refresh token cookie.
 
 ## Real-time
 
