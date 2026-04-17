@@ -57,6 +57,23 @@ export interface SectionDto {
   maxBirthYear?: number | null;
 }
 
+export type RegistrationStatus = "PENDING_PARTNER" | "CONFIRMED" | "ORGANIZER_APPROVED" | "ORGANIZER_REJECTED";
+
+export interface RegistrationListItem {
+  pairSectionId: string;
+  pairId: string;
+  dancer1Name: string;
+  dancer2Name: string | null;
+  club: string | null;
+  gender: string | null;
+  competitionType: string | null;
+  registrationSource: string;
+  status: RegistrationStatus;
+  partnerConfirmedAt: string | null;
+  organizerDecision: string | null;
+  organizerDecisionAt: string | null;
+}
+
 export interface CreateSectionRequest {
   name: string;
   danceStyle?: DanceStyle | string;
@@ -106,5 +123,20 @@ export const sectionsApi = {
       .get<SectionDto[]>(
         `/competitions/${competitionId}/sections/eligible${birthYear != null ? `?birthYear=${birthYear}` : ""}`
       )
+      .then((r) => r.data),
+
+  listRegistrations: (competitionId: string, sectionId: string) =>
+    apiClient
+      .get<RegistrationListItem[]>(`/competitions/${competitionId}/sections/${sectionId}/registrations`)
+      .then((r) => r.data),
+
+  approveRegistration: (competitionId: string, pairSectionId: string) =>
+    apiClient
+      .post(`/competitions/${competitionId}/registrations/${pairSectionId}/approve`)
+      .then((r) => r.data),
+
+  rejectRegistration: (competitionId: string, pairSectionId: string) =>
+    apiClient
+      .post(`/competitions/${competitionId}/registrations/${pairSectionId}/reject`)
       .then((r) => r.data),
 };

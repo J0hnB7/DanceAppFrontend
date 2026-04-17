@@ -2097,6 +2097,31 @@
       "acceptError": "Failed to accept invite",
       "invalidToken": "The invite is invalid, expired, or already used.",
       "invalidTitle": "Invalid invite"
+    },
+    "registrations": {
+      "title": "Registrations",
+      "colName": "Name",
+      "colClub": "Club",
+      "colGender": "Gender",
+      "colType": "Type",
+      "colStatus": "Status",
+      "colDate": "Date",
+      "typeSolo": "Solo",
+      "typeCouple": "Couple",
+      "statusPending": "Awaiting partner",
+      "statusConfirmed": "Confirmed",
+      "statusApproved": "Approved",
+      "statusRejected": "Rejected",
+      "filterAll": "All",
+      "filterPending": "Pending",
+      "filterConfirmed": "Confirmed",
+      "filterDecided": "Decided",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approveSuccess": "Registration approved",
+      "rejectSuccess": "Registration rejected",
+      "searchPlaceholder": "Search by name or club...",
+      "empty": "No registrations"
     }
   }
 }
