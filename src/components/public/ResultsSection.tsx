@@ -374,25 +374,29 @@ function SectionResultCard({ section, searchQuery }: { section: SectionDto; sear
                           >
                             {/* Left cell: placement badge + name */}
                             <td style={{ padding: "8px 10px", verticalAlign: "middle" }}>
-                              <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 22, minWidth: 36, borderRadius: 11, padding: "0 8px", background: placeBg, fontSize: ".7rem", fontWeight: 800, color: isTop ? "#fff" : "#6B7280", marginBottom: 3 }}>
-                                {r.placeLabel}
-                              </div>
-                              <div style={{ display: "flex", alignItems: "baseline", gap: 5, flexWrap: "wrap" }}>
-                                <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".78rem", color: "#9CA3AF", flexShrink: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 22, minWidth: 36, borderRadius: 11, padding: "0 8px", background: placeBg, fontSize: ".7rem", fontWeight: 800, color: isTop ? "#fff" : "#6B7280", flexShrink: 0 }}>
+                                  {r.placeLabel}
+                                </div>
+                                <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: ".75rem", color: "#9CA3AF" }}>
                                   #{r.startNumber}
                                 </span>
-                                {r.dancerName && (
-                                  <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: isTop ? 700 : 500, color: "#111827" }}>
-                                    {r.dancerName}
-                                  </span>
-                                )}
-                                {r.club && (
-                                  <span style={{ fontSize: ".72rem", color: "#9CA3AF" }}>{r.club}</span>
-                                )}
                                 {r.tieResolution && r.tieResolution !== "NONE" && (
                                   <span style={{ fontSize: ".65rem", color: "#6B7280", background: "#F3F4F6", borderRadius: 4, padding: "1px 5px" }} title="Výsledek rozhodnut dance-off">D/O</span>
                                 )}
                               </div>
+                              {(() => {
+                                const parts = r.dancerName ? r.dancerName.split(" / ") : [];
+                                const male = parts[0] ?? null;
+                                const female = parts[1] ?? null;
+                                return (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                                    {male && <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: isTop ? 700 : 600, fontSize: ".85rem", color: "#111827", lineHeight: 1.3 }}>{male}</span>}
+                                    {female && <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: isTop ? 600 : 500, fontSize: ".85rem", color: "#374151", lineHeight: 1.3 }}>{female}</span>}
+                                    {r.club && <span style={{ fontSize: ".72rem", color: "#9CA3AF", marginTop: 1 }}>{r.club}</span>}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             {/* Right cell: body value + expand chevron */}
                             <td style={{ padding: "8px 10px", textAlign: "right", color: isTop ? (rs?.color ?? "#374151") : "#374151", fontWeight: 700, fontVariantNumeric: "tabular-nums", verticalAlign: "middle", whiteSpace: "nowrap" }}>
