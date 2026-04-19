@@ -10,6 +10,7 @@
 `src/components/shared/section-editor.tsx` — **jediné místo** kde žije UI pro tvorbu/edit sekce.
 - `competitions/new/page.tsx` ho používá (`fieldArrayName="categories"`), templates (`fieldArrayName="sections"`), `dashboard/competitions/[id]/sections/new/page.tsx` (`fieldArrayName="sections"`)
 - Nepřidávej inline section form nikde jinde — přidej prop do `SectionEditor`
+- `hideAppend={true}` skryje tlačítko "Přidat sekci" — použij pro edit dialogy kde edituješ jeden item
 
 ### Richtar kategorie — template mode via danceStyle
 - `danceStyle = "SINGLE_DANCE" | "MULTIDANCE"` → Richtar režim; `"STANDARD" | "LATIN" | ...` → ČSTS režim
@@ -116,6 +117,7 @@ src/
 - `t('key')` nebo `t('key', { n: 5, name: 'foo' })` pro parametry
 - `useLocale()` vrací i `locale` (`"cs"` | `"en"`) — použij pro browser APIs: `const { t, locale } = useLocale()`
 - Locale-aware date: `toLocaleDateString(locale === "cs" ? "cs-CZ" : "en-GB", { ... })`
+- **Namespace trap:** klíče pro admin stránky (`/dashboard/**`) musí být top-level objekty v JSON — NIKDY je nevkládej pod `dancer.*` nebo jiný namespace. Např. `registrations.*` (admin sekce registrací) a `dancer.registrations.*` jsou různé namespacey; záměna = raw klíče v UI.
 
 ## Design systém — POZOR na dva světy
 
