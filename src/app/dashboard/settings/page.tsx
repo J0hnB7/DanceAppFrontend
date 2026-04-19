@@ -294,7 +294,6 @@ export default function SettingsPage() {
                         <option value="">{t("dancer.profile.genderUnspecified")}</option>
                         <option value="MALE">{t("dancer.profile.genderMale")}</option>
                         <option value="FEMALE">{t("dancer.profile.genderFemale")}</option>
-                        <option value="OTHER">{t("dancer.profile.genderOther")}</option>
                       </select>
                     </div>
                     {dancerSaveError && (
