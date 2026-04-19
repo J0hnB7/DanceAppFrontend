@@ -18,13 +18,7 @@ const currentYear = new Date().getFullYear();
 const profileSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  birthYear: z
-    .string()
-    .min(1)
-    .refine((v) => {
-      const y = parseInt(v, 10);
-      return !isNaN(y) && y >= 1920 && y <= currentYear;
-    }, { message: "Zadejte platný rok" }),
+  birthDate: z.string().min(1, "Zadejte datum narození"),
   club: z.string().optional(),
   partnerNameText: z.string().optional(),
   gender: z.string().optional(),
@@ -65,7 +59,7 @@ export default function ProfilePage() {
       reset({
         firstName: p.firstName,
         lastName: p.lastName,
-        birthYear: p.birthYear?.toString() ?? "",
+        birthDate: p.birthDate ?? (p.birthYear ? `${p.birthYear}-01-01` : ""),
         club: p.club ?? "",
         partnerNameText: p.partnerName ?? "",
         gender: p.gender ?? "",
@@ -83,7 +77,7 @@ export default function ProfilePage() {
       const updated = await dancerApi.updateProfile({
         firstName: values.firstName,
         lastName: values.lastName,
-        birthYear: parseInt(values.birthYear, 10),
+        birthDate: values.birthDate,
         club: values.club || undefined,
         partnerNameText: values.partnerNameText || undefined,
         gender: values.gender || undefined,
@@ -148,6 +142,7 @@ export default function ProfilePage() {
   return (
     <>
       <style>{`
+        .auth-light{--surface:#fff;--border:#E5E7EB;--text-primary:#111827;--text-secondary:#6B7280;--text-tertiary:#9CA3AF;--radius-md:8px;--accent:#4F46E5;--destructive:#EF4444}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         .prof-fade{animation:fadeUp .4s ease both}
@@ -209,7 +204,7 @@ export default function ProfilePage() {
 
             <div style={{ padding: "24px" }}>
               {editMode ? (
-                <form onSubmit={handleSubmit(onSave)}>
+                <form onSubmit={handleSubmit(onSave)} className="auth-light">
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <Input
@@ -224,13 +219,12 @@ export default function ProfilePage() {
                       />
                     </div>
                     <Input
-                      label={t("dancer.onboarding.birthYear")}
-                      type="number"
-                      inputMode="numeric"
-                      min={1920}
-                      max={currentYear}
-                      error={errors.birthYear?.message}
-                      {...register("birthYear")}
+                      label={t("dancer.onboarding.birthDate")}
+                      type="date"
+                      min="1920-01-01"
+                      max={`${currentYear}-12-31`}
+                      error={errors.birthDate?.message}
+                      {...register("birthDate")}
                     />
                     <Input
                       label={t("dancer.onboarding.club")}
@@ -269,7 +263,7 @@ export default function ProfilePage() {
                   {([
                     [t("dancer.register.firstName"), profile?.firstName],
                     [t("dancer.register.lastName"), profile?.lastName],
-                    [t("dancer.onboarding.birthYear"), profile?.birthYear?.toString() ?? "—"],
+                    [t("dancer.onboarding.birthDate"), profile?.birthDate ? new Date(profile.birthDate).toLocaleDateString("cs-CZ") : (profile?.birthYear?.toString() ?? "—")],
                     [t("dancer.onboarding.club"), profile?.club ?? "—"],
                     [t("dancer.profile.gender"), profile?.gender
                       ? profile.gender === "MALE" ? t("dancer.profile.genderMale")
