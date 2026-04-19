@@ -337,6 +337,17 @@ BE `GET /profile/dancer/competitions` vrací flat záznamy (`startNumber`, `sect
 
 ---
 
+## Unit testy (Vitest)
+
+- Config: `vitest.config.ts` (jsdom env, `@/` alias, `passWithNoTests: true`, excludes `tests/e2e/**`). Setup `src/test-setup.ts` importuje `@testing-library/jest-dom/vitest`.
+- Běh: `npm test` (run once), `npm run test:watch`, `npm run test:coverage`.
+- Test soubory: `src/**/*.{test,spec}.{ts,tsx}` (collocated s modulem — vzor `store/auth-store.test.ts`, `lib/api-client.test.ts`).
+- **axios-mock-adapter dual-instance pattern** — `apiClient` má vlastní axios instance, ale 401 refresh interceptor volá **globální** `axios.post("/api/v1/auth/refresh", ...)`. Testy musí mockovat OBĚ: `new MockAdapter(apiClient)` + `new MockAdapter(axios)`.
+- **Zustand reset** — v `beforeEach` volej `useXStore.setState({ ...initialState })` s **všemi** poli; `setState` dělá shallow merge, stálé pole z předchozího testu přežije.
+- **Vitest 4 + Next 16.2** — bez konfliktu; `@vitejs/plugin-react` nutný pro JSX transform.
+
+---
+
 ## E2E testy (Playwright)
 
 - Config: `playwright.config.ts`, `testDir: tests/e2e`, `workers: 1`, `fullyParallel: false` (sdílejí BE state)
