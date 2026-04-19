@@ -348,14 +348,21 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
               {sectionLabel("🩰", isAuthenticated ? t("publicCompetition.selfRegister") : t("publicCompetition.loginToRegister"))}
               <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
                 {!isAuthenticated ? (
-                  <div style={{ padding: "12px 0", textAlign: "center" }}>
-                    <a href={`/login?returnTo=/competitions/${id}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: ".875rem", textDecoration: "none" }}>
-                      {t("publicCompetition.loginToRegister")}
-                    </a>
-                    <p style={{ fontSize: ".78rem", color: "#9CA3AF", marginTop: 8 }}>
-                      {t("publicCompetition.selfRegister")} — {t("publicCompetition.loginToRegister")}
-                    </p>
-                  </div>
+                  <>
+                    {sections.map((section) => (
+                      <div key={section.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 9, border: "1px solid #E5E7EB", padding: "10px 14px", background: "#fff" }}>
+                        <div>
+                          <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827" }}>{section.name}</p>
+                          <p style={{ fontSize: ".78rem", color: "#6B7280" }}>{section.ageCategory} · {section.level}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ padding: "12px 0 4px", textAlign: "center" }}>
+                      <a href={`/login?returnTo=/competitions/${id}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: ".875rem", textDecoration: "none" }}>
+                        {t("publicCompetition.loginToRegister")}
+                      </a>
+                    </div>
+                  </>
                 ) : (
                   <>
                     {selfRegResult && (
