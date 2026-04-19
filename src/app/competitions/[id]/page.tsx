@@ -90,8 +90,9 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   const { t } = useLocale();
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
-  const [selfRegResult, setSelfRegResult] = useState<SelfRegistrationResponse | null>(null);
-  const [selfRegSubmitting, setSelfRegSubmitting] = useState<string | null>(null); // sectionId being submitted
+  const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set());
+  const [submitting, setSubmitting] = useState(false);
+  const [registeredSections, setRegisteredSections] = useState<Record<string, SelfRegistrationResponse>>({});
 
   const { data: competition, isLoading } = useQuery({
     queryKey: competitionKeys.detail(id),
@@ -415,107 +416,138 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
           )}
 
           {/* Auth-gated self-registration (dancer accounts) */}
-          {isOpen && sections.length > 0 && (
-            <div style={cardStyle}>
-              {sectionLabel("🩰", isAuthenticated ? t("publicCompetition.selfRegister") : t("publicCompetition.loginToRegister"))}
-              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-                {!isAuthenticated ? (
-                  <>
-                    {sections.map((section) => (
-                      <div key={section.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 9, border: "1px solid #E5E7EB", padding: "10px 14px", background: "#fff" }}>
-                        <div>
-                          <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827" }}>{section.name}</p>
-                          <p style={{ fontSize: ".78rem", color: "#6B7280" }}>{section.ageCategory} · {section.level}</p>
-                        </div>
-                      </div>
-                    ))}
-                    <div style={{ padding: "12px 0 4px", textAlign: "center" }}>
-                      <a href={`/login?returnTo=/competitions/${id}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: ".875rem", textDecoration: "none" }}>
-                        {t("publicCompetition.loginToRegister")}
-                      </a>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {selfRegResult && (
-                      <div style={{ padding: "12px 14px", borderRadius: 9, background: "#ECFDF5", border: "1px solid #6EE7B7", marginBottom: 8 }}>
-                        <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#047857" }}>
-                          {selfRegResult.status === "PENDING_PARTNER"
-                            ? t("publicCompetition.selfRegisterPendingMsg", { number: String(selfRegResult.startNumber) })
-                            : t("publicCompetition.selfRegisterSuccess", { number: String(selfRegResult.startNumber) })}
-                        </p>
-                      </div>
-                    )}
-                    {dancerProfile && !dancerProfile.onboardingCompleted && (
-                      <div style={{ padding: "12px 14px", borderRadius: 9, background: "#FEF3C7", border: "1px solid #FCD34D" }}>
-                        <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#92400E", marginBottom: 6 }}>
-                          {t("publicCompetition.completeProfileFirst")}
-                        </p>
-                        <a href="/onboarding" style={{ fontSize: ".8rem", color: "#4F46E5", fontWeight: 600, textDecoration: "underline" }}>
-                          {t("publicCompetition.goToProfile")}
-                        </a>
-                      </div>
-                    )}
-                    {dancerProfile && dancerProfile.onboardingCompleted && !dancerProfile.birthYear && (
-                      <div style={{ padding: "12px 14px", borderRadius: 9, background: "#FEF3C7", border: "1px solid #FCD34D" }}>
-                        <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#92400E", marginBottom: 6 }}>
-                          {t("publicCompetition.missingBirthYear")}
-                        </p>
-                        <a href="/profile/settings" style={{ fontSize: ".8rem", color: "#4F46E5", fontWeight: 600, textDecoration: "underline" }}>
-                          {t("publicCompetition.goToProfile")}
-                        </a>
-                      </div>
-                    )}
-                    {dancerProfile && dancerProfile.onboardingCompleted && !!dancerProfile.birthYear && eligibleSections.length === 0 && (
-                      <div style={{ padding: "12px 14px", borderRadius: 9, background: "#F3F4F6", border: "1px solid #E5E7EB", textAlign: "center" }}>
-                        <p style={{ fontSize: ".85rem", color: "#6B7280" }}>
-                          {t("publicCompetition.noEligibleSections")}
-                        </p>
-                      </div>
-                    )}
-                    {eligibleSections.map((section) => {
-                      const isBusy = selfRegSubmitting === section.id;
-                      return (
+          {isOpen && sections.length > 0 && (() => {
+            const currency = eligibleSections.find(s => s.entryFeeCurrency)?.entryFeeCurrency ?? "CZK";
+            const total = eligibleSections
+              .filter(s => selectedSections.has(s.id) && s.entryFee)
+              .reduce((sum, s) => sum + (s.entryFee ?? 0), 0);
+            const canSubmit = selectedSections.size > 0 && !submitting;
+            const allDone = Object.keys(registeredSections).length > 0 &&
+              eligibleSections.every(s => registeredSections[s.id]);
+
+            const handleSubmit = async () => {
+              setSubmitting(true);
+              const toRegister = eligibleSections.filter(s => selectedSections.has(s.id));
+              for (const section of toRegister) {
+                try {
+                  const res = await selfRegistrationApi.register(id, section.id);
+                  setRegisteredSections(prev => ({ ...prev, [section.id]: res }));
+                } catch (err: unknown) {
+                  const detail = axios.isAxiosError(err) ? (err.response?.data?.detail ?? err.response?.data?.message) : undefined;
+                  toast({ title: `${section.name}: ${detail ?? t("publicRegister.failed")}`, variant: "destructive" });
+                }
+              }
+              setSubmitting(false);
+              setSelectedSections(new Set());
+            };
+
+            return (
+              <div style={cardStyle}>
+                {sectionLabel("🩰", isAuthenticated ? t("publicCompetition.selfRegister") : t("publicCompetition.loginToRegister"))}
+                <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {!isAuthenticated ? (
+                    <>
+                      {sections.map((section) => (
                         <div key={section.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 9, border: "1px solid #E5E7EB", padding: "10px 14px", background: "#fff" }}>
                           <div>
                             <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827" }}>{section.name}</p>
-                            <p style={{ fontSize: ".78rem", color: "#6B7280" }}>{section.ageCategory} · {section.level}</p>
+                            <p style={{ fontSize: ".78rem", color: "#6B7280" }}>{[section.ageCategory, section.level].filter(Boolean).join(" · ")}</p>
+                          </div>
+                          {section.entryFee && (
+                            <span style={{ fontSize: ".85rem", fontWeight: 700, color: "#4F46E5", whiteSpace: "nowrap", marginLeft: 12 }}>
+                              {formatCurrency(section.entryFee, section.entryFeeCurrency ?? "CZK")}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      <div style={{ padding: "12px 0 4px", textAlign: "center" }}>
+                        <a href={`/login?returnTo=/competitions/${id}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: ".875rem", textDecoration: "none" }}>
+                          {t("publicCompetition.loginToRegister")}
+                        </a>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {dancerProfile && !dancerProfile.onboardingCompleted && (
+                        <div style={{ padding: "12px 14px", borderRadius: 9, background: "#FEF3C7", border: "1px solid #FCD34D" }}>
+                          <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#92400E", marginBottom: 6 }}>{t("publicCompetition.completeProfileFirst")}</p>
+                          <a href="/onboarding" style={{ fontSize: ".8rem", color: "#4F46E5", fontWeight: 600, textDecoration: "underline" }}>{t("publicCompetition.goToProfile")}</a>
+                        </div>
+                      )}
+                      {dancerProfile && dancerProfile.onboardingCompleted && !dancerProfile.birthYear && (
+                        <div style={{ padding: "12px 14px", borderRadius: 9, background: "#FEF3C7", border: "1px solid #FCD34D" }}>
+                          <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#92400E", marginBottom: 6 }}>{t("publicCompetition.missingBirthYear")}</p>
+                          <a href="/profile/settings" style={{ fontSize: ".8rem", color: "#4F46E5", fontWeight: 600, textDecoration: "underline" }}>{t("publicCompetition.goToProfile")}</a>
+                        </div>
+                      )}
+                      {dancerProfile && dancerProfile.onboardingCompleted && !!dancerProfile.birthYear && eligibleSections.length === 0 && (
+                        <div style={{ padding: "12px 14px", borderRadius: 9, background: "#F3F4F6", border: "1px solid #E5E7EB", textAlign: "center" }}>
+                          <p style={{ fontSize: ".85rem", color: "#6B7280" }}>{t("publicCompetition.noEligibleSections")}</p>
+                        </div>
+                      )}
+                      {eligibleSections.map((section) => {
+                        const done = !!registeredSections[section.id];
+                        const checked = selectedSections.has(section.id);
+                        return (
+                          <label key={section.id} htmlFor={`sec-${section.id}`} style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 9, border: `1px solid ${done ? "#6EE7B7" : checked ? "#818CF8" : "#E5E7EB"}`, padding: "10px 14px", background: done ? "#F0FDF4" : checked ? "#EEF2FF" : "#fff", cursor: done || submitting ? "default" : "pointer", transition: "border-color .15s,background .15s" }}>
+                            <input
+                              id={`sec-${section.id}`}
+                              type="checkbox"
+                              checked={done || checked}
+                              disabled={done || submitting}
+                              onChange={() => {
+                                if (done) return;
+                                setSelectedSections(prev => {
+                                  const next = new Set(prev);
+                                  next.has(section.id) ? next.delete(section.id) : next.add(section.id);
+                                  return next;
+                                });
+                              }}
+                              style={{ width: 18, height: 18, accentColor: "#4F46E5", flexShrink: 0, cursor: done || submitting ? "default" : "pointer" }}
+                            />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: ".875rem", fontWeight: 600, color: done ? "#047857" : "#111827" }}>{section.name}</p>
+                              <p style={{ fontSize: ".78rem", color: "#6B7280" }}>{[section.ageCategory, section.level].filter(Boolean).join(" · ")}</p>
+                              {done && (
+                                <p style={{ fontSize: ".75rem", color: "#047857", fontWeight: 600, marginTop: 2 }}>
+                                  {registeredSections[section.id].status === "PENDING_PARTNER"
+                                    ? t("publicCompetition.selfRegisterPendingMsg", { number: String(registeredSections[section.id].startNumber) })
+                                    : t("publicCompetition.selfRegisterSuccess", { number: String(registeredSections[section.id].startNumber) })}
+                                </p>
+                              )}
+                            </div>
+                            {section.entryFee && (
+                              <span style={{ fontSize: ".85rem", fontWeight: 700, color: done ? "#047857" : "#4F46E5", whiteSpace: "nowrap" }}>
+                                {formatCurrency(section.entryFee, section.entryFeeCurrency ?? "CZK")}
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                      {!allDone && eligibleSections.length > 0 && (
+                        <div style={{ borderTop: "1px solid #F3F4F6", marginTop: 4, paddingTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                          <div>
+                            {total > 0 && (
+                              <p style={{ fontSize: ".875rem", color: "#6B7280" }}>
+                                {t("publicCompetition.entryFeeLabel")}: <strong style={{ color: "#111827" }}>{formatCurrency(total, currency)}</strong>
+                              </p>
+                            )}
                           </div>
                           <button
-                            disabled={isBusy || !!selfRegResult}
-                            onClick={async () => {
-                              setSelfRegSubmitting(section.id);
-                              try {
-                                const res = await selfRegistrationApi.register(id, section.id);
-                                setSelfRegResult(res);
-                                toast({ title: t("publicCompetition.selfRegisterSuccess", { number: String(res.startNumber) }) });
-                              } catch (err: unknown) {
-                                const detail = axios.isAxiosError(err) ? (err.response?.data?.detail ?? err.response?.data?.message) : undefined;
-                                if (axios.isAxiosError(err) && err.response?.status === 409) {
-                                  toast({ title: t("publicCompetition.registrationNotOpen"), variant: "destructive" });
-                                } else if (detail?.includes("complete your profile")) {
-                                  toast({ title: t("publicCompetition.completeProfileFirst"), variant: "destructive" });
-                                } else if (detail?.includes("Birth year")) {
-                                  toast({ title: t("publicCompetition.ageNotEligible"), variant: "destructive" });
-                                } else {
-                                  toast({ title: detail ?? t("publicRegister.failed"), variant: "destructive" });
-                                }
-                              } finally {
-                                setSelfRegSubmitting(null);
-                              }
-                            }}
-                            style={{ padding: "8px 16px", borderRadius: 8, fontSize: ".825rem", fontWeight: 700, background: "#4F46E5", color: "#fff", border: "none", cursor: (isBusy || !!selfRegResult) ? "not-allowed" : "pointer", opacity: (isBusy || !!selfRegResult) ? 0.6 : 1, whiteSpace: "nowrap", minHeight: 36 }}
+                            disabled={!canSubmit}
+                            onClick={handleSubmit}
+                            style={{ padding: "10px 20px", borderRadius: 9, fontSize: ".875rem", fontWeight: 700, background: canSubmit ? "linear-gradient(135deg,#4F46E5,#7C3AED)" : "#E5E7EB", color: canSubmit ? "#fff" : "#9CA3AF", border: "none", cursor: canSubmit ? "pointer" : "not-allowed", whiteSpace: "nowrap", minHeight: 44 }}
                           >
-                            {isBusy ? t("publicCompetition.submitting") : t("publicCompetition.selfRegister")}
+                            {submitting ? t("publicCompetition.submitting") : `${t("publicCompetition.selfRegister")}${selectedSections.size > 1 ? ` (${selectedSections.size})` : ""}`}
                           </button>
                         </div>
-                      );
-                    })}
-                  </>
-                )}
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Registration closed notice for dancers */}
           {!isOpen && isDancer && (
