@@ -341,9 +341,21 @@ useEffect(() => {
 - **Fix:** Vertikální layout: `flex-col items-center` s `px-3 py-3`. Ikona (mobile) → `text-sm font-bold truncate` → `text-[10px] truncate` label. Na `sm+` se vrátí horizontální layout (`sm:flex-row sm:justify-between`).
 - Vzor (payments/presence): ikona viditelná jen na mobilu (`sm:hidden`), na desktopu (`hidden sm:block`) vpravo.
 
+## Dev server — NIKDY nesmaz .next za běhu dev serveru
+
+`rm -rf .next` za běhu dev serveru → `npx next build` vytvoří produkční build → dev server servíruje produkční `.next` → všechny stránky vrací 500. Fix: zabij dev server (`kill <pid>`), smaž `.next`, pak `npm run dev`.
+
+## auth-light — POUZE mimo AppShell
+
+`auth-light` class (přepisuje CSS proměnné na bílé) se smí použít **jen** na standalone stránkách bez AppShell (login, register, onboarding). Uvnitř AppShell/dashboard inputy zdědí tmavé CSS proměnné automaticky — `auth-light` by způsobil bílé inputy v dark mode. Select elementy v dashboardu: `background: "var(--surface)"`, ne `"#fff"`.
+
+## CORS — localhost:3001 pro případ obsazeného portu
+
+Pokud je port 3000 obsazen starým procesem, Next.js dev server spustí na 3001 → login selže (backend CORS blokuje). `application.yaml` má default `http://localhost:3000,http://localhost:3001` — oba porty vždy povoleny.
+
 ## Standalone pages — auth-light CSS pre biele inputy
 
-`Input` komponent používa `bg-[var(--surface)]`, `border-[var(--border)]`, `text-[var(--text-primary)]` — bez redefinície zdedí tmavé dashboard hodnoty → čierne inputy na bielej stránke. Každá standalone stránka (onboarding, login, register, /profile) musí mať `<form className="auth-light">` kde `<style>` obsahuje `.auth-light{--surface:#fff;--border:#E5E7EB;--text-primary:#111827;--text-secondary:#6B7280;--text-tertiary:#9CA3AF;--radius-md:8px;--accent:#4F46E5;--destructive:#EF4444}`.
+`Input` komponent používa `bg-[var(--surface)]`, `border-[var(--border)]`, `text-[var(--text-primary)]` — bez redefinície zdedí tmavé dashboard hodnoty → čierne inputy na bielej stránke. Každá standalone stránka (onboarding, login, register) musí mať `<form className="auth-light">` kde `<style>` obsahuje `.auth-light{--surface:#fff;--border:#E5E7EB;--text-primary:#111827;--text-secondary:#6B7280;--text-tertiary:#9CA3AF;--radius-md:8px;--accent:#4F46E5;--destructive:#EF4444}`.
 
 ## sidebar navItems — vždy pridaj roles pre organizer/admin sekcie
 
