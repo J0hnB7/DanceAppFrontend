@@ -450,14 +450,25 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
             const handleSubmit = async () => {
               setSubmitting(true);
               const toRegister = eligibleSections.filter(s => selectedSections.has(s.id));
-              for (const section of toRegister) {
-                try {
-                  const res = await selfRegistrationApi.register(id, section.id);
-                  setRegisteredSections(prev => ({ ...prev, [section.id]: res }));
-                } catch (err: unknown) {
-                  const detail = axios.isAxiosError(err) ? (err.response?.data?.detail ?? err.response?.data?.message) : undefined;
-                  toast({ title: `${section.name}: ${detail ?? t("publicRegister.failed")}`, variant: "destructive" });
-                }
+              try {
+                const batch = await selfRegistrationApi.registerBatch(id, toRegister.map(s => s.id));
+                const updates: Record<string, SelfRegistrationResponse> = {};
+                batch.sections.forEach((sr, i) => {
+                  const section = toRegister[i];
+                  if (!section) return;
+                  updates[section.id] = {
+                    pairId: batch.pairId,
+                    pairSectionId: sr.pairSectionId,
+                    startNumber: batch.startNumber,
+                    sectionName: sr.sectionName,
+                    status: sr.status,
+                    confirmToken: null,
+                  };
+                });
+                setRegisteredSections(prev => ({ ...prev, ...updates }));
+              } catch (err: unknown) {
+                const detail = axios.isAxiosError(err) ? (err.response?.data?.detail ?? err.response?.data?.message) : undefined;
+                toast({ title: detail ?? t("publicRegister.failed"), variant: "destructive" });
               }
               setSubmitting(false);
               setSelectedSections(new Set());

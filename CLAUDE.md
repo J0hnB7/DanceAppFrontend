@@ -568,6 +568,14 @@ Opraveno v `dashboard/results/page.tsx` — chyběl guard na `getMyCompetitions(
 
 **`@Transactional` na private metodě** je v Spring proxy AOP tiše ignorováno — save uvnitř `requireOnboarded()` funguje v kontextu volající `@Transactional` metody.
 
+## Batch self-registration — shared startNumber + 1 email (2026-04-19)
+
+- `POST /competitions/{id}/pairs/self-register-batch` s `{ sectionIds: UUID[] }` → `SelfRegistrationBatchResponse { pairId, startNumber, sections[], totalFee }`
+- Backend `SelfRegistrationService.registerBatch()` reuses Pair přes `PairRepository.findByCompetitionIdAndUserId` — stejný dancer+competition dostane jedno startovní číslo
+- Jeden souhrnný email přes `registration-confirmed-batch.html` — používá `th:utext="${sectionRows}"` (HTML string) + `sectionCount` + `entryFee` (total)
+- Frontend `handleSubmit` volá `selfRegistrationApi.registerBatch()` jednou, NE smyčku přes `register()`
+- Starý `register()` endpoint zachován pro kompatibilitu
+
 ## Self-registration — competitionType pravidla (2026-04-19)
 
 Backend `SelfRegistrationService` rozlišuje typ registrace:

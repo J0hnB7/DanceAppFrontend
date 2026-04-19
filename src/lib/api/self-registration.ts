@@ -23,12 +23,27 @@ export interface UserSearchResult {
   club: string | null;
 }
 
+export interface SelfRegistrationBatchResponse {
+  pairId: string;
+  startNumber: number;
+  sections: { pairSectionId: string; sectionName: string; status: "REGISTERED" | "PENDING_PARTNER" }[];
+  totalFee: string;
+}
+
 export const selfRegistrationApi = {
   register: (competitionId: string, sectionId: string) =>
     apiClient
       .post<SelfRegistrationResponse>(
         `/competitions/${competitionId}/pairs/self-register`,
         { sectionId }
+      )
+      .then((r) => r.data),
+
+  registerBatch: (competitionId: string, sectionIds: string[]) =>
+    apiClient
+      .post<SelfRegistrationBatchResponse>(
+        `/competitions/${competitionId}/pairs/self-register-batch`,
+        { sectionIds }
       )
       .then((r) => r.data),
 
