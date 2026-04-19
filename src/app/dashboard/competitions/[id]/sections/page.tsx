@@ -114,7 +114,7 @@ export default function SectionsPage({
         const entryFeeCurrency = String(r[9] ?? "").trim() || undefined;
         const dancesRaw = String(r[10] ?? "").trim();
         const dances = dancesRaw
-          ? dancesRaw.split(",").map((d) => ({ danceName: d.trim() })).filter((d) => d.danceName) as unknown as string[]
+          ? dancesRaw.split(",").map((d) => d.trim()).filter(Boolean)
           : [];
         const rawMin = r[11] != null && r[11] !== "" ? Number(r[11]) : NaN;
         const rawMax = r[12] != null && r[12] !== "" ? Number(r[12]) : NaN;
