@@ -126,6 +126,8 @@ export interface SectionEditorProps {
   /** Watched values for live majority display */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   watchedItems?: any[];
+  /** When true, hides the "Přidat sekci" button. Use for single-item edit forms. */
+  hideAppend?: boolean;
 }
 
 export function SectionEditor({
@@ -137,6 +139,7 @@ export function SectionEditor({
   showWizardFields = true,
   fieldArrayName = "categories",
   watchedItems = [],
+  hideAppend = false,
 }: SectionEditorProps) {
   const { t } = useLocale();
 
@@ -618,14 +621,16 @@ export function SectionEditor({
         );
       })}
 
-      <button
-        type="button"
-        onClick={handleAppend}
-        className="flex w-fit cursor-pointer items-center gap-1 text-sm text-[var(--accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 rounded"
-      >
-        <Plus className="h-4 w-4" aria-hidden="true" />
-        Přidat sekci
-      </button>
+      {!hideAppend && (
+        <button
+          type="button"
+          onClick={handleAppend}
+          className="flex w-fit cursor-pointer items-center gap-1 text-sm text-[var(--accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 rounded"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Přidat sekci
+        </button>
+      )}
     </div>
   );
 }

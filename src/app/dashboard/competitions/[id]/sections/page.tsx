@@ -2,8 +2,12 @@
 
 import { use, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Layers, Sheet, Download } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { Plus, Layers, Sheet, Download, Pencil } from "lucide-react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useForm, useFieldArray } from "react-hook-form";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { zodResolver } = require("@hookform/resolvers/zod");
+import { z } from "zod";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
@@ -17,11 +21,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { SectionEditor } from "@/components/shared/section-editor";
 import { useSections } from "@/hooks/queries/use-sections";
-import { sectionsApi } from "@/lib/api/sections";
+import { sectionsApi, type SectionDto } from "@/lib/api/sections";
+import type { AgeCategory, Level, DanceStyle, CompetitorType, CompetitionType, Series } from "@/lib/api/sections";
 import { useLocale } from "@/contexts/locale-context";
 import { useQuery } from "@tanstack/react-query";
 import { competitionsApi } from "@/lib/api/competitions";
+import { toast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/utils";
 
 
 const STATUS_LABELS: Record<string, string> = {
@@ -51,6 +59,8 @@ export default function SectionsPage({
     queryKey: ["competition", id],
     queryFn: () => competitionsApi.get(id),
   });
+
+  const [editingSection, setEditingSection] = useState<SectionDto | null>(null);
 
   const importRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -255,11 +265,31 @@ export default function SectionsPage({
                 <Badge variant={STATUS_VARIANTS[section.status ?? ""] ?? "secondary"}>
                   {STATUS_LABELS[section.status ?? ""] ?? section.status}
                 </Badge>
+                <button
+                  type="button"
+                  aria-label={t("section.edit")}
+                  onClick={(e) => { e.stopPropagation(); setEditingSection(section); }}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-secondary)] transition-colors cursor-pointer"
+                >
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                </button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {editingSection && (
+        <EditSectionDialog
+          competitionId={id}
+          section={editingSection}
+          onClose={() => setEditingSection(null)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["sections", id] });
+            setEditingSection(null);
+          }}
+        />
+      )}
 
       {importResult && (
         <Dialog open onOpenChange={() => setImportResult(null)}>
@@ -289,5 +319,141 @@ export default function SectionsPage({
         </Dialog>
       )}
     </AppShell>
+  );
+}
+
+const editSectionSchema = z.object({
+  sections: z.array(z.object({
+    name: z.string().min(2, "Minimálně 2 znaky"),
+    ageCategory: z.string().optional(),
+    level: z.string().optional(),
+    danceStyle: z.string().optional(),
+    numberOfJudges: z.number().int().min(1).max(15).default(5),
+    maxFinalPairs: z.number().int().min(2).max(24).default(6),
+    competitorType: z.string().optional(),
+    competitionType: z.string().optional(),
+    series: z.string().optional(),
+    singleDanceName: z.string().optional(),
+    danceNames: z.array(z.string()).default([]),
+    minBirthYear: z.number().nullable().optional(),
+    maxBirthYear: z.number().nullable().optional(),
+    entryFee: z.string().optional(),
+    entryFeeCurrency: z.string().optional(),
+    presenceEnd: z.string().optional(),
+  })),
+});
+
+function EditSectionDialog({
+  competitionId,
+  section,
+  onClose,
+  onSaved,
+}: {
+  competitionId: string;
+  section: SectionDto;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useLocale();
+
+  const danceNames = section.dances.map((d) => d.danceName ?? d.name ?? "").filter(Boolean);
+  const isMultiDance = section.danceStyle === "MULTIDANCE";
+  const isSingleDance = section.danceStyle === "SINGLE_DANCE";
+
+  const defaultValues = {
+    sections: [{
+      name: section.name ?? "",
+      ageCategory: section.ageCategory ?? "",
+      level: section.level ?? "",
+      danceStyle: section.danceStyle ?? "",
+      numberOfJudges: section.numberOfJudges ?? 5,
+      maxFinalPairs: section.maxFinalPairs ?? 6,
+      competitorType: section.competitorType ?? "",
+      competitionType: section.competitionType ?? "",
+      series: section.series ?? "",
+      singleDanceName: isSingleDance ? (danceNames[0] ?? "") : "",
+      danceNames: isMultiDance ? danceNames : [],
+      minBirthYear: section.minBirthYear ?? null,
+      maxBirthYear: section.maxBirthYear ?? null,
+      entryFee: section.entryFee != null ? String(section.entryFee) : "",
+      entryFeeCurrency: section.entryFeeCurrency ?? "CZK",
+      presenceEnd: "",
+    }],
+  };
+
+  const { control, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(editSectionSchema),
+    defaultValues,
+  });
+
+  const { fields, append, remove } = useFieldArray({ control, name: "sections" });
+  const watchedSections = watch("sections");
+
+  const updateMutation = useMutation({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mutationFn: async (values: any) => {
+      const s = values.sections[0];
+      const fee = s.entryFee ? parseFloat(s.entryFee.replace(",", ".")) : undefined;
+      const isRichtar = s.danceStyle === "SINGLE_DANCE" || s.danceStyle === "MULTIDANCE";
+      const dances = isRichtar
+        ? (s.danceStyle === "MULTIDANCE"
+            ? (s.danceNames ?? [])
+            : s.singleDanceName ? [s.singleDanceName] : [])
+        : [];
+      await sectionsApi.update(competitionId, section.id, {
+        name: s.name,
+        danceStyle: (s.danceStyle || undefined) as DanceStyle | undefined,
+        numberOfJudges: s.numberOfJudges ?? 5,
+        maxFinalPairs: s.maxFinalPairs ?? 6,
+        ageCategory: isRichtar ? undefined : (s.ageCategory || undefined) as AgeCategory | undefined,
+        level: isRichtar ? undefined : (s.level || undefined) as Level | undefined,
+        competitorType: isRichtar ? undefined : s.competitorType as CompetitorType | undefined,
+        competitionType: isRichtar ? undefined : s.competitionType as CompetitionType | undefined,
+        series: isRichtar ? undefined : s.series as Series | undefined,
+        entryFee: fee && !isNaN(fee) ? fee : undefined,
+        entryFeeCurrency: fee ? (s.entryFeeCurrency || "CZK") : undefined,
+        minBirthYear: isRichtar ? (s.minBirthYear ?? null) : undefined,
+        maxBirthYear: isRichtar ? (s.maxBirthYear ?? null) : undefined,
+        dances: dances.map((name: string) => ({ danceName: name })),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: t("section.editSuccess"), variant: "success" });
+      onSaved();
+    },
+    onError: (err) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t("section.editTitle")}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="flex flex-col gap-4 pt-2">
+          <SectionEditor
+            fields={fields}
+            append={append}
+            remove={remove}
+            control={control}
+            errors={errors}
+            showWizardFields
+            fieldArrayName="sections"
+            watchedItems={watchedSections}
+            hideAppend
+          />
+          <div className="flex justify-end gap-3 pt-2 border-t border-[var(--border)]">
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" loading={isSubmitting || updateMutation.isPending}>
+              {t("section.editSave")}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
