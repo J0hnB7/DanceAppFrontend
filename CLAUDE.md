@@ -573,6 +573,30 @@ Backend `/slots/{id}/activate` vrátí **403** pokud slot nemá heat assignments
 
 Paralelní spuštění (původní kód) = 403 na activate protože heaty ještě neexistovaly. Opraveno v `setupRound()` async funkci (commit ce2cdbb).
 
+## React Query — enabled guard pro role-gated endpointy (2026-04-19)
+
+Každý `useQuery` volající dancer/organizer endpoint MUSÍ mít `enabled: user?.role === "DANCER"` (nebo příslušnou roli). Bez toho každý přihlášený uživatel jiné role dostane 403 při návštěvě stránky. Vzor:
+```ts
+const { user } = useAuthStore();
+const isDancer = user?.role === "DANCER";
+const { data } = useQuery({
+  queryKey: ["dancer-competitions"],
+  queryFn: () => dancerApi.getMyCompetitions(),
+  enabled: isDancer,  // ← VŽDY pro role-specific endpointy
+});
+```
+Opraveno v `dashboard/results/page.tsx` — chyběl guard na `getMyCompetitions()`.
+
+## Backend — onboardingCompleted flag bug pattern (2026-04-19)
+
+`DancerProfileService.updateProfile()` původně přepočítával `onboardingCompleted` po každém uložení (klub byl required). Prázdný klub → flag na `false` → `requireOnboarded()` vyhazuje `ForbiddenException("ONBOARDING_REQUIRED")` → "Access denied" pro tančícího při každém dalším Save. Sebeposilující zámek.
+
+**Pravidlo:** Update metody NESMÍ nikdy resetovat completion/status flagy na `false`. Ty patří pouze do `completeOnboarding()` / `activate()` flow.
+
+**Auto-repair pattern** v `requireOnboarded()`: pokud flag je `false` ale `firstName` + `lastName` existují → oprav flag na `true` a ulož. Chrání před corrupted DB state bez ruční opravy.
+
+**`@Transactional` na private metodě** je v Spring proxy AOP tiše ignorováno — save uvnitř `requireOnboarded()` funguje v kontextu volající `@Transactional` metody.
+
 ## Spec soubory
 
 - **Schedule modul:** `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`
