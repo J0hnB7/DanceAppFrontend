@@ -15,6 +15,7 @@ export interface OnboardingRequest {
   birthYear?: number;
   club?: string;
   partnerNameText?: string;
+  gender?: string;
 }
 
 export interface DancerProfileRequest {
