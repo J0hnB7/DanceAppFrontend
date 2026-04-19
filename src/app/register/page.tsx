@@ -192,21 +192,24 @@ function RegisterPageInner() {
                     <p style={{ fontSize: ".85rem", color: "#6B7280", marginTop: 6 }}>{t("dancer.register.subtitle")}</p>
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-                    <GoogleLogin
-                      onSuccess={async (credentialResponse) => {
-                        if (!credentialResponse.credential) return;
-                        await handleGoogleSuccess(credentialResponse.credential);
-                      }}
-                      onError={() => setGoogleError(locale === "en" ? "Google sign-in failed." : "Google přihlášení selhalo.")}
-                      width="368"
-                    />
-                  </div>
-                  {googleError && (
-                    <p style={{ fontSize: ".8rem", color: "#EF4444", textAlign: "center", marginTop: -12, marginBottom: 8 }}>{googleError}</p>
+                  {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                        <GoogleLogin
+                          onSuccess={async (credentialResponse) => {
+                            if (!credentialResponse.credential) return;
+                            await handleGoogleSuccess(credentialResponse.credential);
+                          }}
+                          onError={() => setGoogleError(locale === "en" ? "Google sign-in failed." : "Google přihlášení selhalo.")}
+                          width="368"
+                        />
+                      </div>
+                      {googleError && (
+                        <p style={{ fontSize: ".8rem", color: "#EF4444", textAlign: "center", marginTop: -12, marginBottom: 8 }}>{googleError}</p>
+                      )}
+                      <div className="dreg-divider">{locale === "en" ? "or" : "nebo"}</div>
+                    </>
                   )}
-
-                  <div className="dreg-divider">{locale === "en" ? "or" : "nebo"}</div>
 
                   <form onSubmit={handleSubmit(onSubmit)} className="auth-light" style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 8 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

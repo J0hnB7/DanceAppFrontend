@@ -472,7 +472,9 @@
     "selfRegisterPendingMsg": "Přihláška odeslána (č. #{{number}}). Partner musí potvrdit registraci.",
     "loginToRegister": "Přihlásit se pro registraci",
     "completeProfileFirst": "Nejdřív vyplňte profil",
-    "ageNotEligible": "Nesplňujete věkové podmínky"
+    "ageNotEligible": "Nesplňujete věkové podmínky",
+    "goToProfile": "Vyplnit profil →",
+    "noEligibleSections": "Pro váš věk a typ soutěže nejsou v této soutěži dostupné žádné kategorie."
   },
   "publicRegister": {
     "backToCompetition": "Zpět na soutěž",

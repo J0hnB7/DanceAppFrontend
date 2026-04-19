@@ -14,6 +14,7 @@ import apiClient from "@/lib/api-client";
 import type { CompetitionDto, CompetitionNewsItem } from "@/lib/api/competitions";
 import { competitionKeys } from "@/hooks/queries/use-competitions";
 import type { SectionDto } from "@/lib/api/sections";
+import { sectionsApi } from "@/lib/api/sections";
 import { ResultsSection } from "@/components/public/ResultsSection";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -21,6 +22,7 @@ import { useLocale } from "@/contexts/locale-context";
 import { useAuthStore } from "@/store/auth-store";
 import { selfRegistrationApi } from "@/lib/api/self-registration";
 import type { SelfRegistrationResponse } from "@/lib/api/self-registration";
+import { dancerApi } from "@/lib/api/dancer";
 import axios from "axios";
 
 const schema = z.object({
@@ -118,6 +120,22 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   const { data: sections = [] } = useQuery({
     queryKey: ["sections", "public", id],
     queryFn: () => apiClient.get<SectionDto[]>(`/competitions/${id}/sections`).then((r) => r.data),
+    staleTime: 60_000,
+  });
+
+  const isDancer = isAuthenticated && user?.role === "DANCER";
+
+  const { data: dancerProfile } = useQuery({
+    queryKey: ["dancer-profile"],
+    queryFn: () => dancerApi.getProfile(),
+    enabled: isDancer,
+    staleTime: 60_000,
+  });
+
+  const { data: eligibleSections = [] } = useQuery({
+    queryKey: ["sections", "eligible", id, dancerProfile?.birthYear],
+    queryFn: () => sectionsApi.getEligible(id, dancerProfile?.birthYear ?? undefined),
+    enabled: isDancer,
     staleTime: 60_000,
   });
 
@@ -449,7 +467,24 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                         </p>
                       </div>
                     )}
-                    {sections.map((section) => {
+                    {dancerProfile && !dancerProfile.onboardingCompleted && (
+                      <div style={{ padding: "12px 14px", borderRadius: 9, background: "#FEF3C7", border: "1px solid #FCD34D" }}>
+                        <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#92400E", marginBottom: 6 }}>
+                          {t("publicCompetition.completeProfileFirst")}
+                        </p>
+                        <a href="/profile" style={{ fontSize: ".8rem", color: "#4F46E5", fontWeight: 600, textDecoration: "underline" }}>
+                          {t("publicCompetition.goToProfile")}
+                        </a>
+                      </div>
+                    )}
+                    {dancerProfile && dancerProfile.onboardingCompleted && eligibleSections.length === 0 && (
+                      <div style={{ padding: "12px 14px", borderRadius: 9, background: "#F3F4F6", border: "1px solid #E5E7EB", textAlign: "center" }}>
+                        <p style={{ fontSize: ".85rem", color: "#6B7280" }}>
+                          {t("publicCompetition.noEligibleSections")}
+                        </p>
+                      </div>
+                    )}
+                    {eligibleSections.map((section) => {
                       const isBusy = selfRegSubmitting === section.id;
                       return (
                         <div key={section.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 9, border: "1px solid #E5E7EB", padding: "10px 14px", background: "#fff" }}>

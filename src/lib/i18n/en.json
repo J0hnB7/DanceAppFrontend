@@ -472,7 +472,9 @@
     "selfRegisterPendingMsg": "Registered (no. #{{number}}). Your partner must confirm.",
     "loginToRegister": "Log in to register",
     "completeProfileFirst": "Complete your profile first",
-    "ageNotEligible": "Age requirements not met"
+    "ageNotEligible": "Age requirements not met",
+    "goToProfile": "Go to profile →",
+    "noEligibleSections": "No categories are available for your age and competition type in this event."
   },
   "publicRegister": {
     "backToCompetition": "Back to competition",

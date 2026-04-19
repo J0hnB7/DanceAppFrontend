@@ -219,33 +219,37 @@ function LoginPageInner() {
                   {loading ? t("auth.signingIn") : t("auth.signIn")}
                 </button>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#9CA3AF", fontSize: ".8rem", margin: "4px 0" }}>
-                  <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
-                  {mounted ? (locale === "en" ? "or" : "nebo") : ""}
-                  <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
-                </div>
+                {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#9CA3AF", fontSize: ".8rem", margin: "4px 0" }}>
+                      <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
+                      {mounted ? (locale === "en" ? "or" : "nebo") : ""}
+                      <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
+                    </div>
 
-                <div style={{ display: "flex", justifyContent: "center" }}>
-                  <GoogleLogin
-                    onSuccess={async (credentialResponse) => {
-                      if (!credentialResponse.credential) return;
-                      setGoogleError(null);
-                      try {
-                        const result = await googleAuthApi.signIn(credentialResponse.credential);
-                        await loginWithTokens(result.accessToken);
-                        if (result.requiresOnboarding) {
-                          router.replace("/onboarding");
-                        } else {
-                          router.replace(callbackUrl);
-                        }
-                      } catch {
-                        setGoogleError(t("auth.googleSignInFailed") || "Google sign-in failed");
-                      }
-                    }}
-                    onError={() => setGoogleError(t("auth.googleSignInFailed") || "Google sign-in failed")}
-                    width="368"
-                  />
-                </div>
+                    <div style={{ display: "flex", justifyContent: "center" }}>
+                      <GoogleLogin
+                        onSuccess={async (credentialResponse) => {
+                          if (!credentialResponse.credential) return;
+                          setGoogleError(null);
+                          try {
+                            const result = await googleAuthApi.signIn(credentialResponse.credential);
+                            await loginWithTokens(result.accessToken);
+                            if (result.requiresOnboarding) {
+                              router.replace("/onboarding");
+                            } else {
+                              router.replace(callbackUrl);
+                            }
+                          } catch {
+                            setGoogleError(t("auth.googleSignInFailed") || "Google sign-in failed");
+                          }
+                        }}
+                        onError={() => setGoogleError(t("auth.googleSignInFailed") || "Google sign-in failed")}
+                        width="368"
+                      />
+                    </div>
+                  </>
+                )}
                 {googleError && (
                   <p style={{ fontSize: ".8rem", color: "#EF4444", textAlign: "center", marginTop: -4 }}>{googleError}</p>
                 )}
