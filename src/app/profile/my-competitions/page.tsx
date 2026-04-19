@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { LogoMark } from "@/components/ui/logo-mark";
-import { User, Trophy, ChevronDown, ChevronUp, LogOut } from "lucide-react";
+import { User, Trophy, ChevronDown, ChevronUp, LogOut, LayoutDashboard } from "lucide-react";
 import { dancerApi, type MyCompetitionEntry } from "@/lib/api/dancer";
 import { useAuthStore } from "@/store/auth-store";
 import { useRouter } from "next/navigation";
@@ -166,6 +166,9 @@ export default function MyCompetitionsPage() {
               <span style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 800, fontSize: ".95rem", color: "#111827" }}>ProPodium</span>
             </Link>
             <div style={{ display: "flex", gap: 4 }}>
+              <Link href="/dashboard" className="prof-nav-link">
+                <LayoutDashboard className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("nav.competitions")}
+              </Link>
               <Link href="/profile" className="prof-nav-link">
                 <User className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("dancer.profile.navProfile")}
               </Link>

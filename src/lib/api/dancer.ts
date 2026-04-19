@@ -92,5 +92,5 @@ export const dancerApi = {
     apiClient.delete("/profile/partner").then((r) => r.data),
 
   getMyCompetitions: () =>
-    apiClient.get<MyCompetitionEntry[]>("/profile/my-competitions").then((r) => r.data),
+    apiClient.get<MyCompetitionEntry[]>("/profile/dancer/competitions").then((r) => r.data),
 };
