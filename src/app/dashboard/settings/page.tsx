@@ -51,7 +51,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user?.role === "DANCER") {
-      router.replace("/profile");
+      router.replace("/profile/settings");
     }
   }, [user, router]);
   const [totpSetup, setTotpSetup] = useState<{ secret: string; qrCodeBase64: string } | null>(null);
