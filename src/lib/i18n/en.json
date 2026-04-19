@@ -1402,7 +1402,9 @@
     "LATIN": "Latin American",
     "TEN_DANCE": "Ten Dance",
     "COMBINATION": "Combination",
-    "FORMATION": "Formation"
+    "FORMATION": "Formation",
+    "SINGLE_DANCE": "Single Dance",
+    "MULTIDANCE": "Multidance"
   },
   "competitorType": {
     "AMATEURS": "Amateurs",

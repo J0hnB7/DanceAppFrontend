@@ -14,12 +14,15 @@ import {
 import { useLocale } from "@/contexts/locale-context";
 import type { AgeCategory, Level, DanceStyle, CompetitorType, CompetitionType, Series } from "@/lib/api/sections";
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const inputCls =
   "w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
 const labelCls = "mb-1 block text-sm font-medium text-[var(--text-primary)]";
 const CURRENCIES = ["CZK", "EUR", "USD", "GBP"];
+
+const RICHTAR_DANCES = ["Samba", "Cha Cha", "Rumba", "Paso Doble", "Polka", "Jive"];
+const RICHTAR_STYLES = new Set(["SINGLE_DANCE", "MULTIDANCE"]);
 
 function majority(n: number): number {
   return Math.floor(n / 2) + 1;
@@ -67,6 +70,39 @@ function SelectField({
         )}
       />
       {error && <p className="mt-1 text-xs text-[var(--destructive)]">{error}</p>}
+    </div>
+  );
+}
+
+// ─── ToggleGroup ─────────────────────────────────────────────────────────────
+
+function ToggleGroup({
+  options,
+  value,
+  onChange,
+  small,
+}: {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  small?: boolean;
+}) {
+  return (
+    <div className="flex overflow-hidden rounded-[var(--radius)] border border-[var(--border)]">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={`flex-1 cursor-pointer font-medium transition-colors ${small ? "px-2 py-1 text-[11px]" : "px-3 py-1.5 text-xs"}
+            ${value === o.value
+              ? "bg-[var(--accent)] text-white"
+              : "bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]"
+            }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -161,6 +197,7 @@ export function SectionEditor({
   const handleAppend = () =>
     append({
       name: "",
+      // mode indicator — derived from danceStyle; "" = ČSTS mode
       ageCategory: "",
       level: "",
       danceStyle: "",
@@ -169,6 +206,12 @@ export function SectionEditor({
       competitorType: "",
       competitionType: "",
       series: "",
+      // RICHTAR-specific
+      singleDanceName: "",
+      danceNames: [],
+      minBirthYear: null,
+      maxBirthYear: null,
+      // wizard-only
       entryFee: "",
       entryFeeCurrency: "CZK",
       presenceEnd: "09:00",
@@ -182,8 +225,10 @@ export function SectionEditor({
           | undefined;
         const judgeCount = watchedItems[idx]?.numberOfJudges ?? 5;
         const maj = majority(judgeCount);
+        const currentDanceStyle: string = watchedItems[idx]?.danceStyle ?? "";
+        const isRichtar = RICHTAR_STYLES.has(currentDanceStyle);
+        const isMultiDance = currentDanceStyle === "MULTIDANCE";
 
-        // Helpers for building field ids and names
         const fId = (key: string) => `${fieldArrayName}-${idx}-${key}`;
         const fName = (key: string) => `${fieldArrayName}.${idx}.${key}`;
 
@@ -207,6 +252,56 @@ export function SectionEditor({
             </div>
 
             <div className="flex flex-col gap-3">
+              {/* ── Template + mode toggle (controls danceStyle field) ── */}
+              <Controller
+                control={control}
+                name={fName("danceStyle")}
+                render={({ field: f }) => {
+                  const val: string = f.value ?? "";
+                  const richtar = RICHTAR_STYLES.has(val);
+                  return (
+                    <div className="flex flex-col gap-1.5">
+                      {/* Top-level template toggle */}
+                      <ToggleGroup
+                        value={richtar ? "RICHTAR" : "CSTS"}
+                        onChange={(tmpl) =>
+                          f.onChange(tmpl === "RICHTAR" ? "SINGLE_DANCE" : "")
+                        }
+                        options={[
+                          { value: "CSTS", label: "Kategorie ČSTS" },
+                          { value: "RICHTAR", label: "Jakub Richtar" },
+                        ]}
+                      />
+                      {/* ČSTS: discipline select */}
+                      {!richtar && (
+                        <Select onValueChange={f.onChange} value={val}>
+                          <SelectTrigger id={fId("danceStyle")}>
+                            <SelectValue placeholder={t("newSection.danceStylePlaceholder")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DANCE_STYLES.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {/* RICHTAR: Single Dance / Multidance sub-toggle */}
+                      {richtar && (
+                        <ToggleGroup
+                          value={val}
+                          onChange={f.onChange}
+                          small
+                          options={[
+                            { value: "SINGLE_DANCE", label: "Single Dance" },
+                            { value: "MULTIDANCE", label: "Multidance" },
+                          ]}
+                        />
+                      )}
+                    </div>
+                  );
+                }}
+              />
+
               {/* Name */}
               <div>
                 <label className={labelCls} htmlFor={fId("name")}>
@@ -304,65 +399,171 @@ export function SectionEditor({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <SelectField
-                  label={t("newSection.ageCategoryLabel")}
-                  fieldId={fId("ageCategory")}
-                  fieldName={fName("ageCategory")}
-                  options={AGE_CATEGORIES}
-                  control={control}
-                  error={catErrors?.ageCategory?.message}
-                />
-                <SelectField
-                  label={t("newSection.levelLabel")}
-                  fieldId={fId("level")}
-                  fieldName={fName("level")}
-                  options={LEVELS}
-                  control={control}
-                  error={catErrors?.level?.message}
-                  placeholder={t("newSection.levelPlaceholder")}
-                />
-              </div>
+              {/* ── ČSTS fields ── */}
+              {!isRichtar && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <SelectField
+                      label={t("newSection.ageCategoryLabel")}
+                      fieldId={fId("ageCategory")}
+                      fieldName={fName("ageCategory")}
+                      options={AGE_CATEGORIES}
+                      control={control}
+                      error={catErrors?.ageCategory?.message}
+                    />
+                    <SelectField
+                      label={t("newSection.levelLabel")}
+                      fieldId={fId("level")}
+                      fieldName={fName("level")}
+                      options={LEVELS}
+                      control={control}
+                      error={catErrors?.level?.message}
+                      placeholder={t("newSection.levelPlaceholder")}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <SelectField
-                  label={t("newSection.danceStyleLabel")}
-                  fieldId={fId("danceStyle")}
-                  fieldName={fName("danceStyle")}
-                  options={DANCE_STYLES}
-                  control={control}
-                  error={catErrors?.danceStyle?.message}
-                  placeholder={t("newSection.danceStylePlaceholder")}
-                />
-                <SelectField
-                  label={t("newSection.competitionTypeLabel")}
-                  fieldId={fId("competitionType")}
-                  fieldName={fName("competitionType")}
-                  options={COMPETITION_TYPES}
-                  control={control}
-                  placeholder={t("newSection.competitionTypePlaceholder")}
-                />
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <SelectField
+                      label={t("newSection.competitionTypeLabel")}
+                      fieldId={fId("competitionType")}
+                      fieldName={fName("competitionType")}
+                      options={COMPETITION_TYPES}
+                      control={control}
+                      placeholder={t("newSection.competitionTypePlaceholder")}
+                    />
+                    <SelectField
+                      label={t("newSection.competitorTypeLabel")}
+                      fieldId={fId("competitorType")}
+                      fieldName={fName("competitorType")}
+                      options={COMPETITOR_TYPES}
+                      control={control}
+                      placeholder={t("newSection.competitorTypePlaceholder")}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <SelectField
-                  label={t("newSection.competitorTypeLabel")}
-                  fieldId={fId("competitorType")}
-                  fieldName={fName("competitorType")}
-                  options={COMPETITOR_TYPES}
-                  control={control}
-                  placeholder={t("newSection.competitorTypePlaceholder")}
-                />
-                <SelectField
-                  label={t("newSection.seriesLabel")}
-                  fieldId={fId("series")}
-                  fieldName={fName("series")}
-                  options={SERIES_OPTIONS}
-                  control={control}
-                  error={catErrors?.series?.message}
-                  placeholder={t("newSection.seriesPlaceholder")}
-                />
-              </div>
+                  <SelectField
+                    label={t("newSection.seriesLabel")}
+                    fieldId={fId("series")}
+                    fieldName={fName("series")}
+                    options={SERIES_OPTIONS}
+                    control={control}
+                    error={catErrors?.series?.message}
+                    placeholder={t("newSection.seriesPlaceholder")}
+                  />
+                </>
+              )}
+
+              {/* ── RICHTAR fields ── */}
+              {isRichtar && (
+                <>
+                  {/* Single dance selector */}
+                  {!isMultiDance && (
+                    <div>
+                      <label className={labelCls} htmlFor={fId("singleDanceName")}>Tanec</label>
+                      <Controller
+                        control={control}
+                        name={fName("singleDanceName")}
+                        render={({ field: f }) => (
+                          <Select onValueChange={f.onChange} value={f.value ?? ""}>
+                            <SelectTrigger id={fId("singleDanceName")}>
+                              <SelectValue placeholder="Vyberte tanec..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {RICHTAR_DANCES.map((dance) => (
+                                <SelectItem key={dance} value={dance}>{dance}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  )}
+
+                  {/* Multi dance checkboxes */}
+                  {isMultiDance && (
+                    <div>
+                      <label className={labelCls}>Tance</label>
+                      <Controller
+                        control={control}
+                        name={fName("danceNames")}
+                        render={({ field: f }) => {
+                          const selected: string[] = f.value ?? [];
+                          return (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {RICHTAR_DANCES.map((dance) => {
+                                const isSel = selected.includes(dance);
+                                return (
+                                  <button
+                                    key={dance}
+                                    type="button"
+                                    aria-pressed={isSel}
+                                    onClick={() =>
+                                      f.onChange(
+                                        isSel
+                                          ? selected.filter((d) => d !== dance)
+                                          : [...selected, dance]
+                                      )
+                                    }
+                                    className={`cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors
+                                      ${isSel
+                                        ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                                        : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                      }`}
+                                  >
+                                    {dance}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Birth year range */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls} htmlFor={fId("minBirthYear")}>Ročník od</label>
+                      <Controller
+                        control={control}
+                        name={fName("minBirthYear")}
+                        render={({ field: f }) => (
+                          <input
+                            id={fId("minBirthYear")}
+                            type="number"
+                            min={1990}
+                            max={new Date().getFullYear()}
+                            placeholder="2015"
+                            className={inputCls}
+                            value={f.value ?? ""}
+                            onChange={(e) => f.onChange(e.target.value ? Number(e.target.value) : null)}
+                          />
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls} htmlFor={fId("maxBirthYear")}>Ročník do</label>
+                      <Controller
+                        control={control}
+                        name={fName("maxBirthYear")}
+                        render={({ field: f }) => (
+                          <input
+                            id={fId("maxBirthYear")}
+                            type="number"
+                            min={1990}
+                            max={new Date().getFullYear()}
+                            placeholder="2017"
+                            className={inputCls}
+                            value={f.value ?? ""}
+                            onChange={(e) => f.onChange(e.target.value ? Number(e.target.value) : null)}
+                          />
+                        )}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Wizard-only: entry fee */}
               {showWizardFields && (

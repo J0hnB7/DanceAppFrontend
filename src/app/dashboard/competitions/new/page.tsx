@@ -6,18 +6,12 @@ import { useForm, useFieldArray, Controller } from "react-hook-form";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { zodResolver } = require("@hookform/resolvers/zod");
 import { z } from "zod";
-import { Plus, Trash2, ChevronRight, ChevronLeft, Check, Users } from "lucide-react";
+import { ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { SectionEditor } from "@/components/shared/section-editor";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VenueAutocomplete } from "@/components/ui/venue-autocomplete";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useCreateCompetition } from "@/hooks/queries/use-competitions";
 import { useCompetitionTemplates } from "@/hooks/queries/use-competition-templates";
 import { sectionsApi } from "@/lib/api/sections";
@@ -51,7 +45,13 @@ const categorySchema = z.object({
   maxFinalPairs: z.number().int().min(2).max(24).default(6),
   competitorType: z.string().optional(),
   competitionType: z.string().optional(),
-  series: z.string().min(1, "Povinné pole"),
+  series: z.string().optional(),
+  // RICHTAR-specific
+  singleDanceName: z.string().optional(),
+  danceNames: z.array(z.string()).default([]),
+  minBirthYear: z.number().nullable().optional(),
+  maxBirthYear: z.number().nullable().optional(),
+  // wizard-only
   entryFee: z.string().optional(),
   entryFeeCurrency: z.string().optional(),
   presenceEnd: z.string().optional(),
@@ -94,57 +94,9 @@ const STEPS = [
   { n: 3, label: "Sekce" },
 ];
 
-const CURRENCIES = ["CZK", "EUR", "USD", "GBP"];
-
 const inputCls =
   "w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
 const labelCls = "mb-1 block text-sm font-medium text-[var(--text-primary)]";
-
-function majority(n: number): number {
-  return Math.floor(n / 2) + 1;
-}
-
-function SelectField({
-  label,
-  name,
-  options,
-  control,
-  error,
-  placeholder,
-}: {
-  label: string;
-  name: string;
-  options: { value: string; label: string }[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  control: any;
-  error?: string;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className={labelCls} htmlFor={name}>{label}</label>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field }) => (
-          <Select onValueChange={field.onChange} value={field.value ?? ""}>
-            <SelectTrigger id={name} error={!!error}>
-              <SelectValue placeholder={placeholder} />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      />
-      {error && <p className="mt-1 text-xs text-[var(--destructive)]">{error}</p>}
-    </div>
-  );
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -157,60 +109,6 @@ export default function NewCompetitionPage() {
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-
-  const AGE_CATEGORIES: { value: AgeCategory; label: string }[] = [
-    { value: "CHILDREN_I", label: t("ageCategory.CHILDREN_I") },
-    { value: "CHILDREN_II", label: t("ageCategory.CHILDREN_II") },
-    { value: "JUNIOR_I", label: t("ageCategory.JUNIOR_I") },
-    { value: "JUNIOR_II", label: t("ageCategory.JUNIOR_II") },
-    { value: "YOUTH", label: t("ageCategory.YOUTH") },
-    { value: "ADULT", label: t("ageCategory.ADULT") },
-    { value: "SENIOR_I", label: t("ageCategory.SENIOR_I") },
-    { value: "SENIOR_II", label: t("ageCategory.SENIOR_II") },
-  ];
-
-  const LEVELS: { value: Level; label: string }[] = [
-    { value: "A", label: "A" },
-    { value: "B", label: "B" },
-    { value: "C", label: "C" },
-    { value: "D", label: "D" },
-    { value: "HOBBY", label: "Hobby" },
-    { value: "CHAMPIONSHIP", label: t("series.CZECH_CHAMPIONSHIP") },
-    { value: "OPEN", label: t("series.OPEN") },
-    { value: "S", label: "S" },
-  ];
-
-  const DANCE_STYLES: { value: DanceStyle; label: string }[] = [
-    { value: "STANDARD", label: t("danceStyle.STANDARD") },
-    { value: "LATIN", label: t("danceStyle.LATIN") },
-    { value: "TEN_DANCE", label: t("danceStyle.TEN_DANCE") },
-    { value: "COMBINATION", label: t("danceStyle.COMBINATION") },
-  ];
-
-  const COMPETITOR_TYPES: { value: CompetitorType; label: string }[] = [
-    { value: "AMATEURS", label: t("competitorType.AMATEURS") },
-    { value: "PROFESSIONALS", label: t("competitorType.PROFESSIONALS") },
-  ];
-
-  const COMPETITION_TYPES: { value: CompetitionType; label: string }[] = [
-    { value: "COUPLE", label: t("competitionType.COUPLE") },
-    { value: "SOLO_STANDARD", label: t("competitionType.SOLO_STANDARD") },
-    { value: "SOLO_LATIN", label: t("competitionType.SOLO_LATIN") },
-    { value: "FORMATION_STANDARD", label: t("competitionType.FORMATION_STANDARD") },
-    { value: "FORMATION_LATIN", label: t("competitionType.FORMATION_LATIN") },
-    { value: "SHOW", label: t("competitionType.SHOW") },
-  ];
-
-  const SERIES_OPTIONS: { value: Series; label: string }[] = [
-    { value: "CZECH_CHAMPIONSHIP", label: t("series.CZECH_CHAMPIONSHIP") },
-    { value: "CZECH_CUP", label: t("series.CZECH_CUP") },
-    { value: "EXTRALIGA", label: t("series.EXTRALIGA") },
-    { value: "LIGA_I", label: t("series.LIGA_I") },
-    { value: "LIGA_II", label: t("series.LIGA_II") },
-    { value: "GRAND_PRIX", label: t("series.GRAND_PRIX") },
-    { value: "OPEN", label: t("series.OPEN") },
-    { value: "OTHER", label: t("series.OTHER") },
-  ];
 
   const {
     register,
@@ -265,6 +163,10 @@ export default function NewCompetitionPage() {
       tpl.sections.map((s) => ({
         ...s,
         series: s.series || "OPEN",
+        singleDanceName: s.danceStyle === "SINGLE_DANCE" && s.dances?.length ? (s.dances[0].danceName ?? "") : "",
+        danceNames: s.danceStyle === "MULTIDANCE" ? (s.dances?.map((d) => d.danceName ?? "").filter(Boolean) ?? []) : [],
+        minBirthYear: s.minBirthYear ?? null,
+        maxBirthYear: s.maxBirthYear ?? null,
         entryFee: "",
         entryFeeCurrency: "CZK",
         presenceEnd: "09:00",
@@ -299,20 +201,28 @@ export default function NewCompetitionPage() {
     for (const [idx, cat] of (values.categories ?? []).entries()) {
       try {
         const fee = cat.entryFee ? parseFloat(cat.entryFee.replace(",", ".")) : undefined;
+        const isRichtar = cat.danceStyle === "SINGLE_DANCE" || cat.danceStyle === "MULTIDANCE";
+        const dances = isRichtar
+          ? (cat.danceStyle === "MULTIDANCE"
+              ? (cat.danceNames ?? [])
+              : cat.singleDanceName ? [cat.singleDanceName] : [])
+          : getDefaultDances(cat.danceStyle);
         await sectionsApi.create(createdId!, {
           name: cat.name,
           danceStyle: (cat.danceStyle || undefined) as DanceStyle | undefined,
           numberOfJudges: cat.numberOfJudges ?? 5,
           maxFinalPairs: cat.maxFinalPairs ?? 6,
           orderIndex: idx,
-          dances: getDefaultDances(cat.danceStyle),
-          ageCategory: (cat.ageCategory || undefined) as AgeCategory | undefined,
-          level: (cat.level || undefined) as Level | undefined,
-          competitorType: cat.competitorType as CompetitorType | undefined,
-          competitionType: cat.competitionType as CompetitionType | undefined,
-          series: cat.series as Series | undefined,
+          dances,
+          ageCategory: isRichtar ? undefined : (cat.ageCategory || undefined) as AgeCategory | undefined,
+          level: isRichtar ? undefined : (cat.level || undefined) as Level | undefined,
+          competitorType: isRichtar ? undefined : cat.competitorType as CompetitorType | undefined,
+          competitionType: isRichtar ? undefined : cat.competitionType as CompetitionType | undefined,
+          series: isRichtar ? undefined : cat.series as Series | undefined,
           entryFee: fee && !isNaN(fee) ? fee : undefined,
           entryFeeCurrency: fee ? (cat.entryFeeCurrency || "CZK") : undefined,
+          minBirthYear: isRichtar ? (cat.minBirthYear ?? null) : undefined,
+          maxBirthYear: isRichtar ? (cat.maxBirthYear ?? null) : undefined,
         });
       } catch {
         failedSections.push(cat.name || `Sekce ${idx + 1}`);
@@ -516,214 +426,15 @@ export default function NewCompetitionPage() {
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-4">
-                  {fields.map((field, idx) => {
-                    const catErrors = (errors.categories as Record<string, unknown>[] | undefined)?.[idx] as Record<string, { message?: string }> | undefined;
-                    const judgeCount = watchedCategories[idx]?.numberOfJudges ?? 5;
-                    const maj = majority(judgeCount);
-
-                    return (
-                      <div
-                        key={field.id}
-                        className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-secondary)] p-4"
-                      >
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="text-sm font-medium text-[var(--text-secondary)]">
-                            Sekce {idx + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => remove(idx)}
-                            aria-label="Odebrat sekci"
-                            className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center -mr-2 text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                        </div>
-
-                        <div className="flex flex-col gap-3">
-                          <div>
-                            <label className={labelCls} htmlFor={`cat-${idx}-name`}>{t("newSection.nameLabel")}</label>
-                            <input
-                              id={`cat-${idx}-name`}
-                              placeholder={t("newSection.namePlaceholder")}
-                              className={inputCls}
-                              {...register(`categories.${idx}.name`)}
-                            />
-                            {catErrors?.name && (
-                              <p className="mt-0.5 text-xs text-red-500">{catErrors.name.message}</p>
-                            )}
-                          </div>
-
-                          {/* Judges + finals + majority */}
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <label className={labelCls} htmlFor={`cat-${idx}-judges`}>Rozhodčích</label>
-                              <Controller
-                                control={control}
-                                name={`categories.${idx}.numberOfJudges`}
-                                render={({ field: f }) => (
-                                  <input
-                                    id={`cat-${idx}-judges`}
-                                    type="number"
-                                    min={1}
-                                    max={15}
-                                    className={inputCls}
-                                    value={f.value ?? 5}
-                                    onChange={(e) => f.onChange(Number(e.target.value))}
-                                  />
-                                )}
-                              />
-                            </div>
-                            <div>
-                              <label className={labelCls} htmlFor={`cat-${idx}-finals`}>Max. finále</label>
-                              <Controller
-                                control={control}
-                                name={`categories.${idx}.maxFinalPairs`}
-                                render={({ field: f }) => (
-                                  <input
-                                    id={`cat-${idx}-finals`}
-                                    type="number"
-                                    min={2}
-                                    max={24}
-                                    className={inputCls}
-                                    value={f.value ?? 6}
-                                    onChange={(e) => f.onChange(Number(e.target.value))}
-                                  />
-                                )}
-                              />
-                            </div>
-                            <div className="flex flex-col justify-end">
-                              <div className="flex items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-                                <Users className="h-3.5 w-3.5 text-[var(--text-tertiary)]" aria-hidden="true" />
-                                <span className="text-xs text-[var(--text-secondary)]">Majorita:</span>
-                                <span className="text-sm font-semibold text-[var(--accent)]">{maj}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className={labelCls} htmlFor={`cat-${idx}-presence`}>Konec prezence</label>
-                            <input id={`cat-${idx}-presence`} type="time" max="11:59" className={`${inputCls} w-36`} {...register(`categories.${idx}.presenceEnd`)} />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <SelectField
-                              label={t("newSection.ageCategoryLabel")}
-                              name={`categories.${idx}.ageCategory`}
-                              options={AGE_CATEGORIES}
-                              control={control}
-                              error={catErrors?.ageCategory?.message}
-                            />
-                            <SelectField
-                              label={t("newSection.levelLabel")}
-                              name={`categories.${idx}.level`}
-                              options={LEVELS}
-                              control={control}
-                              error={catErrors?.level?.message}
-                              placeholder={t("newSection.levelPlaceholder")}
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <SelectField
-                              label={t("newSection.danceStyleLabel")}
-                              name={`categories.${idx}.danceStyle`}
-                              options={DANCE_STYLES}
-                              control={control}
-                              error={catErrors?.danceStyle?.message}
-                              placeholder={t("newSection.danceStylePlaceholder")}
-                            />
-                            <SelectField
-                              label={t("newSection.competitionTypeLabel")}
-                              name={`categories.${idx}.competitionType`}
-                              options={COMPETITION_TYPES}
-                              control={control}
-                              placeholder={t("newSection.competitionTypePlaceholder")}
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <SelectField
-                              label={t("newSection.competitorTypeLabel")}
-                              name={`categories.${idx}.competitorType`}
-                              options={COMPETITOR_TYPES}
-                              control={control}
-                              placeholder={t("newSection.competitorTypePlaceholder")}
-                            />
-                            <SelectField
-                              label={t("newSection.seriesLabel")}
-                              name={`categories.${idx}.series`}
-                              options={SERIES_OPTIONS}
-                              control={control}
-                              error={catErrors?.series?.message}
-                              placeholder={t("newSection.seriesPlaceholder")}
-                            />
-                          </div>
-
-                          {/* Entry fee */}
-                          <div className="border-t border-[var(--border)] pt-3">
-                            <p className="mb-2 text-xs font-medium text-[var(--text-secondary)]">{t("newSection.entryFeeTitle")}</p>
-                            <div className="grid grid-cols-[1fr_100px] gap-3">
-                              <Input
-                                label={t("newSection.entryFeeLabel")}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                {...register(`categories.${idx}.entryFee`)}
-                              />
-                              <div>
-                                <label className={labelCls}>{t("newSection.currencyLabel")}</label>
-                                <Controller
-                                  control={control}
-                                  name={`categories.${idx}.entryFeeCurrency`}
-                                  defaultValue="CZK"
-                                  render={({ field: f }) => (
-                                    <Select onValueChange={f.onChange} value={f.value ?? "CZK"}>
-                                      <SelectTrigger>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {CURRENCIES.map((c) => (
-                                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      append({
-                        name: "",
-                        ageCategory: "",
-                        level: "",
-                        danceStyle: "",
-                        numberOfJudges: 5,
-                        maxFinalPairs: 6,
-                        competitorType: "",
-                        competitionType: "",
-                        series: "",
-                        entryFee: "",
-                        entryFeeCurrency: "CZK",
-                        presenceEnd: "09:00",
-                      })
-                    }
-                    className="flex w-fit cursor-pointer items-center gap-1 text-sm text-[var(--accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 rounded"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    Přidat sekci
-                  </button>
-                </div>
+                <SectionEditor
+                  fields={fields}
+                  append={append}
+                  remove={remove}
+                  control={control}
+                  errors={errors}
+                  fieldArrayName="categories"
+                  watchedItems={watchedCategories}
+                />
               </div>
             )}
 

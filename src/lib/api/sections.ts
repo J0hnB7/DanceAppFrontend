@@ -2,7 +2,7 @@ import apiClient from "@/lib/api-client";
 
 export type AgeCategory = "CHILDREN_I" | "CHILDREN_II" | "JUNIOR_I" | "JUNIOR_II" | "YOUTH" | "ADULT" | "SENIOR_I" | "SENIOR_II";
 export type Level = "HOBBY" | "D" | "C" | "B" | "A" | "S" | "OPEN" | "CHAMPIONSHIP";
-export type DanceStyle = "STANDARD" | "LATIN" | "TEN_DANCE" | "COMBINATION";
+export type DanceStyle = "STANDARD" | "LATIN" | "TEN_DANCE" | "COMBINATION" | "SINGLE_DANCE" | "MULTIDANCE";
 export type CompetitorType = "AMATEURS" | "PROFESSIONALS";
 export type CompetitionType = "COUPLE" | "SOLO_STANDARD" | "SOLO_LATIN" | "FORMATION_STANDARD" | "FORMATION_LATIN" | "SHOW";
 export type Series = "CZECH_CHAMPIONSHIP" | "CZECH_CUP" | "EXTRALIGA" | "LIGA_I" | "LIGA_II" | "GRAND_PRIX" | "OPEN" | "OTHER";

@@ -1402,7 +1402,9 @@
     "LATIN": "Latinsko-americké tance",
     "TEN_DANCE": "Desetitanec",
     "COMBINATION": "Kombinace",
-    "FORMATION": "Formace"
+    "FORMATION": "Formace",
+    "SINGLE_DANCE": "Single Dance",
+    "MULTIDANCE": "Multidance"
   },
   "competitorType": {
     "AMATEURS": "Amatéři",

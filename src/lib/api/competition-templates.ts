@@ -10,6 +10,9 @@ export interface SectionTemplateItem {
   competitorType?: string;
   competitionType?: string;
   series?: string;
+  dances?: { danceName?: string }[];
+  minBirthYear?: number | null;
+  maxBirthYear?: number | null;
 }
 
 export interface CompetitionTemplate {

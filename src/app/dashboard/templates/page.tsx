@@ -36,7 +36,12 @@ const sectionSchema = z.object({
   competitorType: z.string().optional(),
   competitionType: z.string().optional(),
   series: z.string().optional(),
-  // kept in schema so SectionEditor can bind, wizard-only fields are hidden but still present
+  // RICHTAR-specific
+  singleDanceName: z.string().optional(),
+  danceNames: z.array(z.string()).default([]),
+  minBirthYear: z.number().nullable().optional(),
+  maxBirthYear: z.number().nullable().optional(),
+  // wizard-only fields kept so SectionEditor can bind
   entryFee: z.string().optional(),
   entryFeeCurrency: z.string().optional(),
   presenceEnd: z.string().optional(),
@@ -456,6 +461,10 @@ export default function TemplatesPage() {
               competitorType: s.competitorType ?? "",
               competitionType: s.competitionType ?? "",
               series: s.series ?? "",
+              singleDanceName: s.danceStyle === "SINGLE_DANCE" && s.dances?.length ? (s.dances[0].danceName ?? "") : "",
+              danceNames: s.danceStyle === "MULTIDANCE" ? (s.dances?.map((d) => d.danceName ?? "").filter(Boolean) ?? []) : [],
+              minBirthYear: s.minBirthYear ?? null,
+              maxBirthYear: s.maxBirthYear ?? null,
               entryFee: "",
               entryFeeCurrency: "CZK",
               presenceEnd: "09:00",
