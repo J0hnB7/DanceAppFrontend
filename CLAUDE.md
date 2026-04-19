@@ -341,6 +341,14 @@ useEffect(() => {
 - **Fix:** Vertikální layout: `flex-col items-center` s `px-3 py-3`. Ikona (mobile) → `text-sm font-bold truncate` → `text-[10px] truncate` label. Na `sm+` se vrátí horizontální layout (`sm:flex-row sm:justify-between`).
 - Vzor (payments/presence): ikona viditelná jen na mobilu (`sm:hidden`), na desktopu (`hidden sm:block`) vpravo.
 
+## Standalone pages — auth-light CSS pre biele inputy
+
+`Input` komponent používa `bg-[var(--surface)]`, `border-[var(--border)]`, `text-[var(--text-primary)]` — bez redefinície zdedí tmavé dashboard hodnoty → čierne inputy na bielej stránke. Každá standalone stránka (onboarding, login, register, /profile) musí mať `<form className="auth-light">` kde `<style>` obsahuje `.auth-light{--surface:#fff;--border:#E5E7EB;--text-primary:#111827;--text-secondary:#6B7280;--text-tertiary:#9CA3AF;--radius-md:8px;--accent:#4F46E5;--destructive:#EF4444}`.
+
+## sidebar navItems — vždy pridaj roles pre organizer/admin sekcie
+
+`navItems` bez `roles` prop = viditeľné pre VŠETKÝCH vrátane DANCER. Každý item smerujúci na dashboard/organizer stránku MUSÍ mať `roles: ["ORGANIZER","ADMIN"]`. Ak rola DANCER potrebuje vlastnú stránku (napr. `/profile`), pridaj separátny item s `roles: ["DANCER"]`. Bez toho DANCER pristane na nesprávnom formulári.
+
 ## AppShell — sidebar prop gotcha
 
 `<AppShell sidebar={<Sidebar />}>` → `usesDefaultSidebar = false` → Sidebar renderuje jako statický element vždy viditelný na mobile (žádný drawer, žádný hamburger). Správně pro všechny běžné dashboard stránky: `<AppShell>` bez prop. `sidebar` prop je jen pro `CompetitionSidebar` a jiné custom sidebary se svým vlastním mobile UI.
