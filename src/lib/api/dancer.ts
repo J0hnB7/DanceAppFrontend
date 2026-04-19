@@ -80,7 +80,7 @@ export const dancerApi = {
     apiClient.put<DancerProfileResponse>("/profile/dancer", data).then((r) => r.data),
 
   generateInvite: () =>
-    apiClient.post<PartnerInviteResponse>("/profile/partner-invite").then((r) => r.data),
+    apiClient.post<PartnerInviteResponse>("/partner-invite").then((r) => r.data),
 
   getInvitePreview: (token: string) =>
     apiClient.get<PartnerInvitePreview>(`/partner-invite/${token}`).then((r) => r.data),
