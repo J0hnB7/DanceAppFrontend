@@ -79,7 +79,7 @@ export default function SectionsPage({
     const errors: string[] = [];
     try {
       const { default: readXlsxFile } = await import("read-excel-file/browser");
-      // Columns: Název(0), Styl(1), Věková kategorie(2), Úroveň(3), Typ soutěžícího(4), Typ soutěže(5), Počet rozhodčích(6), Max párů finále(7), Startovné(8), Měna(9)
+      // Columns: Název(0), Styl(1), Věková kategorie(2), Úroveň(3), Typ soutěžícího(4), Typ soutěže(5), Počet rozhodčích(6), Max párů finále(7), Startovné(8), Měna(9), Tance(10), Ročník od(11), Ročník do(12)
       const rows = await readXlsxFile(file);
       const dataRows = rows.slice(1).filter((r) => r[0]);
 
@@ -99,6 +99,14 @@ export default function SectionsPage({
         const rawFee = r[8] != null && r[8] !== "" ? Number(r[8]) : NaN;
         const entryFee = isNaN(rawFee) ? undefined : rawFee;
         const entryFeeCurrency = String(r[9] ?? "").trim() || undefined;
+        const dancesRaw = String(r[10] ?? "").trim();
+        const dances = dancesRaw
+          ? dancesRaw.split(",").map((d) => ({ danceName: d.trim() })).filter((d) => d.danceName) as unknown as string[]
+          : [];
+        const rawMin = r[11] != null && r[11] !== "" ? Number(r[11]) : NaN;
+        const rawMax = r[12] != null && r[12] !== "" ? Number(r[12]) : NaN;
+        const minBirthYear = isNaN(rawMin) ? undefined : rawMin;
+        const maxBirthYear = isNaN(rawMax) ? undefined : rawMax;
         try {
           await sectionsApi.create(id, {
             name,
@@ -110,9 +118,11 @@ export default function SectionsPage({
             numberOfJudges,
             maxFinalPairs,
             orderIndex: 0,
-            dances: [],
+            dances,
             entryFee,
             entryFeeCurrency,
+            minBirthYear,
+            maxBirthYear,
           });
           imported++;
         } catch (err) {
@@ -137,6 +147,8 @@ export default function SectionsPage({
       t("competitionDetail.exportCompetitorType"), t("competitionDetail.exportCompetitionType"),
       t("competitionDetail.exportJudgesCount"), t("competitionDetail.exportMaxFinalPairs"),
       t("competitionDetail.exportEntryFee"), t("competitionDetail.exportCurrency"),
+      t("competitionDetail.exportDances"),
+      t("competitionDetail.exportMinBirthYear"), t("competitionDetail.exportMaxBirthYear"),
       t("competitionDetail.exportRegisteredPairs"),
     ];
     const data = [
@@ -152,6 +164,9 @@ export default function SectionsPage({
         { value: s.maxFinalPairs ?? 0, type: Number },
         { value: s.entryFee ?? 0, type: Number },
         { value: s.entryFeeCurrency ?? "" },
+        { value: s.dances.map((d) => d.danceName ?? d.name ?? "").filter(Boolean).join(", ") },
+        s.minBirthYear != null ? { value: s.minBirthYear, type: Number } : { value: "" },
+        s.maxBirthYear != null ? { value: s.maxBirthYear, type: Number } : { value: "" },
         { value: s.registeredPairsCount ?? 0, type: Number },
       ]),
     ];
