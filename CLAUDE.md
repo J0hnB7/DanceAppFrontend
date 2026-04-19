@@ -345,6 +345,8 @@ BE `GET /profile/dancer/competitions` vrací flat záznamy (`startNumber`, `sect
 - **axios-mock-adapter dual-instance pattern** — `apiClient` má vlastní axios instance, ale 401 refresh interceptor volá **globální** `axios.post("/api/v1/auth/refresh", ...)`. Testy musí mockovat OBĚ: `new MockAdapter(apiClient)` + `new MockAdapter(axios)`.
 - **Zustand reset** — v `beforeEach` volej `useXStore.setState({ ...initialState })` s **všemi** poli; `setState` dělá shallow merge, stálé pole z předchozího testu přežije.
 - **Vitest 4 + Next 16.2** — bez konfliktu; `@vitejs/plugin-react` nutný pro JSX transform.
+- **Testovanie `next.config.ts` / `sentry.*.config.ts`** — mock Sentry wrapper ako identity (`vi.mock("@sentry/nextjs", () => ({ withSentryConfig: (c) => c, init: vi.fn() }))`), `vi.resetModules()` v `beforeEach`, `await import("../next.config")` (alebo `../sentry.edge.config`). Env vars nastav PRED `await import`. Vzor: `src/sentry-edge-config.test.ts`, `src/next-config-rewrites.test.ts` (C14).
+- **`NEXT_PUBLIC_API_URL` v `next.config.ts`** — vždy extrahuj cez `const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").trim()` a použij v OBOCH miestach (CSP connect-src + rewrites destination). Inline `${process.env.NEXT_PUBLIC_API_URL}` v rewrites je vulnerable na Vercel %0A trailing-newline bug → 500 na dynamic routes.
 
 ---
 
