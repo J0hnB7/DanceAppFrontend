@@ -349,6 +349,18 @@ useEffect(() => {
 
 `auth-light` class (přepisuje CSS proměnné na bílé) se smí použít **jen** na standalone stránkách bez AppShell (login, register, onboarding). Uvnitř AppShell/dashboard inputy zdědí tmavé CSS proměnné automaticky — `auth-light` by způsobil bílé inputy v dark mode. Select elementy v dashboardu: `background: "var(--surface)"`, ne `"#fff"`.
 
+## DancerGuard — DANCER_ALLOWED_PATHS whitelist
+
+`src/app/dashboard/layout.tsx` má `DANCER_ALLOWED_PATHS` — každá nová dashboard stránka přístupná pro DANCER musí být přidána do tohoto pole, jinak DANCER tiše přesměrován na `/dashboard/my-registrations`. Příčina: useEffect s `router.replace`.
+
+## Zod v4 — enum error option
+
+`z.enum([...], { required_error: "..." })` → nefunguje. Správně: `z.enum([...], { error: "..." })`.
+
+## MyCompetitionEntry — flat struktura (ne sections)
+
+Backend `GET /profile/dancer/competitions` vrací flat záznamy (`startNumber`, `sectionName`, `reachedRound` na top level) — **ne** `sections[]` array. Interface v `dancer.ts` byl opraven (2026-04-19).
+
 ## CORS — localhost:3001 pro případ obsazeného portu
 
 Pokud je port 3000 obsazen starým procesem, Next.js dev server spustí na 3001 → login selže (backend CORS blokuje). `application.yaml` má default `http://localhost:3000,http://localhost:3001` — oba porty vždy povoleny.
