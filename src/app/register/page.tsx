@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -30,7 +30,7 @@ const dancerRegisterSchema = z.object({
 type DancerRegisterForm = z.infer<typeof dancerRegisterSchema>;
 
 function RegisterPageInner() {
-  const { t, locale } = useLocale();
+  const { t, locale: rawLocale } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
@@ -40,6 +40,11 @@ function RegisterPageInner() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setMounted(true), []);
+  // Server renders with DEFAULT_LOCALE; only switch to actual locale after hydration
+  const locale = mounted ? rawLocale : "cs";
 
   const {
     register,

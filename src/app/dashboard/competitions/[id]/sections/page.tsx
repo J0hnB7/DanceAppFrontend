@@ -475,7 +475,7 @@ function EditSectionDialog({
         entryFeeCurrency: fee ? (s.entryFeeCurrency || "CZK") : undefined,
         minBirthYear: isRichtar ? (s.minBirthYear ?? null) : undefined,
         maxBirthYear: isRichtar ? (s.maxBirthYear ?? null) : undefined,
-        dances: dances.map((name: string) => ({ danceName: name })),
+        dances,
       });
     },
     onSuccess: () => {

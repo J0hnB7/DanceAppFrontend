@@ -109,7 +109,7 @@ export default function SettingsPage() {
         const parts = { year: String(d.getFullYear()), month: String(d.getMonth() + 1), day: String(d.getDate()) };
         setBirthParts(parts);
       }
-    });
+    }).catch((e) => { console.error("[settings] Failed to load dancer profile", e); });
   }, [isDancer, dancerForm]);
 
   const onUpdateProfile = async (values: ProfileForm) => {
@@ -147,6 +147,8 @@ export default function SettingsPage() {
     try {
       const data = await authApi.setupTotp();
       setTotpSetup(data);
+    } catch {
+      toast({ title: t("settings.totpSetupFailed") ?? "Failed to start 2FA setup", variant: "destructive" });
     } finally {
       setTotpLoading(false);
     }
