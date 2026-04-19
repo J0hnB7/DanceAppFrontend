@@ -418,7 +418,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                                 setSelfRegResult(res);
                                 toast({ title: t("publicCompetition.selfRegisterSuccess", { number: String(res.startNumber) }) });
                               } catch (err: unknown) {
-                                const detail = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
+                                const detail = axios.isAxiosError(err) ? (err.response?.data?.detail ?? err.response?.data?.message) : undefined;
                                 if (axios.isAxiosError(err) && err.response?.status === 409) {
                                   toast({ title: t("publicCompetition.registrationNotOpen"), variant: "destructive" });
                                 } else if (detail?.includes("complete your profile")) {
