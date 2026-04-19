@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Trophy, Users, BarChart3, Settings,
+  Trophy, Users, BarChart3, Settings, User,
   FlaskConical, ClipboardList, Archive, LayoutTemplate, UserCog,
   Bell, CheckCheck, X, AlertCircle, CheckCircle2, Info, AlertTriangle,
 } from "lucide-react";
@@ -39,7 +39,8 @@ const navItems: NavItem[] = [
   { label: "nav.participants",    href: "/dashboard/participants",      icon: Users,         roles: ["ORGANIZER", "ADMIN"],              group: "competitions" },
   { label: "nav.templates",        href: "/dashboard/templates",         icon: LayoutTemplate, roles: ["ADMIN"],                         group: "admin" },
   { label: "nav.organizers",       href: "/dashboard/admin/organizers",  icon: UserCog,        roles: ["ADMIN"],                         group: "admin" },
-  { label: "nav.settings",        href: "/dashboard/settings",          icon: Settings,                                                  group: "admin" },
+  { label: "nav.settings",        href: "/dashboard/settings",          icon: Settings,      roles: ["ORGANIZER", "ADMIN"],              group: "admin" },
+  { label: "nav.profile",         href: "/profile",                     icon: User,          roles: ["DANCER"],                          group: "admin" },
   { label: "nav.seeder",          href: "/dashboard/seed",              icon: FlaskConical,  testModeOnly: true,                         group: "admin" },
 ];
 
@@ -226,11 +227,11 @@ export function Sidebar({ onNavClick }: { onNavClick?: () => void } = {}) {
                 <p className="text-[11px] text-[#64748B] truncate">{user?.email}</p>
               </div>
               <Link
-                href="/dashboard/settings"
+                href={user?.role === "DANCER" ? "/profile" : "/dashboard/settings"}
                 onClick={() => setUserMenuOpen(false)}
                 className="flex w-full items-center px-3 py-2 text-[13px] text-[#94A3B8] hover:bg-[rgba(255,255,255,0.05)] hover:text-white transition-colors"
               >
-                {t("settings.title")}
+                {user?.role === "DANCER" ? t("nav.profile") : t("settings.title")}
               </Link>
               <div className="h-px bg-[rgba(255,255,255,0.07)]" />
               <button

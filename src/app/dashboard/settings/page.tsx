@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -44,8 +45,15 @@ type PasswordForm = z.infer<typeof passwordSchema>;
 
 export default function SettingsPage() {
   const { t } = useLocale();
+  const router = useRouter();
   const { user, checkAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === "DANCER") {
+      router.replace("/profile");
+    }
+  }, [user, router]);
   const [totpSetup, setTotpSetup] = useState<{ secret: string; qrCodeBase64: string } | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
