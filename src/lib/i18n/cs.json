@@ -479,7 +479,16 @@
     "ageNotEligible": "Nesplňujete věkové podmínky",
     "goToProfile": "Vyplnit profil →",
     "noEligibleSections": "Pro váš věk a typ soutěže nejsou v této soutěži dostupné žádné kategorie.",
-    "missingBirthYear": "Pro zobrazení dostupných kategorií vyplňte datum narození v profilu."
+    "missingBirthYear": "Pro zobrazení dostupných kategorií vyplňte datum narození v profilu.",
+    "paymentTitle": "Způsob platby",
+    "entryFeeLabel": "Startovné",
+    "paymentMethod": {
+      "PAY_AT_VENUE": "Platba na místě",
+      "BANK_TRANSFER": "Bankovním převodem",
+      "ORGANIZER_WEBSITE": "Na webu pořadatele",
+      "STRIPE": "Online kartou",
+      "OTHER": "Jiný způsob"
+    }
   },
   "publicRegister": {
     "backToCompetition": "Zpět na soutěž",

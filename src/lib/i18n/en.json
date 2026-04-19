@@ -479,7 +479,16 @@
     "ageNotEligible": "Age requirements not met",
     "goToProfile": "Go to profile →",
     "missingBirthYear": "Please add your date of birth in your profile to see available categories.",
-    "noEligibleSections":"No categories are available for your age and competition type in this event."
+    "noEligibleSections": "No categories are available for your age and competition type in this event.",
+    "paymentTitle": "Payment",
+    "entryFeeLabel": "Entry fee",
+    "paymentMethod": {
+      "PAY_AT_VENUE": "Pay at venue",
+      "BANK_TRANSFER": "Bank transfer",
+      "ORGANIZER_WEBSITE": "Organizer website",
+      "STRIPE": "Online by card",
+      "OTHER": "Other"
+    }
   },
   "publicRegister": {
     "backToCompetition": "Back to competition",
