@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { useQuery } from "@tanstack/react-query";
 import { dancerApi, type MyCompetitionEntry } from "@/lib/api/dancer";
 import { useLocale } from "@/contexts/locale-context";
+import { useAuthStore } from "@/store/auth-store";
 import { Medal, MapPin, Calendar, Hash, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
@@ -128,10 +129,13 @@ function CompetitionCard({ entry, locale }: { entry: MyCompetitionEntry; locale:
 
 export default function MyResultsPage() {
   const { t, locale } = useLocale();
+  const { user } = useAuthStore();
+  const isDancer = user?.role === "DANCER";
 
   const { data: entries = [], isLoading, isError } = useQuery({
     queryKey: ["dancer-competitions"],
     queryFn: () => dancerApi.getMyCompetitions(),
+    enabled: isDancer,
     staleTime: 60_000,
   });
 
