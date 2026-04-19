@@ -375,19 +375,6 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                   {competition.paymentInfo && (
                     <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>{competition.paymentInfo}</p>
                   )}
-                  {sections.some(s => s.entryFee) && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid #F3F4F6", paddingTop: 12 }}>
-                      <p style={{ fontSize: ".75rem", fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".06em" }}>
-                        {t("publicCompetition.entryFeeLabel")}
-                      </p>
-                      {sections.filter(s => s.entryFee).map(s => (
-                        <div key={s.id} style={{ display: "flex", justifyContent: "space-between", fontSize: ".875rem", color: "#374151" }}>
-                          <span>{s.name}</span>
-                          <span style={{ fontWeight: 600 }}>{formatCurrency(s.entryFee!, s.entryFeeCurrency ?? "CZK")}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             );
