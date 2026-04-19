@@ -11,7 +11,8 @@ export interface DancerRegisterRequest {
 export interface OnboardingRequest {
   firstName: string;
   lastName: string;
-  birthYear: number;
+  birthDate?: string;
+  birthYear?: number;
   club?: string;
   partnerNameText?: string;
 }
@@ -19,6 +20,7 @@ export interface OnboardingRequest {
 export interface DancerProfileRequest {
   firstName?: string;
   lastName?: string;
+  birthDate?: string;
   birthYear?: number;
   club?: string;
   partnerNameText?: string;
@@ -29,6 +31,7 @@ export interface DancerProfileResponse {
   id: string;
   firstName: string;
   lastName: string;
+  birthDate: string | null;
   birthYear: number | null;
   club: string | null;
   partnerUserId: string | null;

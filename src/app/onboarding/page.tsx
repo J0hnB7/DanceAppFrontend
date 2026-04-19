@@ -16,13 +16,10 @@ const currentYear = new Date().getFullYear();
 const onboardingSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  birthYear: z
-    .string()
-    .min(1)
-    .refine((v) => {
-      const y = parseInt(v, 10);
-      return !isNaN(y) && y >= 1920 && y <= currentYear;
-    }, { message: "Zadejte platný rok narození" }),
+  birthDate: z.string().min(1, "Zadejte datum narození").refine((v) => {
+    const y = new Date(v).getFullYear();
+    return y >= 1920 && y <= currentYear;
+  }, { message: "Zadejte platné datum narození" }),
   club: z.string().optional(),
   partnerNameText: z.string().optional(),
 });
@@ -49,7 +46,7 @@ export default function OnboardingPage() {
   } = useForm<OnboardingForm>({ resolver: zodResolver(onboardingSchema) });
 
   const goToPartnerStep = async () => {
-    const ok = await trigger(["firstName", "lastName", "birthYear", "club"]);
+    const ok = await trigger(["firstName", "lastName", "birthDate", "club"]);
     if (ok) setStep("partner");
   };
 
@@ -60,7 +57,7 @@ export default function OnboardingPage() {
       await dancerApi.completeOnboarding({
         firstName: values.firstName,
         lastName: values.lastName,
-        birthYear: parseInt(values.birthYear, 10),
+        birthDate: values.birthDate,
         club: values.club || undefined,
         partnerNameText: values.partnerNameText || undefined,
       });
@@ -85,6 +82,7 @@ export default function OnboardingPage() {
         .onb-btn:disabled{opacity:.6;cursor:not-allowed}
         .onb-btn-secondary{width:100%;padding:11px;border-radius:10px;background:transparent;color:#6B7280;font-size:.93rem;font-weight:500;border:1.5px solid #E5E7EB;cursor:pointer;transition:all .2s;font-family:inherit}
         .onb-btn-secondary:hover{background:#F9FAFB;border-color:#D1D5DB}
+        .auth-light{--surface:#fff;--border:#E5E7EB;--text-primary:#111827;--text-secondary:#6B7280;--text-tertiary:#9CA3AF;--radius-md:8px;--accent:#4F46E5;--destructive:#EF4444}
       `}</style>
 
       <div style={{
@@ -133,18 +131,18 @@ export default function OnboardingPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(onSubmit)} className="auth-light">
               {step === "profile" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <Input
-                      label={t("dancer.register.firstName")}
+                      label={t("dancer.onboarding.firstNameDancer")}
                       placeholder="Jana"
                       error={errors.firstName?.message}
                       {...register("firstName")}
                     />
                     <Input
-                      label={t("dancer.register.lastName")}
+                      label={t("dancer.onboarding.lastNameDancer")}
                       placeholder="Nováková"
                       error={errors.lastName?.message}
                       {...register("lastName")}
@@ -152,14 +150,12 @@ export default function OnboardingPage() {
                   </div>
 
                   <Input
-                    label={t("dancer.onboarding.birthYear")}
-                    type="number"
-                    placeholder="2000"
-                    inputMode="numeric"
-                    min={1920}
-                    max={currentYear}
-                    error={errors.birthYear?.message}
-                    {...register("birthYear")}
+                    label={t("dancer.onboarding.birthDate")}
+                    type="date"
+                    max={`${currentYear}-12-31`}
+                    min="1920-01-01"
+                    error={errors.birthDate?.message}
+                    {...register("birthDate")}
                   />
 
                   <Input
