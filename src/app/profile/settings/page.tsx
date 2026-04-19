@@ -18,7 +18,10 @@ const currentYear = new Date().getFullYear();
 const profileSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  birthDate: z.string().min(1, "Zadejte datum narození"),
+  birthYear: z.string().min(1, "Zadejte rok narození").refine((v) => {
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 1920 && n <= currentYear;
+  }, { message: "Zadejte platný rok narození" }),
   club: z.string().optional(),
   partnerNameText: z.string().optional(),
   gender: z.string().optional(),
@@ -56,7 +59,7 @@ export default function ProfileSettingsPage() {
       reset({
         firstName: p.firstName,
         lastName: p.lastName,
-        birthDate: p.birthDate ?? (p.birthYear ? `${p.birthYear}-01-01` : ""),
+        birthYear: String(p.birthYear ?? (p.birthDate ? new Date(p.birthDate).getFullYear() : "")),
         club: p.club ?? "",
         partnerNameText: p.partnerName ?? "",
         gender: p.gender ?? "",
@@ -74,7 +77,7 @@ export default function ProfileSettingsPage() {
       const updated = await dancerApi.updateProfile({
         firstName: values.firstName,
         lastName: values.lastName,
-        birthDate: values.birthDate,
+        birthYear: Number(values.birthYear),
         club: values.club || undefined,
         partnerNameText: values.partnerNameText || undefined,
         gender: values.gender || undefined,
@@ -203,12 +206,13 @@ export default function ProfileSettingsPage() {
                       <Input label={t("dancer.register.lastName")} error={errors.lastName?.message} {...register("lastName")} />
                     </div>
                     <Input
-                      label={t("dancer.onboarding.birthDate")}
-                      type="date"
-                      min="1920-01-01"
-                      max={`${currentYear}-12-31`}
-                      error={errors.birthDate?.message}
-                      {...register("birthDate")}
+                      label={t("dancer.onboarding.birthYear")}
+                      type="number"
+                      min={1920}
+                      max={currentYear}
+                      placeholder={String(currentYear - 20)}
+                      error={errors.birthYear?.message}
+                      {...register("birthYear")}
                     />
                     <Input label={t("dancer.onboarding.club")} placeholder={t("dancer.onboarding.clubPlaceholder")} {...register("club")} />
                     <div>
@@ -243,7 +247,7 @@ export default function ProfileSettingsPage() {
                   {([
                     [t("dancer.register.firstName"), profile?.firstName],
                     [t("dancer.register.lastName"), profile?.lastName],
-                    [t("dancer.onboarding.birthDate"), profile?.birthDate ? new Date(profile.birthDate).toLocaleDateString("cs-CZ") : (profile?.birthYear?.toString() ?? "—")],
+                    [t("dancer.onboarding.birthYear"), profile?.birthYear?.toString() ?? (profile?.birthDate ? String(new Date(profile.birthDate).getFullYear()) : "—")],
                     [t("dancer.onboarding.club"), profile?.club ?? "—"],
                     [t("dancer.profile.gender"), profile?.gender
                       ? profile.gender === "MALE" ? t("dancer.profile.genderMale")
