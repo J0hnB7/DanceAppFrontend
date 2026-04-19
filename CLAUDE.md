@@ -5,6 +5,19 @@
 
 ---
 
+## SectionEditor — kanonická komponenta pro formulář sekce
+
+`src/components/shared/section-editor.tsx` — **jediné místo** kde žije UI pro tvorbu/edit sekce.
+- `competitions/new/page.tsx` ho používá (`fieldArrayName="categories"`), templates (`fieldArrayName="sections"`)
+- Nepřidávej inline section form nikde jinde — přidej prop do `SectionEditor`
+
+### Richtar kategorie — template mode via danceStyle
+- `danceStyle = "SINGLE_DANCE" | "MULTIDANCE"` → Richtar režim; `"STANDARD" | "LATIN" | ...` → ČSTS režim
+- Backend `danceStyle` je volný `String` — žádný enum, nové hodnoty projdou bez BE změny
+- Richtar tance: `["Samba", "Cha Cha", "Rumba", "Paso Doble", "Polka", "Jive"]` (konstanta `RICHTAR_DANCES`)
+- Age range: `minBirthYear`/`maxBirthYear` — Junior = `maxBirthYear=2014`, Děti = 2015–2017, Mini = 2018–2022
+- `SectionTemplateItem` (`competition-templates.ts`) má `dances?: { danceName?: string }[]`, `minBirthYear?`, `maxBirthYear?`
+
 ## LogoMark — sdílené logo
 
 `src/components/ui/logo-mark.tsx` — `<LogoMark size={24} />` renderuje `public/logo.png`. Používej všude místo "PP" gradient divu. Import: `import { LogoMark } from "@/components/ui/logo-mark"`.
