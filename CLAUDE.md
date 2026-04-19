@@ -378,6 +378,18 @@ useEffect(() => {
 
 `z.enum([...], { required_error: "..." })` → nefunguje. Správně: `z.enum([...], { error: "..." })`.
 
+## Zod v4 — coerce/preprocess vrací `unknown`
+
+`z.coerce.number()` a `z.preprocess()` inferují `unknown` output type → TS chyba v react-hook-form resolveru. Fix: `z.string().refine((v) => { const n = Number(v); return Number.isInteger(n) && n >= MIN && n <= MAX; })` + `Number(values.field)` v handleru.
+
+## Birthdate UI — tři selekty místo type="date"
+
+Pattern pro výběr data bez klikání po měsících: tři `<select>` (Rok/Měsíc/Den) + `<input type="hidden" {...register("birthDate")}>`. Stav `birthParts: {year,month,day}` v `useState`, kombinace do `YYYY-MM-DD` přes `setValue`. Pre-fill z existujícího data v useEffect: `setBirthParts({year: String(d.getFullYear()), month: String(d.getMonth()+1), day: String(d.getDate())})`. Viz `dashboard/settings/page.tsx` a `onboarding/page.tsx`.
+
+## Dancer — dva oddělené nav kontexty
+
+`/profile/settings` má vlastní standalone top nav (`prof-nav-link` class, inline `<style>`). `/dashboard/settings` používá `sidebar.tsx` navItems. Jsou nezávislé — změna jednoho neovlivní druhý. `DANCER_ALLOWED_PATHS` v `dashboard/layout.tsx` chrání pouze `/dashboard/**` — linky na `/competitions` a jiné veřejné stránky whitelist nepotřebují.
+
 ## MyCompetitionEntry — flat struktura (ne sections)
 
 Backend `GET /profile/dancer/competitions` vrací flat záznamy (`startNumber`, `sectionName`, `reachedRound` na top level) — **ne** `sections[]` array. Interface v `dancer.ts` byl opraven (2026-04-19).
