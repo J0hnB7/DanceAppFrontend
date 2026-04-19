@@ -41,6 +41,7 @@ const navItems: NavItem[] = [
   { label: "nav.organizers",       href: "/dashboard/admin/organizers",  icon: UserCog,        roles: ["ADMIN"],                         group: "admin" },
   { label: "nav.settings",        href: "/dashboard/settings",          icon: Settings,      roles: ["ORGANIZER", "ADMIN"],              group: "admin" },
   { label: "nav.profile",         href: "/profile",                     icon: User,          roles: ["DANCER"],                          group: "admin" },
+  { label: "nav.settings",       href: "/profile/settings",            icon: Settings,      roles: ["DANCER"],                          group: "admin" },
   { label: "nav.seeder",          href: "/dashboard/seed",              icon: FlaskConical,  testModeOnly: true,                         group: "admin" },
 ];
 
