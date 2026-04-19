@@ -1,5 +1,6 @@
 "use client";
 
+import axios from "axios";
 import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -252,7 +253,7 @@ export default function TemplatesPage() {
       await competitionTemplatesApi.create({
         name: data.name,
         description: data.description ?? "",
-        icon: data.icon ?? "",
+        icon: data.icon?.trim() || "📋",
         active: data.active,
         displayOrder: data.displayOrder,
         sections: (data.sections ?? []).map((s) => ({
@@ -271,7 +272,9 @@ export default function TemplatesPage() {
       await invalidate();
       setCreateOpen(false);
       toast({ title: "Šablona vytvořena" });
-    } catch {
+    } catch (err) {
+      const detail = axios.isAxiosError(err) ? { status: err.response?.status, data: err.response?.data, message: err.message } : err;
+      console.error("[template create]", detail);
       toast({ title: t("common.error"), variant: "destructive" });
     } finally {
       setActionLoading(false);
@@ -285,7 +288,7 @@ export default function TemplatesPage() {
       await competitionTemplatesApi.update(editTemplate.id, {
         name: data.name,
         description: data.description ?? "",
-        icon: data.icon ?? "",
+        icon: data.icon?.trim() || "📋",
         active: data.active,
         displayOrder: data.displayOrder,
         sections: (data.sections ?? []).map((s) => ({
@@ -304,7 +307,9 @@ export default function TemplatesPage() {
       await invalidate();
       setEditTemplate(null);
       toast({ title: "Šablona uložena" });
-    } catch {
+    } catch (err) {
+      const detail = axios.isAxiosError(err) ? { status: err.response?.status, data: err.response?.data, message: err.message } : err;
+      console.error("[template edit]", detail);
       toast({ title: t("common.error"), variant: "destructive" });
     } finally {
       setActionLoading(false);
