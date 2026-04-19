@@ -293,7 +293,7 @@ export default function SettingsPage() {
                     <User className="h-4 w-4" aria-hidden="true" /> {t("dancer.profile.sectionProfile")}
                   </CardTitle>
                   {!dancerEditMode && (
-                    <Button size="sm" variant="outline" onClick={() => setDancerEditMode(true)}>
+                    <Button size="sm" onClick={() => setDancerEditMode(true)}>
                       {t("common.edit")}
                     </Button>
                   )}
