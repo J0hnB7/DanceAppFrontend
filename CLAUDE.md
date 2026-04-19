@@ -8,7 +8,7 @@
 ## SectionEditor — kanonická komponenta pro formulář sekce
 
 `src/components/shared/section-editor.tsx` — **jediné místo** kde žije UI pro tvorbu/edit sekce.
-- `competitions/new/page.tsx` ho používá (`fieldArrayName="categories"`), templates (`fieldArrayName="sections"`)
+- `competitions/new/page.tsx` ho používá (`fieldArrayName="categories"`), templates (`fieldArrayName="sections"`), `dashboard/competitions/[id]/sections/new/page.tsx` (`fieldArrayName="sections"`)
 - Nepřidávej inline section form nikde jinde — přidej prop do `SectionEditor`
 
 ### Richtar kategorie — template mode via danceStyle
@@ -17,6 +17,14 @@
 - Richtar tance: `["Samba", "Cha Cha", "Rumba", "Paso Doble", "Polka", "Jive"]` (konstanta `RICHTAR_DANCES`)
 - Age range: `minBirthYear`/`maxBirthYear` — Junior = `maxBirthYear=2014`, Děti = 2015–2017, Mini = 2018–2022
 - `SectionTemplateItem` (`competition-templates.ts`) má `dances?: { danceName?: string }[]`, `minBirthYear?`, `maxBirthYear?`
+
+## Dancer registrace — pouze přihlášení (2026-04-19)
+
+- Anonymní registrace na soutěž **odstraněna** — dancer musí být přihlášen
+- `/competitions/[id]/page.tsx` zobrazuje jen `eligibleSections` (filtrované podle `birthYear` z profilu)
+- `/competitions/[id]/register/page.tsx` → redirect na `/competitions/[id]`
+- Backend validuje věk v `SelfRegistrationService.register()` — `minBirthYear`/`maxBirthYear` vs `profile.getBirthYear()`
+- CSP: Google Sign-In (`@react-oauth/google`) vyžaduje `https://accounts.google.com` v `script-src` i `frame-src` v `next.config.ts`
 
 ## LogoMark — sdílené logo
 

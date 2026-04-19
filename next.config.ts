@@ -6,13 +6,14 @@ const isDev = process.env.NODE_ENV === "development";
 const csp = [
   "default-src 'self'",
   isDev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-    : "script-src 'self' 'unsafe-inline'",
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com"
+    : "script-src 'self' 'unsafe-inline' https://accounts.google.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   `connect-src 'self' ${(process.env.NEXT_PUBLIC_API_URL ?? "").trim()} wss: ws: https://*.ingest.sentry.io https://sentry.io`,
   "font-src 'self' https://fonts.gstatic.com",
   "worker-src 'self' blob:",
+  "frame-src https://accounts.google.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
