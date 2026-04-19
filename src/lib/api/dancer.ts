@@ -50,21 +50,14 @@ export interface PartnerInvitePreview {
   fromName: string;
 }
 
-export interface MyCompetitionSection {
-  sectionId: string;
-  sectionName: string;
-  startNumber: number;
-  paymentStatus: string;
-  finalPlacement: number | null;
-  reachedRound: string | null;
-}
-
 export interface MyCompetitionEntry {
   competitionId: string;
   competitionName: string;
   date: string;
   venue: string;
-  sections: MyCompetitionSection[];
+  startNumber: number;
+  sectionName: string;
+  reachedRound: string | null;
 }
 
 export const dancerApi = {
