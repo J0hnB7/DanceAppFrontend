@@ -106,6 +106,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   });
 
   const isDancer = isAuthenticated && user?.role === "DANCER";
+  const isAdmin = user?.role === "ADMIN" || user?.role === "ORGANIZER";
 
   const { data: dancerProfile } = useQuery({
     queryKey: ["dancer-profile"],
@@ -388,6 +389,30 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
 
           {/* Divider */}
           <div style={{ height: 1, background: "linear-gradient(90deg,transparent,#E5E7EB,transparent)" }} />
+
+          {/* Admin/organizer: all sections overview */}
+          {isAdmin && sections.length > 0 && (
+            <div style={cardStyle}>
+              {sectionLabel("📋", t("publicCompetition.categories"))}
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                {sections.map((section) => (
+                  <div key={section.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 9, border: "1px solid #E5E7EB", padding: "10px 14px", background: "#fff" }}>
+                    <div>
+                      <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827" }}>{section.name}</p>
+                      <p style={{ fontSize: ".78rem", color: "#6B7280" }}>
+                        {[section.ageCategory, section.level, section.danceStyle].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                    {section.entryFee && (
+                      <span style={{ fontSize: ".8rem", fontWeight: 600, color: "#4F46E5" }}>
+                        {formatCurrency(section.entryFee, section.entryFeeCurrency ?? "CZK")}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Auth-gated self-registration (dancer accounts) */}
           {isOpen && sections.length > 0 && (
