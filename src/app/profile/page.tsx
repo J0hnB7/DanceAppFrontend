@@ -57,6 +57,10 @@ export default function ProfilePage() {
 
   useEffect(() => {
     dancerApi.getProfile().then((p) => {
+      if (!p.onboardingCompleted) {
+        router.replace("/onboarding");
+        return;
+      }
       setProfile(p);
       reset({
         firstName: p.firstName,
