@@ -312,51 +312,86 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
           )}
 
           {/* Payment */}
-          {(competition.paymentMethod || competition.contentPayment || competition.paymentInfo || competition.contentFees) && (
-            <div style={cardStyle}>
-              {sectionLabel("💳", t("publicCompetition.paymentTitle"))}
-              <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
-                {competition.paymentMethod && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: ".75rem", fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".06em", minWidth: 80 }}>
-                      {t("publicCompetition.paymentTitle")}
-                    </span>
-                    <span style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827", background: "#EEF2FF", padding: "3px 10px", borderRadius: 6 }}>
-                      {t(`publicCompetition.paymentMethod.${competition.paymentMethod}`)}
-                    </span>
-                  </div>
-                )}
-                {competition.contentFees && (
-                  <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>
-                    {competition.contentFees}
-                  </p>
-                )}
-                {competition.contentPayment && (
-                  <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>
-                    {competition.contentPayment}
-                  </p>
-                )}
-                {competition.paymentInfo && (
-                  <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>
-                    {competition.paymentInfo}
-                  </p>
-                )}
-                {sections.some(s => s.entryFee) && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid #F3F4F6", paddingTop: 12 }}>
-                    <p style={{ fontSize: ".75rem", fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".06em" }}>
-                      {t("publicCompetition.entryFeeLabel")}
-                    </p>
-                    {sections.filter(s => s.entryFee).map(s => (
-                      <div key={s.id} style={{ display: "flex", justifyContent: "space-between", fontSize: ".875rem", color: "#374151" }}>
-                        <span>{s.name}</span>
-                        <span style={{ fontWeight: 600 }}>{formatCurrency(s.entryFee!, s.entryFeeCurrency ?? "CZK")}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          {(competition.paymentMethod || competition.contentPayment || competition.paymentInfo || competition.contentFees) && (() => {
+            const pc = (competition.paymentConfig ?? {}) as Record<string, string>;
+            const isBankTransfer = competition.paymentMethod === "BANK_TRANSFER";
+            return (
+              <div style={cardStyle}>
+                {sectionLabel("💳", t("publicCompetition.paymentTitle"))}
+                <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+                  {competition.paymentMethod && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: ".75rem", fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".06em", minWidth: 80 }}>
+                        {t("publicCompetition.paymentTitle")}
+                      </span>
+                      <span style={{ fontSize: ".875rem", fontWeight: 600, color: "#111827", background: "#EEF2FF", padding: "3px 10px", borderRadius: 6 }}>
+                        {t(`publicCompetition.paymentMethod.${competition.paymentMethod}`)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Bank transfer details */}
+                  {isBankTransfer && (pc.holder || pc.iban || pc.bic) && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px", background: "#F9FAFB", borderRadius: 10, padding: "14px 16px" }}>
+                      {pc.holder && (
+                        <div>
+                          <p style={{ fontSize: ".7rem", color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 2 }}>Majitel účtu</p>
+                          <p style={{ fontSize: ".9rem", fontWeight: 600, color: "#111827" }}>{pc.holder}</p>
+                        </div>
+                      )}
+                      {pc.iban && (
+                        <div>
+                          <p style={{ fontSize: ".7rem", color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 2 }}>IBAN</p>
+                          <p style={{ fontSize: ".9rem", fontWeight: 600, color: "#111827", fontFamily: "monospace" }}>{pc.iban}</p>
+                        </div>
+                      )}
+                      {pc.bic && (
+                        <div>
+                          <p style={{ fontSize: ".7rem", color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 2 }}>BIC / SWIFT</p>
+                          <p style={{ fontSize: ".9rem", fontWeight: 600, color: "#111827", fontFamily: "monospace" }}>{pc.bic}</p>
+                        </div>
+                      )}
+                      {pc.address && (
+                        <div>
+                          <p style={{ fontSize: ".7rem", color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 2 }}>Adresa banky</p>
+                          <p style={{ fontSize: ".9rem", color: "#374151" }}>{pc.address}</p>
+                        </div>
+                      )}
+                      {pc.qrCode && (
+                        <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 16, marginTop: 4 }}>
+                          <img src={pc.qrCode} alt="QR kód pro platbu" style={{ width: 90, height: 90, borderRadius: 8, border: "1px solid #E5E7EB" }} />
+                          <p style={{ fontSize: ".8rem", color: "#6B7280", lineHeight: 1.5 }}>Naskenujte QR kód<br />pro platbu převodem</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {competition.contentFees && (
+                    <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>{competition.contentFees}</p>
+                  )}
+                  {competition.contentPayment && (
+                    <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>{competition.contentPayment}</p>
+                  )}
+                  {competition.paymentInfo && (
+                    <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "#374151", whiteSpace: "pre-line" }}>{competition.paymentInfo}</p>
+                  )}
+                  {sections.some(s => s.entryFee) && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid #F3F4F6", paddingTop: 12 }}>
+                      <p style={{ fontSize: ".75rem", fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".06em" }}>
+                        {t("publicCompetition.entryFeeLabel")}
+                      </p>
+                      {sections.filter(s => s.entryFee).map(s => (
+                        <div key={s.id} style={{ display: "flex", justifyContent: "space-between", fontSize: ".875rem", color: "#374151" }}>
+                          <span>{s.name}</span>
+                          <span style={{ fontWeight: 600 }}>{formatCurrency(s.entryFee!, s.entryFeeCurrency ?? "CZK")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* News */}
           {newsItems.length > 0 && (
