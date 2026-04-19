@@ -2,7 +2,7 @@
 
 import { use, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Layers, Sheet, Download, Pencil } from "lucide-react";
+import { Plus, Layers, Sheet, Download, Pencil, Trash2 } from "lucide-react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -61,6 +61,19 @@ export default function SectionsPage({
   });
 
   const [editingSection, setEditingSection] = useState<SectionDto | null>(null);
+  const [deletingSection, setDeletingSection] = useState<SectionDto | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (sectionId: string) => sectionsApi.delete(id, sectionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sections", id] });
+      setDeletingSection(null);
+      toast({ title: t("section.deleteSuccess"), variant: "success" });
+    },
+    onError: (err) => {
+      toast({ title: getErrorMessage(err, t("common.error")), variant: "destructive" });
+    },
+  });
 
   const importRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -288,6 +301,14 @@ export default function SectionsPage({
                 >
                   <Pencil className="h-4 w-4" aria-hidden="true" />
                 </button>
+                <button
+                  type="button"
+                  aria-label={t("section.delete")}
+                  onClick={(e) => { e.stopPropagation(); setDeletingSection(section); }}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded text-[var(--text-secondary)] hover:text-[var(--destructive)] hover:bg-[var(--surface-secondary)] transition-colors cursor-pointer"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -304,6 +325,31 @@ export default function SectionsPage({
             setEditingSection(null);
           }}
         />
+      )}
+
+      {deletingSection && (
+        <Dialog open onOpenChange={() => setDeletingSection(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("section.deleteTitle")}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-[var(--text-secondary)]">
+              {t("section.deleteConfirm", { name: deletingSection.name ?? "" })}
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setDeletingSection(null)}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                variant="destructive"
+                loading={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deletingSection.id)}
+              >
+                {t("section.deleteConfirmBtn")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {importResult && (

@@ -247,7 +247,12 @@
     "edit": "Upravit kategorii",
     "editTitle": "Upravit kategorii",
     "editSave": "Uložit",
-    "editSuccess": "Kategorie uložena"
+    "editSuccess": "Kategorie uložena",
+    "delete": "Smazat kategorii",
+    "deleteTitle": "Smazat kategorii",
+    "deleteConfirm": "Opravdu chcete smazat kategorii \"{{name}}\"? Tato akce je nevratná.",
+    "deleteConfirmBtn": "Smazat",
+    "deleteSuccess": "Kategorie smazána"
   },
   "registrations": {
     "title": "Registrace",

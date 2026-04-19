@@ -247,7 +247,12 @@
     "edit": "Edit category",
     "editTitle": "Edit category",
     "editSave": "Save",
-    "editSuccess": "Category saved"
+    "editSuccess": "Category saved",
+    "delete": "Delete category",
+    "deleteTitle": "Delete category",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+    "deleteConfirmBtn": "Delete",
+    "deleteSuccess": "Category deleted"
   },
   "registrations": {
     "title": "Registrations",
