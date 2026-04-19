@@ -337,6 +337,20 @@ BE `GET /profile/dancer/competitions` vrací flat záznamy (`startNumber`, `sect
 
 ---
 
+## E2E testy (Playwright)
+
+- Config: `playwright.config.ts`, `testDir: tests/e2e`, `workers: 1`, `fullyParallel: false` (sdílejí BE state)
+- Běh: `npx playwright test [file]` — `webServer` auto-startuje FE s `NEXT_PUBLIC_MOCK_API=false`
+- Report: `playwright-report/index.html` — data embedded jako base64 zip (regex `base64,(UEsDBB...)`, unzip → `report.json`)
+- **06** (dancer registration) — bez env vars, jen `/register` happy path
+- **07, 08, 09** — vyžadují env vars + seed data, jinak `test.skip()` v `beforeEach` nebo inline
+  - `E2E_DANCER_EMAIL`, `E2E_DANCER_PASSWORD` — seeded DANCER s `onboardingCompleted=true` + `birthYear`
+  - `E2E_JUDGE_TOKEN`, `E2E_JUDGE_PIN` — pro judge scoring testy
+  - `E2E_COMPETITION_SLUG` — optional, jinak první otevřená
+- BE **nemá** public list endpoint — `/competitions/public` vrací 500 (parsuje "public" jako UUID), `/competitions` 401. Seed přes API: register dancer → register organizer → organizer vytvoří soutěž
+
+---
+
 ## Spec soubory
 
 - **Schedule modul**: `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`
