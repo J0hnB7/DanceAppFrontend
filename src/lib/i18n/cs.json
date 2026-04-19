@@ -435,6 +435,7 @@
     "notFoundDesc": "Odkaz může být neplatný nebo soutěž byla odstraněna.",
     "allCompetitions": "Všechny soutěže",
     "organizerLogin": "Přihlášení →",
+    "myAccount": "Můj účet →",
     "registrationNotOpen": "Registrace není otevřena",
     "registrationNotOpenDesc": "Registrace momentálně neprobíhá.",
     "basicInfo": "Základní informace",
@@ -477,7 +478,8 @@
     "completeProfileFirst": "Nejdřív vyplňte profil",
     "ageNotEligible": "Nesplňujete věkové podmínky",
     "goToProfile": "Vyplnit profil →",
-    "noEligibleSections": "Pro váš věk a typ soutěže nejsou v této soutěži dostupné žádné kategorie."
+    "noEligibleSections": "Pro váš věk a typ soutěže nejsou v této soutěži dostupné žádné kategorie.",
+    "missingBirthYear": "Pro zobrazení dostupných kategorií vyplňte datum narození v profilu."
   },
   "publicRegister": {
     "backToCompetition": "Zpět na soutěž",

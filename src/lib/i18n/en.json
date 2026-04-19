@@ -435,6 +435,7 @@
     "notFoundDesc": "The link may be invalid or the competition has been removed.",
     "allCompetitions": "All competitions",
     "organizerLogin": "Login →",
+    "myAccount": "My account →",
     "registrationNotOpen": "Registration is not open",
     "registrationNotOpenDesc": "Registration is not currently active.",
     "basicInfo": "Basic information",
@@ -477,7 +478,8 @@
     "completeProfileFirst": "Complete your profile first",
     "ageNotEligible": "Age requirements not met",
     "goToProfile": "Go to profile →",
-    "noEligibleSections": "No categories are available for your age and competition type in this event."
+    "missingBirthYear": "Please add your date of birth in your profile to see available categories.",
+    "noEligibleSections":"No categories are available for your age and competition type in this event."
   },
   "publicRegister": {
     "backToCompetition": "Back to competition",

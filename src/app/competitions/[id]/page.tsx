@@ -40,10 +40,14 @@ const sectionLabel = (icon: string, text: string) => (
 /* ── Nav ───────────────────────────────────────────────── */
 function PublicNav() {
   const { t: _t, locale, setLocale } = useLocale();
+  const { isAuthenticated, user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
   const t = (key: string, params?: Record<string, string | number>) => mounted ? _t(key, params) : "";
+
+  const dashboardHref = user?.role === "DANCER" ? "/profile/settings" : "/dashboard";
+
   return (
     <nav style={{
       position: "sticky", top: 0, zIndex: 50,
@@ -67,7 +71,13 @@ function PublicNav() {
               {locale === "en" ? "CZ" : "EN"}
             </button>
           )}
-          <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>{t("publicCompetition.organizerLogin")}</Link>
+          {mounted && isAuthenticated ? (
+            <Link href={dashboardHref} style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>
+              {user?.name ? `${user.name.split(" ")[0]} →` : t("publicCompetition.myAccount")}
+            </Link>
+          ) : (
+            <Link href="/login" style={{ fontSize: ".85rem", fontWeight: 600, color: "#4F46E5", textDecoration: "none" }}>{t("publicCompetition.organizerLogin")}</Link>
+          )}
         </div>
       </div>
     </nav>
@@ -107,7 +117,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   const { data: eligibleSections = [] } = useQuery({
     queryKey: ["sections", "eligible", id, dancerProfile?.birthYear],
     queryFn: () => sectionsApi.getEligible(id, dancerProfile?.birthYear ?? undefined),
-    enabled: isDancer,
+    enabled: isDancer && dancerProfile !== undefined,
     staleTime: 60_000,
   });
 
@@ -367,7 +377,17 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                         </a>
                       </div>
                     )}
-                    {dancerProfile && dancerProfile.onboardingCompleted && eligibleSections.length === 0 && (
+                    {dancerProfile && dancerProfile.onboardingCompleted && !dancerProfile.birthYear && (
+                      <div style={{ padding: "12px 14px", borderRadius: 9, background: "#FEF3C7", border: "1px solid #FCD34D" }}>
+                        <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#92400E", marginBottom: 6 }}>
+                          {t("publicCompetition.missingBirthYear")}
+                        </p>
+                        <a href="/profile/settings" style={{ fontSize: ".8rem", color: "#4F46E5", fontWeight: 600, textDecoration: "underline" }}>
+                          {t("publicCompetition.goToProfile")}
+                        </a>
+                      </div>
+                    )}
+                    {dancerProfile && dancerProfile.onboardingCompleted && !!dancerProfile.birthYear && eligibleSections.length === 0 && (
                       <div style={{ padding: "12px 14px", borderRadius: 9, background: "#F3F4F6", border: "1px solid #E5E7EB", textAlign: "center" }}>
                         <p style={{ fontSize: ".85rem", color: "#6B7280" }}>
                           {t("publicCompetition.noEligibleSections")}
