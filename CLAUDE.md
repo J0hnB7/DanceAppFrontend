@@ -142,7 +142,13 @@ Vzor pro standalone: `<form className="auth-light">` kde `<style>` obsahuje:
 
 ## Hydration & SSR
 
-- Locale mismatch: server renderuje DEFAULT_LOCALE, client čte localStorage → `suppressHydrationWarning` **nestačí**. Použij `mounted` guard: `const [mounted, setMounted] = useState(false); useEffect(() => setMounted(true), [])` a render locale-text jen když `mounted`
+- Locale mismatch: server renderuje DEFAULT_LOCALE, client čte localStorage → `suppressHydrationWarning` **nestačí**. Použij `mounted` guard: `const [mounted, setMounted] = useState(false); useEffect(() => setMounted(true), [])` a render locale-text jen když `mounted`. Vzor: `const locale = mounted ? rawLocale : "cs"` — Sentry hydration error na `/register`, `/login`, public pages
+
+## Unhandled promise rejections (Sentry)
+
+- **`.then()` bez `.catch()` = Sentry issue** — `"Object captured as promise rejection with keys: errors, message"`. BE ProblemDetail má klíče `errors/message/detail/status` → reject s objektem ne Error instance
+- `try { await x } finally {}` bez `catch` bloku = stejný problém, chybu si odnese finally ale rejection zůstane unhandled
+- Pattern: `api.call().then(...).catch(e => console.error("[ctx]", e))` nebo toast-only handler
 
 ## ESLint gotchas
 
@@ -264,7 +270,7 @@ BE `GET /profile/dancer/competitions` vrací flat záznamy (`startNumber`, `sect
 - **InvoiceDto.amount vs BE totalAmount** — `inv.amount ?? inv.totalAmount ?? 0` (`payments.ts:86`)
 - **RoundStatus**: `rounds.ts:3` obsahuje stale `"OPEN" | "CLOSED"` — BE má `PENDING | IN_PROGRESS | COMPLETED | CALCULATED`. Ignoruj
 - **PairDto.competitionId je optional** — BE neposílá vždy. NIKDY nepoužívej pro URL construction (→ `/competitions//pairs/...` → 404). Předávej z route params jako prop (vzor: `ContactModal`)
-- **CreateSectionRequest.dances** je `string[]` v interface, BE bere `{ danceName: string }[]` — cast `as unknown as string[]`
+- **CreateSectionRequest.dances** je `string[]` — BE očekává pole stringů (commit b3a80b5). NIKDY `.map(name => ({ danceName: name }))` — vyhazuje `HttpMessageNotReadableException: Cannot deserialize value of type 'java.lang.String'`. Platí pro create, update i import.
 - **write-xlsx-file `type` field**: nikdy `type: undefined` — podmíněný objekt `val != null ? { value: val, type: Number } : { value: "" }`
 - **Default `[]` v useQuery tichý skrývá 500** — UI vypadá jako "žádná data" ale backend crashuje
 
