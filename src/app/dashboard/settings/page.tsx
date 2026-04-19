@@ -363,10 +363,10 @@ export default function SettingsPage() {
                   <div className="flex flex-col gap-4">
                     <p className="text-sm text-[var(--text-secondary)]">{t("dancer.profile.noPartner")}</p>
                     {invite ? (
-                      <div className="rounded-lg bg-green-50 border border-green-200 p-4">
-                        <p className="text-sm font-semibold text-green-700 mb-2">{t("dancer.profile.inviteLinkReady")}</p>
+                      <div className="rounded-lg bg-[var(--success-subtle,#D1FAE5)] border border-[var(--success-border,#A7F3D0)] p-4">
+                        <p className="text-sm font-semibold text-[var(--success-text,#047857)] dark:text-emerald-300 mb-2">{t("dancer.profile.inviteLinkReady")}</p>
                         <div className="flex gap-2 items-center">
-                          <code className="flex-1 text-xs text-[var(--text-primary)] bg-white border border-green-200 rounded px-2 py-1.5 break-all">
+                          <code className="flex-1 text-xs text-[var(--text-primary)] bg-[var(--surface)] border border-[var(--border)] rounded px-2 py-1.5 break-all">
                             {invite.inviteUrl}
                           </code>
                           <button
