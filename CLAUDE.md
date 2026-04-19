@@ -281,6 +281,13 @@ Token overenie lokálne: `SENTRY_AUTH_TOKEN=xxx SENTRY_ORG=bystriansky npx @sent
 - Všetky 86 prekladových kľúčov `publicCompetition.*` existujú v cs.json aj en.json
 - **Pozor:** Hardcoded Czech strings v public pages = bug. Vždy použi `t()` z `useLocale()`
 
+## CompetitionTemplate — backend validace (2026-04-19)
+
+- `CompetitionTemplate.icon` má `@NotBlank` na backendu → nikdy neposílej `""`. Frontend fallback: `data.icon?.trim() || "📋"` v handleCreate/handleEdit.
+- `SectionTemplateValidator.VALID_DANCE_STYLES` je whitelist — při přidání nového danceStyle (např. Richtar `SINGLE_DANCE`/`MULTIDANCE`) je nutno ho přidat do setu v `SectionTemplateValidator.java`.
+- `SectionTemplateItem` Java record musí obsahovat VŠECHNA pole z frontend `SectionTemplateItem` interface — jinak se Richtar data (`dances`, `minBirthYear`, `maxBirthYear`) při uložení ztratí. Při rozšíření FE interface vždy aktualizuj i BE record.
+- `competitorType`/`competitionType` v sekci: validator kontroluje `!= null` ale NE `!isEmpty()` → prázdný string `""` způsobí 400. Frontend musí posílat `|| undefined` aby se prázdné pole přeskočilo (JSON omits undefined → Jackson → null → skip).
+
 ## Backend API
 
 - Backend: `http://localhost:8080`, Frontend dev: `http://localhost:3000`
@@ -294,6 +301,8 @@ Token overenie lokálne: `SENTRY_AUTH_TOKEN=xxx SENTRY_ORG=bystriansky npx @sent
 - **Potvrzený drift:** `InvoiceDto.amount` vs BE `totalAmount` — frontend mapuje `inv.amount ?? inv.totalAmount ?? 0` (`payments.ts:86`). Nepředpokládej, že FE název pole = BE název.
 - **`RoundStatus` stale values:** `rounds.ts:3` obsahuje `"OPEN" | "CLOSED"` — v BE enumu **neexistují**. BE používá `PENDING | IN_PROGRESS | COMPLETED | CALCULATED`. Ignoruj `OPEN`/`CLOSED` ve switch/conditions.
 - **`PairDto.competitionId` je `optional`** — backend ho v response neposílá vždy. NIKDY nepoužívej `pair.competitionId` pro URL konstrukci (→ `undefined` → URL `/competitions//pairs/...` → 404). Vždy předej `competitionId` z route params jako explicitní prop do komponent (vzor: `ContactModal`).
+- **`CreateSectionRequest.dances` je `string[]` v interface ale BE bere `{ danceName: string }[]`** — konzistentní s `EditSectionDialog`. Při předávání dance objektů nutný cast: `as unknown as string[]`.
+- **write-xlsx-file `type` field** — nikdy nepředávej `type: undefined` — použij podmíněný objekt: `val != null ? { value: val, type: Number } : { value: "" }`.
 - Při přidávání nového BE pole → vždy ručně aktualizuj odpovídající interfejs v `src/lib/api/`.
 
 ## Modal accessibility — Escape key pattern
