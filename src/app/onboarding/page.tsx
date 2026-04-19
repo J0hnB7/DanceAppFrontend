@@ -60,6 +60,31 @@ export default function OnboardingPage() {
 
   const selectedGender = watch("gender");
 
+  const [birthParts, setBirthParts] = useState({ year: "", month: "", day: "" });
+
+  const updateBirthDate = (parts: { year: string; month: string; day: string }) => {
+    if (parts.year && parts.month && parts.day) {
+      setValue("birthDate", `${parts.year}-${parts.month.padStart(2, "0")}-${parts.day.padStart(2, "0")}`, { shouldValidate: true });
+    } else {
+      setValue("birthDate", "", { shouldValidate: false });
+    }
+  };
+
+  const setBirthPart = (key: "year" | "month" | "day", value: string) => {
+    const next = { ...birthParts, [key]: value };
+    setBirthParts(next);
+    updateBirthDate(next);
+  };
+
+  const MONTHS_CS = ["Leden","Únor","Březen","Duben","Květen","Červen","Červenec","Srpen","Září","Říjen","Listopad","Prosinec"];
+  const MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const { locale } = useLocale();
+  const MONTHS = locale === "cs" ? MONTHS_CS : MONTHS_EN;
+
+  const daysInMonth = birthParts.year && birthParts.month
+    ? new Date(Number(birthParts.year), Number(birthParts.month), 0).getDate()
+    : 31;
+
   const goToPartnerStep = async () => {
     const ok = await trigger(["firstName", "lastName", "birthDate", "gender", "club"]);
     if (ok) setStep("partner");
@@ -165,14 +190,50 @@ export default function OnboardingPage() {
                     />
                   </div>
 
-                  <Input
-                    label={t("dancer.onboarding.birthDate")}
-                    type="date"
-                    max={`${currentYear}-12-31`}
-                    min="1920-01-01"
-                    error={errors.birthDate?.message}
-                    {...register("birthDate")}
-                  />
+                  <div>
+                    <label style={{ fontSize: ".8rem", fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".05em", display: "block", marginBottom: 6 }}>
+                      {t("dancer.onboarding.birthDate")}
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr", gap: 8 }}>
+                      <select
+                        value={birthParts.year}
+                        onChange={(e) => setBirthPart("year", e.target.value)}
+                        style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${errors.birthDate ? "#EF4444" : "#E5E7EB"}`, background: "#fff", color: birthParts.year ? "#111827" : "#9CA3AF", fontSize: 16, fontFamily: "inherit", cursor: "pointer" }}
+                        aria-label="Rok"
+                      >
+                        <option value="">{locale === "cs" ? "Rok" : "Year"}</option>
+                        {Array.from({ length: currentYear - 1919 }, (_, i) => currentYear - i).map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={birthParts.month}
+                        onChange={(e) => setBirthPart("month", e.target.value)}
+                        style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${errors.birthDate ? "#EF4444" : "#E5E7EB"}`, background: "#fff", color: birthParts.month ? "#111827" : "#9CA3AF", fontSize: 16, fontFamily: "inherit", cursor: "pointer" }}
+                        aria-label="Měsíc"
+                      >
+                        <option value="">{locale === "cs" ? "Měsíc" : "Month"}</option>
+                        {MONTHS.map((m, i) => (
+                          <option key={i + 1} value={i + 1}>{m}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={birthParts.day}
+                        onChange={(e) => setBirthPart("day", e.target.value)}
+                        style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${errors.birthDate ? "#EF4444" : "#E5E7EB"}`, background: "#fff", color: birthParts.day ? "#111827" : "#9CA3AF", fontSize: 16, fontFamily: "inherit", cursor: "pointer" }}
+                        aria-label="Den"
+                      >
+                        <option value="">{locale === "cs" ? "Den" : "Day"}</option>
+                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {errors.birthDate && (
+                      <p style={{ fontSize: ".8rem", color: "#EF4444", marginTop: 4 }}>{errors.birthDate.message}</p>
+                    )}
+                    <input type="hidden" {...register("birthDate")} />
+                  </div>
 
                   {/* Gender toggle */}
                   <div>
