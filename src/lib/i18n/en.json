@@ -2058,6 +2058,7 @@
     "profile": {
       "navProfile": "Profile",
       "navCompetitions": "My Competitions",
+      "navSettings": "Settings",
       "sectionProfile": "Personal details",
       "sectionPartner": "Partner",
       "partnerLinked": "Linked account",

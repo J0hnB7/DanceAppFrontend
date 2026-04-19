@@ -26,10 +26,10 @@ const profileSchema = z.object({
 
 type ProfileForm = z.infer<typeof profileSchema>;
 
-export default function ProfilePage() {
+export default function ProfileSettingsPage() {
   const { t } = useLocale();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { logout } = useAuthStore();
 
   const [profile, setProfile] = useState<DancerProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,12 +42,9 @@ export default function ProfilePage() {
   const [copied, setCopied] = useState(false);
   const [unlinkLoading, setUnlinkLoading] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<ProfileForm>({ resolver: zodResolver(profileSchema) });
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<ProfileForm>({
+    resolver: zodResolver(profileSchema),
+  });
 
   useEffect(() => {
     dancerApi.getProfile().then((p) => {
@@ -97,9 +94,7 @@ export default function ProfilePage() {
     try {
       const result = await dancerApi.generateInvite();
       setInvite(result);
-    } catch {
-      // ignore
-    } finally {
+    } catch { /* ignore */ } finally {
       setInviteLoading(false);
     }
   };
@@ -118,9 +113,7 @@ export default function ProfilePage() {
       await dancerApi.unlinkPartner();
       const updated = await dancerApi.getProfile();
       setProfile(updated);
-    } catch {
-      // ignore
-    } finally {
+    } catch { /* ignore */ } finally {
       setUnlinkLoading(false);
     }
   };
@@ -160,7 +153,6 @@ export default function ProfilePage() {
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#F3F4F6", fontFamily: "var(--font-inter, Inter, sans-serif)" }}>
-        {/* Top nav */}
         <nav style={{ background: "#fff", borderBottom: "1px solid #E5E7EB", padding: "0 24px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
@@ -171,13 +163,13 @@ export default function ProfilePage() {
               <Link href="/dashboard" className="prof-nav-link">
                 <LayoutDashboard className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("nav.competitions")}
               </Link>
-              <Link href="/profile" className="prof-nav-link active">
+              <Link href="/profile" className="prof-nav-link">
                 <User className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("dancer.profile.navProfile")}
               </Link>
               <Link href="/profile/my-competitions" className="prof-nav-link">
                 <Trophy className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("dancer.profile.navCompetitions")}
               </Link>
-              <Link href="/profile/settings" className="prof-nav-link">
+              <Link href="/profile/settings" className="prof-nav-link active">
                 <Settings className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("dancer.profile.navSettings")}
               </Link>
             </div>
@@ -192,7 +184,7 @@ export default function ProfilePage() {
         </nav>
 
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 16px", display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* Profile card */}
+          {/* Personal data card */}
           <div className="prof-fade" style={{ background: "#fff", borderRadius: 14, border: "1px solid #E5E7EB", overflow: "hidden" }}>
             <div style={{ padding: "20px 24px", borderBottom: "1px solid #F3F4F6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontWeight: 700, fontSize: "1rem", color: "#111827" }}>
@@ -210,16 +202,8 @@ export default function ProfilePage() {
                 <form onSubmit={handleSubmit(onSave)} className="auth-light">
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <Input
-                        label={t("dancer.register.firstName")}
-                        error={errors.firstName?.message}
-                        {...register("firstName")}
-                      />
-                      <Input
-                        label={t("dancer.register.lastName")}
-                        error={errors.lastName?.message}
-                        {...register("lastName")}
-                      />
+                      <Input label={t("dancer.register.firstName")} error={errors.firstName?.message} {...register("firstName")} />
+                      <Input label={t("dancer.register.lastName")} error={errors.lastName?.message} {...register("lastName")} />
                     </div>
                     <Input
                       label={t("dancer.onboarding.birthDate")}
@@ -229,11 +213,7 @@ export default function ProfilePage() {
                       error={errors.birthDate?.message}
                       {...register("birthDate")}
                     />
-                    <Input
-                      label={t("dancer.onboarding.club")}
-                      placeholder={t("dancer.onboarding.clubPlaceholder")}
-                      {...register("club")}
-                    />
+                    <Input label={t("dancer.onboarding.club")} placeholder={t("dancer.onboarding.clubPlaceholder")} {...register("club")} />
                     <div>
                       <label htmlFor="gender" style={{ display: "block", fontWeight: 600, marginBottom: 4, fontSize: ".88rem", color: "#374151" }}>
                         {t("dancer.profile.gender")}
