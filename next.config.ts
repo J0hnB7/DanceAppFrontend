@@ -3,6 +3,10 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// Defensive: Vercel env var with trailing newline (%0A) corrupts CSP header and
+// rewrites destination → serverless crash. Always sanitize.
+const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").trim();
+
 const csp = [
   "default-src 'self'",
   isDev
@@ -10,7 +14,7 @@ const csp = [
     : "script-src 'self' 'unsafe-inline' https://accounts.google.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
-  `connect-src 'self' ${(process.env.NEXT_PUBLIC_API_URL ?? "").trim()} wss: ws: https://*.ingest.sentry.io https://sentry.io`,
+  `connect-src 'self' ${apiUrl} wss: ws: https://*.ingest.sentry.io https://sentry.io`,
   "font-src 'self' https://fonts.gstatic.com",
   "worker-src 'self' blob:",
   "frame-src https://accounts.google.com",
@@ -35,7 +39,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
+        destination: `${apiUrl}/api/:path*`,
       },
     ];
   },
