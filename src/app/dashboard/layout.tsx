@@ -11,6 +11,7 @@ import { useAuthStore } from "@/store/auth-store";
 const DANCER_ALLOWED_PATHS = [
   "/dashboard/my-registrations",
   "/dashboard/settings",
+  "/dashboard/results",
 ];
 
 function DancerGuard({ children }: { children: React.ReactNode }) {
