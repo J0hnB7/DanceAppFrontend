@@ -45,7 +45,10 @@ const passwordSchema = z
 const dancerProfileSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  birthDate: z.string().min(1),
+  birthDate: z.string().min(1, "Zadejte datum narození").refine((v) => {
+    const y = new Date(v).getFullYear();
+    return y >= 1920 && y <= currentYear;
+  }, { message: "Zadejte platné datum narození" }),
   club: z.string().optional(),
   partnerNameText: z.string().optional(),
   gender: z.string().optional(),
@@ -92,14 +95,20 @@ export default function SettingsPage() {
     if (!isDancer) return;
     dancerApi.getProfile().then((p) => {
       setDancerProfile(p);
+      const raw = p.birthDate ?? (p.birthYear ? `${p.birthYear}-01-01` : "");
       dancerForm.reset({
         firstName: p.firstName,
         lastName: p.lastName,
-        birthDate: p.birthDate ?? (p.birthYear ? `${p.birthYear}-01-01` : ""),
+        birthDate: raw,
         club: p.club ?? "",
         partnerNameText: p.partnerName ?? "",
         gender: p.gender ?? "",
       });
+      if (raw) {
+        const d = new Date(raw);
+        const parts = { year: String(d.getFullYear()), month: String(d.getMonth() + 1), day: String(d.getDate()) };
+        setBirthParts(parts);
+      }
     });
   }, [isDancer, dancerForm]);
 
@@ -193,6 +202,27 @@ export default function SettingsPage() {
     }
   };
 
+  const [birthParts, setBirthParts] = useState({ year: "", month: "", day: "" });
+
+  const updateBirthDate = (parts: { year: string; month: string; day: string }) => {
+    if (parts.year && parts.month && parts.day) {
+      dancerForm.setValue("birthDate", `${parts.year}-${parts.month.padStart(2, "0")}-${parts.day.padStart(2, "0")}`, { shouldValidate: true });
+    } else {
+      dancerForm.setValue("birthDate", "", { shouldValidate: false });
+    }
+  };
+
+  const setBirthPart = (key: "year" | "month" | "day", value: string) => {
+    const next = { ...birthParts, [key]: value };
+    setBirthParts(next);
+    updateBirthDate(next);
+  };
+
+  const MONTHS_CS = ["Leden","Únor","Březen","Duben","Květen","Červen","Červenec","Srpen","Září","Říjen","Listopad","Prosinec"];
+  const daysInMonth = birthParts.year && birthParts.month
+    ? new Date(Number(birthParts.year), Number(birthParts.month), 0).getDate()
+    : 31;
+
   const generateInvite = async () => {
     setInviteLoading(true);
     try {
@@ -276,14 +306,33 @@ export default function SettingsPage() {
                       <Input label={t("dancer.onboarding.firstNameDancer")} error={dancerForm.formState.errors.firstName?.message} {...dancerForm.register("firstName")} />
                       <Input label={t("dancer.onboarding.lastNameDancer")} error={dancerForm.formState.errors.lastName?.message} {...dancerForm.register("lastName")} />
                     </div>
-                    <Input
-                      label={t("dancer.onboarding.birthDate")}
-                      type="date"
-                      min="1920-01-01"
-                      max={`${currentYear}-12-31`}
-                      error={dancerForm.formState.errors.birthDate?.message}
-                      {...dancerForm.register("birthDate")}
-                    />
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-1.5">
+                        {t("dancer.onboarding.birthDate")}
+                      </label>
+                      <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr", gap: 8 }}>
+                        {[
+                          { key: "year" as const, value: birthParts.year, placeholder: "Rok", options: Array.from({ length: currentYear - 1919 }, (_, i) => ({ v: String(currentYear - i), l: String(currentYear - i) })) },
+                          { key: "month" as const, value: birthParts.month, placeholder: "Měsíc", options: MONTHS_CS.map((m, i) => ({ v: String(i + 1), l: m })) },
+                          { key: "day" as const, value: birthParts.day, placeholder: "Den", options: Array.from({ length: daysInMonth }, (_, i) => ({ v: String(i + 1), l: String(i + 1) })) },
+                        ].map(({ key, value, placeholder, options }) => (
+                          <select
+                            key={key}
+                            value={value}
+                            onChange={(e) => setBirthPart(key, e.target.value)}
+                            aria-label={placeholder}
+                            style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${dancerForm.formState.errors.birthDate ? "var(--destructive)" : "var(--border)"}`, background: "var(--surface)", color: value ? "var(--text-primary)" : "var(--text-tertiary)", fontSize: 16, fontFamily: "inherit", cursor: "pointer" }}
+                          >
+                            <option value="">{placeholder}</option>
+                            {options.map(({ v, l }) => <option key={v} value={v}>{l}</option>)}
+                          </select>
+                        ))}
+                      </div>
+                      {dancerForm.formState.errors.birthDate && (
+                        <p className="text-xs text-[var(--destructive)] mt-1">{dancerForm.formState.errors.birthDate.message}</p>
+                      )}
+                      <input type="hidden" {...dancerForm.register("birthDate")} />
+                    </div>
                     <Input label={t("dancer.onboarding.club")} placeholder={t("dancer.onboarding.clubPlaceholder")} {...dancerForm.register("club")} />
                     <div>
                       <label htmlFor="dancer-gender" className="block text-sm font-semibold mb-1 text-[var(--text-primary)]">
@@ -309,7 +358,7 @@ export default function SettingsPage() {
                     {([
                       [t("dancer.onboarding.firstNameDancer"), dancerProfile?.firstName],
                       [t("dancer.onboarding.lastNameDancer"), dancerProfile?.lastName],
-                      [t("dancer.onboarding.birthDate"), dancerProfile?.birthDate ? new Date(dancerProfile.birthDate).toLocaleDateString("cs-CZ") : (dancerProfile?.birthYear?.toString() ?? "—")],
+                      [t("dancer.onboarding.birthDate"), dancerProfile?.birthDate ? new Date(dancerProfile.birthDate).toLocaleDateString("cs-CZ") : dancerProfile?.birthYear?.toString() ?? "—"],
                       [t("dancer.onboarding.club"), dancerProfile?.club ?? "—"],
                       [t("dancer.profile.gender"), dancerProfile?.gender
                         ? dancerProfile.gender === "MALE" ? t("dancer.profile.genderMale")
