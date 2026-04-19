@@ -20,6 +20,7 @@ const onboardingSchema = z.object({
     const y = new Date(v).getFullYear();
     return y >= 1920 && y <= currentYear;
   }, { message: "Zadejte platné datum narození" }),
+  gender: z.enum(["MALE", "FEMALE"], { error: "Vyberte pohlaví" }),
   club: z.string().optional(),
   partnerNameText: z.string().optional(),
 });
@@ -38,15 +39,29 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const nameParts = user?.name?.split(" ") ?? [];
+  const defaultFirstName = nameParts[0] ?? "";
+  const defaultLastName = nameParts.slice(1).join(" ") ?? "";
+
   const {
     register,
     handleSubmit,
     trigger,
+    watch,
+    setValue,
     formState: { errors },
-  } = useForm<OnboardingForm>({ resolver: zodResolver(onboardingSchema) });
+  } = useForm<OnboardingForm>({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: {
+      firstName: defaultFirstName,
+      lastName: defaultLastName,
+    },
+  });
+
+  const selectedGender = watch("gender");
 
   const goToPartnerStep = async () => {
-    const ok = await trigger(["firstName", "lastName", "birthDate", "club"]);
+    const ok = await trigger(["firstName", "lastName", "birthDate", "gender", "club"]);
     if (ok) setStep("partner");
   };
 
@@ -58,10 +73,11 @@ export default function OnboardingPage() {
         firstName: values.firstName,
         lastName: values.lastName,
         birthDate: values.birthDate,
+        gender: values.gender,
         club: values.club || undefined,
         partnerNameText: values.partnerNameText || undefined,
       });
-      router.replace("/profile");
+      router.replace("/dashboard/settings");
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
       setApiError(apiErr?.message ?? t("dancer.onboarding.error"));
@@ -157,6 +173,40 @@ export default function OnboardingPage() {
                     error={errors.birthDate?.message}
                     {...register("birthDate")}
                   />
+
+                  {/* Gender toggle */}
+                  <div>
+                    <label style={{
+                      fontSize: ".8rem", fontWeight: 600, color: "#6B7280",
+                      textTransform: "uppercase", letterSpacing: ".05em",
+                      display: "block", marginBottom: 6,
+                    }}>
+                      {t("dancer.onboarding.gender")}
+                    </label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {(["MALE", "FEMALE"] as const).map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => setValue("gender", g, { shouldValidate: true })}
+                          aria-pressed={selectedGender === g}
+                          style={{
+                            flex: 1, padding: "10px 0", borderRadius: 9, border: "1.5px solid",
+                            borderColor: selectedGender === g ? "#4F46E5" : "#E5E7EB",
+                            background: selectedGender === g ? "#4F46E5" : "transparent",
+                            color: selectedGender === g ? "#fff" : "#6B7280",
+                            fontWeight: 600, fontSize: ".9rem", cursor: "pointer",
+                            transition: "all .15s", fontFamily: "inherit",
+                          }}
+                        >
+                          {g === "MALE" ? t("dancer.onboarding.genderMale") : t("dancer.onboarding.genderFemale")}
+                        </button>
+                      ))}
+                    </div>
+                    {errors.gender && (
+                      <p style={{ fontSize: ".8rem", color: "#EF4444", marginTop: 4 }}>{errors.gender.message}</p>
+                    )}
+                  </div>
 
                   <Input
                     label={t("dancer.onboarding.club")}
