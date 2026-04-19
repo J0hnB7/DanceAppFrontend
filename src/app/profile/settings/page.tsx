@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { Copy, Check, UserX, User, Trophy, LogOut, LayoutDashboard, Settings } from "lucide-react";
+import { Copy, Check, UserX, User, Trophy, LogOut, LayoutDashboard, Settings, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { dancerApi, type DancerProfileResponse, type PartnerInviteResponse } from "@/lib/api/dancer";
 import { useAuthStore } from "@/store/auth-store";
@@ -168,6 +168,9 @@ export default function ProfileSettingsPage() {
               </Link>
 <Link href="/profile/my-competitions" className="prof-nav-link">
                 <Trophy className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("dancer.profile.navCompetitions")}
+              </Link>
+              <Link href="/competitions" className="prof-nav-link">
+                <Search className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("dancer.profile.navBrowse")}
               </Link>
               <Link href="/profile/settings" className="prof-nav-link active">
                 <Settings className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("dancer.profile.navSettings")}
