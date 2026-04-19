@@ -64,3 +64,53 @@ Zřídka potřebné detaily. Načti když pracuješ na konkrétním modulu.
 - **Schedule modul:** `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`
   - Frontend route: `/dashboard/competitions/[id]/schedule`
   - Drag & drop: `@dnd-kit/core`
+
+---
+
+## Railway / Docker deployment
+
+- `NEXT_PUBLIC_*` proměnné jsou **build-time** — v Dockerfile musí být jako `ARG` + `ENV ARG=$ARG`
+- `.gitignore` má `.env*` glob — pro `.env.example` přidej výjimku `!.env.example`
+- `output: "standalone"` v `next.config.ts` nutné pro Dockerfile (kopíruje jen `.next/standalone/`) — **ale NIKDY na Vercel** (spôsobuje 500 na dynamic routes)
+- Healthcheck v Dockerfile: `/api/*` jsou rewrites na backend — nepoužívej jako healthcheck endpoint
+- **NEXT_PUBLIC_MOCK_API musí být `false` v produkci** — pokud `true`, frontend nikdy nevolá backend (login vrátí "Invalid credentials")
+- **`tests/mocks/jap-2026-data.ts` nesmí být v `.gitignore`** — importuje ho `src/mocks/db.ts`, Vercel build jinak selže
+- **DNS AAAA záznam:** Po přidání domény na Vercel smaž AAAA (IPv6) záznamy u Websupport — jinak `ERR_CONNECTION_CLOSED` a SSL certifikát se nevydá
+
+## Vercel deploy — vždy --prod
+
+`npx vercel --prod` — `NEXT_PUBLIC_API_URL` je nastavená jen pro `production` target. Plain `npx vercel` (preview) vždy selže: `"destination undefined/api/:path*"` → "Invalid rewrite found". Vercel CLI není globálně nainstalovaný, použi `npx vercel`.
+
+---
+
+## Playwright — MSW + auth gotcha (2026-04-15)
+
+MSW service workers **nefungují v headless Playwright** — worker se nezaregistruje.
+`page.route("**/api/v1/**", ...)` interceptuje síťové volání OK, ale React auth store
+(Zustand) vyžaduje accessToken v paměti — samotný `refreshToken` cookie nestačí.
+Jednoduché řešení: nastav `NEXT_PUBLIC_MOCK_API=true` v `.env.local` a **znovu spusť**
+dev server; pak `page.goto(url)` funguje přímo bez přihlašování. Nezapomeň vrátit na `false`.
+
+## Playwright — login pattern (2026-04-10)
+
+After `page.click('button[type="submit"]')` on login form:
+- Use `page.wait_for_url(lambda url: "login" not in url, timeout=15000)` — NOT `wait_for_load_state("networkidle")`
+- `networkidle` fires before the Next.js redirect completes; `wait_for_url` is reliable
+- Section accordions on results page expand via `page.locator("text=SectionName").first.click()`, not `button[aria-expanded]`
+
+## Playwright — dashboard wizard gotchas (2026-04-17)
+
+- **VenueAutocomplete** — renderuje `<input>` bez `name` atributu. Selector `[name=venue]` nefunguje. Použij přesný placeholder: `input[placeholder="Praha, sportovní hala..."]`. Pro fill: `pressSequentially()` místo `fill()`.
+- **datetime-local input** — `fill()` potřebuje formát `2026-05-17T08:00`, ne `2026-05-17`.
+- **Wizard step 2 (Šablona)** — "Pokračovat" je `disabled` dokud není vybrána šablona. Klikni nejdřív `button:has-text("Prázdná šablona")`.
+- **waitForURL po vytvoření** — `/dashboard/competitions/new` splňuje `/dashboard/competitions/` podmínku. Vždy exclude `/new`: `url.href.includes('/competitions/') && !url.href.includes('/new')`.
+- **getByText strict mode** — pokud text existuje ve více elementech (heading + popis), použij `getByRole('heading', { name: '...' })`.
+- **waitForURL callback** — dostane `URL` objekt, ne string. Vždy `url.href.includes(...)`, ne `url.includes(...)`.
+
+## Vitest setup — gotchas pre Phase C
+
+- **Next.js mocks** — `useRouter`/`useSearchParams`/`usePathname` hodia error v jsdom bez module name mapper. Vzor: `moduleNameMapper` v `vitest.config.ts` → `src/__mocks__/next-navigation.ts` s `vi.fn()` stubmi
+- **`next/image` + `next/link`** — zlyhajú v jsdom, potrebujú pass-through mock komponent
+- **IndexedDB (`judge-offline-store.ts`)** — jsdom nemá IDB. Použij `fake-indexeddb` npm package pri testovaní `judgeOfflineStore` priamo, alebo mockuj celý modul pri testovaní `judge-store.ts`
+- **`axios-mock-adapter@2` je už nainštalovaný** — použiť pre `api-client.ts` interceptor testy (lepšie ako `msw/node` pre nízkoúrovňové interceptor testy)
+- **MSW handlers** (`src/mocks/handlers.ts`) — pokrývajú auth + competition + round + pairs; reuse v unit testoch cez `msw/node` server mode
