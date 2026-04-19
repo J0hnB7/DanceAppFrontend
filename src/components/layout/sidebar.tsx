@@ -39,9 +39,7 @@ const navItems: NavItem[] = [
   { label: "nav.participants",    href: "/dashboard/participants",      icon: Users,         roles: ["ORGANIZER", "ADMIN"],              group: "competitions" },
   { label: "nav.templates",        href: "/dashboard/templates",         icon: LayoutTemplate, roles: ["ADMIN"],                         group: "admin" },
   { label: "nav.organizers",       href: "/dashboard/admin/organizers",  icon: UserCog,        roles: ["ADMIN"],                         group: "admin" },
-  { label: "nav.settings",        href: "/dashboard/settings",          icon: Settings,      roles: ["ORGANIZER", "ADMIN"],              group: "admin" },
-  { label: "nav.profile",         href: "/profile",                     icon: User,          roles: ["DANCER"],                          group: "admin" },
-  { label: "nav.settings",       href: "/profile/settings",            icon: Settings,      roles: ["DANCER"],                          group: "admin" },
+  { label: "nav.settings",        href: "/dashboard/settings",          icon: Settings,      roles: ["ORGANIZER", "ADMIN", "DANCER"],    group: "admin" },
   { label: "nav.seeder",          href: "/dashboard/seed",              icon: FlaskConical,  testModeOnly: true,                         group: "admin" },
 ];
 
@@ -228,11 +226,11 @@ export function Sidebar({ onNavClick }: { onNavClick?: () => void } = {}) {
                 <p className="text-[11px] text-[#64748B] truncate">{user?.email}</p>
               </div>
               <Link
-                href={user?.role === "DANCER" ? "/profile" : "/dashboard/settings"}
+                href="/dashboard/settings"
                 onClick={() => setUserMenuOpen(false)}
                 className="flex w-full items-center px-3 py-2 text-[13px] text-[#94A3B8] hover:bg-[rgba(255,255,255,0.05)] hover:text-white transition-colors"
               >
-                {user?.role === "DANCER" ? t("nav.profile") : t("settings.title")}
+                {t("settings.title")}
               </Link>
               <div className="h-px bg-[rgba(255,255,255,0.07)]" />
               <button

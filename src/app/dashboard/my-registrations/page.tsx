@@ -379,7 +379,7 @@ export default function MyRegistrationsPage() {
               <Card className="flex flex-col items-center gap-3 py-16 text-center">
                 <Trophy className="h-10 w-10 text-[var(--text-tertiary)]" />
                 <p className="text-sm text-[var(--text-secondary)]">{t("myRegistrations.noRegistrations")}</p>
-                <Button variant="outline" size="sm" asChild>
+                <Button size="sm" asChild>
                   <Link href="/competitions">{t("myRegistrations.browseCompetitions")}</Link>
                 </Button>
               </Card>

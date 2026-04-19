@@ -163,10 +163,7 @@ export default function ProfileSettingsPage() {
               <Link href="/dashboard" className="prof-nav-link">
                 <LayoutDashboard className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("nav.competitions")}
               </Link>
-              <Link href="/profile" className="prof-nav-link">
-                <User className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("dancer.profile.navProfile")}
-              </Link>
-              <Link href="/profile/my-competitions" className="prof-nav-link">
+<Link href="/profile/my-competitions" className="prof-nav-link">
                 <Trophy className="inline h-4 w-4 mr-1" aria-hidden="true" />{t("dancer.profile.navCompetitions")}
               </Link>
               <Link href="/profile/settings" className="prof-nav-link active">

@@ -131,7 +131,7 @@ function PartnerInviteInner({ params }: Props) {
                 <p style={{ fontSize: ".9rem", color: "#6B7280", lineHeight: 1.6, marginBottom: 24 }}>
                   {t("dancer.partnerInvite.acceptedDesc", { name: preview?.fromName ?? "" })}
                 </p>
-                <Link href="/profile" className="pi-btn" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
+                <Link href="/dashboard/settings" className="pi-btn" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
                   {t("dancer.partnerInvite.goToProfile")}
                 </Link>
               </div>
@@ -162,7 +162,7 @@ function PartnerInviteInner({ params }: Props) {
                     <button type="button" className="pi-btn" onClick={handleAccept} disabled={accepting}>
                       {accepting ? t("dancer.partnerInvite.accepting") : t("dancer.partnerInvite.accept")}
                     </button>
-                    <Link href="/profile" className="pi-btn-secondary">{t("common.cancel")}</Link>
+                    <Link href="/dashboard/settings" className="pi-btn-secondary">{t("common.cancel")}</Link>
                   </div>
                 ) : isAuthenticated && user?.role !== "DANCER" ? (
                   <div>

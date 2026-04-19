@@ -472,7 +472,7 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                         <p style={{ fontSize: ".875rem", fontWeight: 600, color: "#92400E", marginBottom: 6 }}>
                           {t("publicCompetition.completeProfileFirst")}
                         </p>
-                        <a href="/profile" style={{ fontSize: ".8rem", color: "#4F46E5", fontWeight: 600, textDecoration: "underline" }}>
+                        <a href="/onboarding" style={{ fontSize: ".8rem", color: "#4F46E5", fontWeight: 600, textDecoration: "underline" }}>
                           {t("publicCompetition.goToProfile")}
                         </a>
                       </div>
