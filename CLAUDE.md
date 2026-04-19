@@ -394,6 +394,12 @@ Pattern pro výběr data bez klikání po měsících: tři `<select>` (Rok/Měs
 
 Backend `GET /profile/dancer/competitions` vrací flat záznamy (`startNumber`, `sectionName`, `reachedRound` na top level) — **ne** `sections[]` array. Interface v `dancer.ts` byl opraven (2026-04-19).
 
+## Public competition page — eligible sections + nav auth
+
+- `eligibleSections` query musí mať `enabled: isDancer && dancerProfile !== undefined` — bez toho sa spustí pred načítaním profilu (birthYear=undefined → iný query key → zbytočný request)
+- `PublicNav` na public pages musí čítať `useAuthStore` a zobrazovať meno + link na dashboard/profil pre prihláseného uživatela (nie statický "Přihlášení →")
+- React Query `useQuery` s default `[]` tichý skryje 500 chybu — UI vyzerá ako "žiadne dáta"; root cause bugovania = backend hádže 500 (nie prázdny výsledok)
+
 ## CORS — localhost:3001 pro případ obsazeného portu
 
 Pokud je port 3000 obsazen starým procesem, Next.js dev server spustí na 3001 → login selže (backend CORS blokuje). `application.yaml` má default `http://localhost:3000,http://localhost:3001` — oba porty vždy povoleny.
