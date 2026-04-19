@@ -46,7 +46,7 @@ function PublicNav() {
   useEffect(() => setMounted(true), []);
   const t = (key: string, params?: Record<string, string | number>) => mounted ? _t(key, params) : "";
 
-  const dashboardHref = user?.role === "DANCER" ? "/profile/settings" : "/dashboard";
+  const dashboardHref = "/dashboard";
 
   return (
     <nav style={{
