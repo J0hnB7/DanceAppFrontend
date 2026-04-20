@@ -50,6 +50,12 @@ export default function RootLayout({
             <LocaleProvider>
               <MockProvider>
                 <QueryProvider>
+                  <a
+                    href="#main-content"
+                    className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[999] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-black focus:shadow-lg focus:outline-2 focus:outline-blue-600"
+                  >
+                    Přeskočit na hlavní obsah
+                  </a>
                   <ErrorBoundary>
                     {children}
                   </ErrorBoundary>

@@ -90,7 +90,7 @@ export function AppShell({ children, headerActions, sidebar, noPadding }: AppShe
               {headerActions}
             </div>
           )}
-          <main className={
+          <main id="main-content" className={
             noPadding
               ? "flex-1 overflow-y-auto overflow-x-hidden bg-transparent max-lg:pt-14"
               : usesDefaultSidebar
