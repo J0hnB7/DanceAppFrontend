@@ -173,7 +173,7 @@ function RegisterPageInner() {
               border: "1px solid #E5E7EB",
             }}>
               {success ? (
-                <div style={{ textAlign: "center", padding: "16px 0" }}>
+                <div role="status" aria-live="polite" style={{ textAlign: "center", padding: "16px 0" }}>
                   <div style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg,#4ade80,#22c55e)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: "1.5rem" }}>✓</div>
                   <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "1.2rem", fontWeight: 800, color: "#111827", marginBottom: 10 }}>
                     {t("dancer.register.successTitle")}
