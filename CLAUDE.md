@@ -135,8 +135,10 @@ Vzor pro standalone: `<form className="auth-light">` kde `<style>` obsahuje:
 - Focus: `outline-none focus-visible:ring-2 focus-visible:ring-{color} focus-visible:ring-offset-2`
 - Toggle buttons: `aria-pressed={boolean}`
 - Icon-only: `aria-label` povinné
-- `<html lang="sk">` v `layout.tsx` je **BUG** — UI je česky, má být `cs`. Dynamický switch: `document.documentElement.lang = locale` v `LocaleProvider`
-- axe-core via `@axe-core/playwright` jen v dev/test (prod CSP blokuje inline script)
+- `<html lang>` default `"cs"` (commit 6547c12), dynamický sync: `document.documentElement.lang = locale` effect v `LocaleProvider`
+- **axe-core a11y gate**: `tests/e2e/accessibility.spec.ts` (C18, commit 0d2be21). WCAG 2.1 AA, fail na `critical`/`serious`, `moderate`/`minor` → `docs/accessibility/a11y-backlog.md`. Skipuje pages bez env vars: `E2E_COMPETITION_ID`, `E2E_JUDGE_TOKEN`. Jen v dev/test (prod CSP blokuje inline script)
+- **Skip-to-content link**: v `src/app/layout.tsx` jako první child `<QueryProvider>`, target `<main id="main-content">` v `AppShell`. `sr-only focus:not-sr-only focus:fixed ...` vzor
+- **Icon-only toggle button** (Eye/EyeOff, atd.): povinné `aria-label={state ? t("hide") : t("show")}` + `aria-pressed={state}` + ikony `aria-hidden="true"`. Vzor: login/register/reset-password password toggle
 
 ---
 
