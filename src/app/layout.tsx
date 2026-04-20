@@ -43,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="sk" suppressHydrationWarning>
+    <html lang="cs" suppressHydrationWarning>
       <body className={`${inter.variable} ${sora.variable} ${jetbrainsMono.variable} antialiased`}>
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""}>
           <ThemeProvider>
