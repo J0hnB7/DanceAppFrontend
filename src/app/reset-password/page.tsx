@@ -70,8 +70,14 @@ function ResetPasswordPageInner() {
                 placeholder={t("auth.newPasswordPlaceholder")}
                 error={errors.password?.message}
                 rightIcon={
-                  <button type="button" onClick={() => setShowPassword((s) => !s)} className="pointer-events-auto">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="pointer-events-auto"
+                    aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+                    aria-pressed={showPassword}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                   </button>
                 }
                 {...register("password")}

@@ -587,6 +587,8 @@
     "authenticatorCode": "Kód z autentikátoru",
     "authenticatorPlaceholder": "000000",
     "invalidEmailOrPassword": "Nesprávný email nebo heslo",
+    "showPassword": "Zobrazit heslo",
+    "hidePassword": "Skrýt heslo",
     "createAccount": "Vytvořit účet",
     "createAccountDesc": "Začněte spravovat své soutěže",
     "name": "Jméno",

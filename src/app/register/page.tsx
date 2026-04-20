@@ -248,7 +248,14 @@ function RegisterPageInner() {
                       placeholder={t("auth.passwordPlaceholder")}
                       error={errors.password?.message}
                       rightIcon={
-                        <button type="button" onClick={() => setShowPassword((s) => !s)} className="pointer-events-auto" style={{ color: "#9CA3AF" }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((s) => !s)}
+                          className="pointer-events-auto"
+                          style={{ color: "#9CA3AF" }}
+                          aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+                          aria-pressed={showPassword}
+                        >
                           {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                         </button>
                       }

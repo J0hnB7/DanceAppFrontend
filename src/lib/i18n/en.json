@@ -587,6 +587,8 @@
     "authenticatorCode": "Authenticator code",
     "authenticatorPlaceholder": "000000",
     "invalidEmailOrPassword": "Invalid email or password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "createAccount": "Create account",
     "createAccountDesc": "Start managing your competitions",
     "name": "Name",
