@@ -18,7 +18,13 @@ const PUBLIC_PATHS = [
 const ORGANIZER_PATHS = ["/dashboard", "/competitions/new", "/competitions/[id]/edit"];
 
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
+
+  // Legacy email links: /auth/reset-password?token=... → /reset-password?token=...
+  if (pathname === "/auth/reset-password") {
+    const redirectUrl = new URL("/reset-password" + search, request.url);
+    return NextResponse.redirect(redirectUrl);
+  }
 
   // Allow public paths and Next.js internals
   if (
