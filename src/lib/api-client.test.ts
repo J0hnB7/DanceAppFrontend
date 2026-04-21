@@ -56,7 +56,7 @@ describe("api-client", () => {
 
       await expect(apiClient.get("/me")).rejects.toMatchObject({ status: 401 });
 
-      const events = dispatchSpy.mock.calls.map(([e]) => (e as CustomEvent).type);
+      const events = dispatchSpy.mock.calls.map(([e]: [unknown]) => (e as CustomEvent).type);
       expect(events).toContain("auth:logout");
     });
 
