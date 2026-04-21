@@ -475,8 +475,9 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
         (p.dancer2FirstName ?? "").toLowerCase().includes(q)
       );
     })();
-    const pSectionId = p.sectionId ?? p.sections?.[0]?.sectionId;
-    const matchesSection = sectionFilter === "all" || pSectionId === sectionFilter;
+    const matchesSection = sectionFilter === "all" ||
+      (p.sections && p.sections.some(ps => ps.sectionId === sectionFilter)) ||
+      p.sectionId === sectionFilter;
     return matchesSearch && matchesSection;
   });
 
@@ -747,9 +748,11 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
             )}
             {filtered.map((pair) => {
               // backend returns pair.sections[]; mock uses pair.sectionId
-              const sectionId = pair.sectionId ?? pair.sections?.[0]?.sectionId;
-              const sectionNameFromPair = pair.sections?.[0]?.sectionName;
-              const section = sections?.find((s) => s.id === sectionId);
+              const allSectionNames: string[] = pair.sections && pair.sections.length > 0
+                ? pair.sections.map(ps => sections?.find(s => s.id === ps.sectionId)?.name ?? ps.sectionName ?? "")
+                : pair.sectionId
+                  ? [sections?.find(s => s.id === pair.sectionId)?.name ?? ""]
+                  : [];
               const regStatus = pair.registrationStatus ?? "UNCONFIRMED";
               const statusCfg = REG_STATUS_CONFIG[regStatus];
               return (
@@ -779,10 +782,14 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                     </p>
                   </TableCell>
                   <TableCell>
-                    {(section?.name ?? sectionNameFromPair) ? (
-                      <Badge variant="secondary" className="whitespace-nowrap text-xs">
-                        {section?.name ?? sectionNameFromPair}
-                      </Badge>
+                    {allSectionNames.filter(Boolean).length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {allSectionNames.filter(Boolean).map((name, i) => (
+                          <Badge key={i} variant="secondary" className="whitespace-nowrap text-xs">
+                            {name}
+                          </Badge>
+                        ))}
+                      </div>
                     ) : (
                       <span className="text-xs text-[var(--text-tertiary)]">—</span>
                     )}

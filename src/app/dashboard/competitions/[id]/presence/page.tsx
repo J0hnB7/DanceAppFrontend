@@ -27,7 +27,7 @@ interface PairPresence {
   dancer1Club?: string;
   dancer2FirstName?: string;
   dancer2LastName?: string;
-  sectionId: string;
+  sectionIds: string[];
   presenceStatus: PresenceStatus;
   paymentStatus: PaymentStatus;
 }
@@ -198,7 +198,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
 
   const filtered = useMemo(() => {
     return presencePairs
-      .filter((p) => sectionFilter === "all" || p.sectionId === sectionFilter)
+      .filter((p) => sectionFilter === "all" || p.sectionIds?.includes(sectionFilter))
       .filter((p) => {
         if (!showOnlyAbsent) return true;
         const present = p.presenceStatus === "CHECKED_IN" || p.presenceStatus === "ON_FLOOR" || p.presenceStatus === "DONE";
@@ -223,7 +223,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
 
   // Groups for close dialog
   const dialogPairs = useMemo(() =>
-    sectionFilter === "all" ? presencePairs : presencePairs.filter((p) => p.sectionId === sectionFilter),
+    sectionFilter === "all" ? presencePairs : presencePairs.filter((p) => p.sectionIds?.includes(sectionFilter)),
     [presencePairs, sectionFilter]
   );
 
@@ -295,7 +295,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
               </p>
               <div className="space-y-0.5">
                 {activeGroup.map((p) => (
-                  <PairRow key={p.id} pair={p} sectionName={sections.find((s) => s.id === p.sectionId)?.name ?? ""} />
+                  <PairRow key={p.id} pair={p} sectionName={p.sectionIds?.map(sid => sections.find((s) => s.id === sid)?.name).filter(Boolean).join(", ") ?? ""} />
                 ))}
                 {activeGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">{t("presence.noPairs")}</p>}
               </div>
@@ -307,7 +307,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
               </p>
               <div className="space-y-0.5">
                 {absentGroup.map((p) => (
-                  <PairRow key={p.id} pair={p} sectionName={sections.find((s) => s.id === p.sectionId)?.name ?? ""} />
+                  <PairRow key={p.id} pair={p} sectionName={p.sectionIds?.map(sid => sections.find((s) => s.id === sid)?.name).filter(Boolean).join(", ") ?? ""} />
                 ))}
                 {absentGroup.length === 0 && <p className="text-xs text-[var(--text-tertiary)]">{t("presence.noPairs")}</p>}
               </div>
@@ -325,9 +325,9 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
           </div>
           <div className="divide-y divide-[var(--border)]">
             {sections.map((s) => {
-              const sTotal = presencePairs.filter((p) => p.sectionId === s.id).length;
+              const sTotal = presencePairs.filter((p) => p.sectionIds?.includes(s.id)).length;
               const sPresent = presencePairs.filter(
-                (p) => p.sectionId === s.id && (p.presenceStatus === "CHECKED_IN" || p.presenceStatus === "ON_FLOOR" || p.presenceStatus === "DONE")
+                (p) => p.sectionIds?.includes(s.id) && (p.presenceStatus === "CHECKED_IN" || p.presenceStatus === "ON_FLOOR" || p.presenceStatus === "DONE")
               ).length;
               return (
                 <div key={s.id} className="flex items-center gap-3 px-4 py-2.5">
@@ -449,7 +449,7 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
             {t("presence.all", { count: presencePairs.length })}
           </button>
           {sections.map((s) => {
-            const count = presencePairs.filter((p) => p.sectionId === s.id).length;
+            const count = presencePairs.filter((p) => p.sectionIds?.includes(s.id)).length;
             return (
               <button
                 key={s.id}
@@ -483,9 +483,9 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
             const isPresent = pair.presenceStatus === "CHECKED_IN" || pair.presenceStatus === "ON_FLOOR" || pair.presenceStatus === "DONE";
             const isPaid = pair.paymentStatus === "PAID" || pair.paymentStatus === "WAIVED";
             const isWaived = pair.paymentStatus === "WAIVED";
-            const pairSection = sections.find((s) => s.id === pair.sectionId);
-            const sectionName = pairSection?.name ?? "";
-            const pairSectionClosed = pairSection?.presenceClosed ?? false;
+            const pairSection = sections.find((s) => pair.sectionIds?.includes(s.id));
+            const sectionName = pair.sectionIds?.map(sid => sections.find((s) => s.id === sid)?.name).filter(Boolean).join(", ") ?? "";
+            const pairSectionClosed = pair.sectionIds?.every(sid => sections.find(s => s.id === sid)?.presenceClosed) ?? false;
 
             return (
               <div
