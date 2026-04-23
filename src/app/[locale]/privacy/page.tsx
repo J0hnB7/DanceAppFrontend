@@ -1,5 +1,8 @@
+import { localizedAlternates } from "@/lib/i18n/alternates";
+
 export const metadata = {
   title: "Zpracování osobních údajů | ProPodium",
+  alternates: localizedAlternates("/privacy"),
 };
 
 export default function PrivacyPage() {
