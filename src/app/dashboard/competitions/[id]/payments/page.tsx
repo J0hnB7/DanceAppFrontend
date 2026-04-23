@@ -28,7 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { invoicesApi, type InvoiceDto } from "@/lib/api/payments";
+import { invoicesApi } from "@/lib/api/payments";
 import { usePairs } from "@/hooks/queries/use-pairs";
 import {
   Select,
@@ -118,10 +118,10 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
     onError: () => toast({ title: t("payments.failedToSend"), variant: "destructive" }),
   });
 
-  const paidInvoices = invoices.filter((i: InvoiceDto) => i.status === "PAID");
-  const pendingInvoices = invoices.filter((i: InvoiceDto) => i.status !== "PAID" && i.status !== "REFUNDED");
-  const totalCollected = paidInvoices.reduce((sum: number, i: InvoiceDto) => sum + i.amount, 0);
-  const totalPending = pendingInvoices.reduce((sum: number, i: InvoiceDto) => sum + i.amount, 0);
+  const paidInvoices = invoices.filter((i) => i.status === "PAID");
+  const pendingInvoices = invoices.filter((i) => i.status !== "PAID" && i.status !== "REFUNDED");
+  const totalCollected = paidInvoices.reduce((sum, i) => sum + i.amount, 0);
+  const totalPending = pendingInvoices.reduce((sum, i) => sum + i.amount, 0);
   const currency = invoices[0]?.currency ?? "EUR";
 
   return (
@@ -176,7 +176,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ id: string 
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)] bg-[var(--surface)]">
-                {invoices.map((inv: InvoiceDto) => (
+                {invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-[var(--surface-secondary)]">
                     <td className="px-4 py-3 font-mono text-[var(--text-secondary)]">
                       {inv.invoiceNumber ?? inv.id.slice(-8).toUpperCase()}
