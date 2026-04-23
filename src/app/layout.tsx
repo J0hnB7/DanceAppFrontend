@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Inter, JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,6 +9,7 @@ import { MockProvider } from "@/components/shared/mock-provider";
 import { LocaleProvider } from "@/contexts/locale-context";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, type Locale } from "@/lib/i18n";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -37,17 +39,24 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read locale from cookie server-side so SSR renders the user's language
+  // and avoids a default→chosen FOUC when the client hydrates.
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get(LOCALE_STORAGE_KEY)?.value;
+  const initialLocale: Locale =
+    cookieLocale === "cs" || cookieLocale === "en" ? cookieLocale : DEFAULT_LOCALE;
+
   return (
-    <html lang="cs" suppressHydrationWarning>
+    <html lang={initialLocale} suppressHydrationWarning>
       <body className={`${inter.variable} ${sora.variable} ${jetbrainsMono.variable} antialiased`}>
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""}>
           <ThemeProvider>
-            <LocaleProvider>
+            <LocaleProvider initialLocale={initialLocale}>
               <MockProvider>
                 <QueryProvider>
                   <a
