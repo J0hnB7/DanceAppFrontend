@@ -45,7 +45,9 @@ export function proxy(request: NextRequest) {
 
   // Localized public content — delegate to next-intl (handles /cs, /en, locale detection)
   if (isLocalizedPublic(pathname)) {
-    return intlMiddleware(request);
+    const response = intlMiddleware(request);
+    response.headers.set("x-pathname", pathname);
+    return response;
   }
 
   // Allow remaining public paths and Next.js internals
@@ -56,12 +58,16 @@ export function proxy(request: NextRequest) {
     pathname.startsWith("/monitoring") ||
     pathname === "/mockServiceWorker.js"
   ) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set("x-pathname", pathname);
+    return response;
   }
 
   // In mock mode there is no real HttpOnly cookie — let everything through
   if (process.env.NEXT_PUBLIC_MOCK_API === "true") {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set("x-pathname", pathname);
+    return response;
   }
 
   // Check auth cookie presence (full token validation happens server-side or via React Query)
@@ -72,7 +78,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set("x-pathname", pathname);
+  return response;
 }
 
 export const config = {

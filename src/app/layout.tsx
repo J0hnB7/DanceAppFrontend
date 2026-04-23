@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Inter, JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -45,12 +45,27 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Read locale from cookie server-side so SSR renders the user's language
-  // and avoids a default→chosen FOUC when the client hydrates.
-  const cookieStore = await cookies();
+  // Prefer URL-derived locale on /[locale]/** routes so a direct crawl from
+  // Googlebot always sees the correct <html lang> regardless of cookie state.
+  // Fall back to the cookie for non-localized routes (dashboard, auth, etc.).
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+  const pathname = headerStore.get("x-pathname") ?? "";
+  const hasEnPrefix = pathname === "/en" || pathname.startsWith("/en/");
+  const isLocalizedPublic =
+    pathname === "/" ||
+    ["/competitions", "/scoreboard", "/privacy"].some(
+      (p) => pathname === p || pathname.startsWith(p + "/"),
+    );
+  // /en/* → en; unprefixed localized paths (/, /competitions, ...) → cs (next-intl default)
+  const urlLocale: Locale | undefined = hasEnPrefix
+    ? "en"
+    : isLocalizedPublic
+    ? "cs"
+    : undefined;
   const cookieLocale = cookieStore.get(LOCALE_STORAGE_KEY)?.value;
   const initialLocale: Locale =
-    cookieLocale === "cs" || cookieLocale === "en" ? cookieLocale : DEFAULT_LOCALE;
+    urlLocale ??
+    (cookieLocale === "cs" || cookieLocale === "en" ? cookieLocale : DEFAULT_LOCALE);
 
   return (
     <html lang={initialLocale} suppressHydrationWarning>
