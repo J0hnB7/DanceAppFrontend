@@ -39,3 +39,19 @@ describe("next.config rewrites — NEXT_PUBLIC_API_URL sanitization", () => {
     expect(dest).not.toContain("undefined");
   });
 });
+
+// REGRESSION: output: "standalone" breaks Vercel — only valid for Docker/Railway builds.
+// Setting it causes 500 on all dynamic routes after deploy. Must stay unset on Vercel builds.
+describe("next.config — Vercel compatibility", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("does NOT set output:'standalone' (incompatible with Vercel)", async () => {
+    const mod = await import("../next.config");
+    // withSentryConfig wraps the exported object; output would live on the underlying config.
+    // We assert on the default export regardless of wrapping.
+    const config = mod.default as Record<string, unknown>;
+    expect(config.output).not.toBe("standalone");
+  });
+});
