@@ -5,8 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat("sk-SK", {
+export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOptions, locale = "cs-CZ"): string {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -14,15 +14,15 @@ export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOpt
   }).format(new Date(date));
 }
 
-export function formatTime(date: string | Date): string {
-  return new Intl.DateTimeFormat("sk-SK", {
+export function formatTime(date: string | Date, locale = "cs-CZ"): string {
+  return new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(date));
 }
 
-export function formatCurrency(amount: number, currency = "EUR"): string {
-  return new Intl.NumberFormat("sk-SK", {
+export function formatCurrency(amount: number, currency = "EUR", locale = "cs-CZ"): string {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
