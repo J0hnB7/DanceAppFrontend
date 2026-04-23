@@ -1,4 +1,24 @@
 import { type NextRequest, NextResponse } from "next/server";
+import createIntlMiddleware from "next-intl/middleware";
+import { routing } from "@/i18n/routing";
+
+const intlMiddleware = createIntlMiddleware(routing);
+
+// Paths that use next-intl URL-prefixed locale routing. Everything else
+// (dashboard, judge, auth flows) runs on the custom cookie-based i18n.
+const LOCALIZED_PREFIXES = ["/competitions", "/scoreboard", "/privacy"];
+
+function isLocalizedPublic(pathname: string): boolean {
+  // Root landing + English-prefixed variants of any localized prefix.
+  if (pathname === "/" || pathname === "/en" || pathname === "/cs") return true;
+  if (pathname.startsWith("/en/") || pathname.startsWith("/cs/")) {
+    const stripped = pathname.replace(/^\/(en|cs)/, "") || "/";
+    return stripped === "/" || LOCALIZED_PREFIXES.some((p) => stripped.startsWith(p));
+  }
+  return LOCALIZED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+}
 
 const PUBLIC_PATHS = [
   "/login",
@@ -8,14 +28,11 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/judge",           // /judge/[token] — public judge access
   "/checkin",         // /checkin/[token] — public entrance check-in
-  "/competitions",    // public competition listing
   "/results",         // public results
   "/auth/callback",   // OAuth2 callback — must be public (no session yet)
   "/onboarding",      // dancer onboarding — auth handled inside page
   "/partner-invite",  // /partner-invite/[token] — public invite preview
 ];
-
-const ORGANIZER_PATHS = ["/dashboard", "/competitions/new", "/competitions/[id]/edit"];
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -26,13 +43,17 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Allow public paths and Next.js internals
+  // Localized public content — delegate to next-intl (handles /cs, /en, locale detection)
+  if (isLocalizedPublic(pathname)) {
+    return intlMiddleware(request);
+  }
+
+  // Allow remaining public paths and Next.js internals
   if (
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/monitoring") ||
-    pathname === "/" ||
     pathname === "/mockServiceWorker.js"
   ) {
     return NextResponse.next();
