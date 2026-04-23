@@ -1,4 +1,6 @@
 import apiClient from "@/lib/api-client";
+import { PairSchema } from "@/lib/api/schemas/pair";
+import { parseApiList, parseApiResponse } from "@/lib/api/schemas/parse";
 
 export type PairStatus = "REGISTERED" | "CONFIRMED" | "WITHDRAWN" | "DISQUALIFIED";
 /** @deprecated Use PairStatus instead */
@@ -74,21 +76,28 @@ export interface CreatePairRequest {
 export const pairsApi = {
   list: (competitionId: string, sectionId?: string) =>
     apiClient
-      .get<{ content: PairDto[] } | PairDto[]>(`/competitions/${competitionId}/pairs`, {
+      .get<{ content: unknown[] } | unknown[]>(`/competitions/${competitionId}/pairs`, {
         params: { ...(sectionId ? { sectionId } : {}), size: 10000 },
       })
-      .then((r) => (Array.isArray(r.data) ? r.data : (r.data as { content: PairDto[] }).content)),
+      .then((r) => {
+        const raw = Array.isArray(r.data) ? r.data : r.data.content;
+        return parseApiList(PairSchema, raw, "pairsApi.list") as PairDto[];
+      }),
 
   get: (competitionId: string, pairId: string) =>
-    apiClient.get<PairDto>(`/competitions/${competitionId}/pairs/${pairId}`).then((r) => r.data),
+    apiClient
+      .get(`/competitions/${competitionId}/pairs/${pairId}`)
+      .then((r) => parseApiResponse(PairSchema, r.data, "pairsApi.get") as PairDto),
 
   create: (competitionId: string, data: CreatePairRequest) =>
-    apiClient.post<PairDto>(`/competitions/${competitionId}/pairs`, data).then((r) => r.data),
+    apiClient
+      .post(`/competitions/${competitionId}/pairs`, data)
+      .then((r) => parseApiResponse(PairSchema, r.data, "pairsApi.create") as PairDto),
 
   update: (competitionId: string, pairId: string, data: Partial<CreatePairRequest>) =>
     apiClient
-      .put<PairDto>(`/competitions/${competitionId}/pairs/${pairId}`, data)
-      .then((r) => r.data),
+      .put(`/competitions/${competitionId}/pairs/${pairId}`, data)
+      .then((r) => parseApiResponse(PairSchema, r.data, "pairsApi.update") as PairDto),
 
   delete: (competitionId: string, pairId: string) =>
     apiClient.delete(`/competitions/${competitionId}/pairs/${pairId}`).then((r) => r.data),

@@ -1,4 +1,6 @@
 import apiClient from "@/lib/api-client";
+import { SectionFinalSummarySchema } from "@/lib/api/schemas/results";
+import { parseApiResponse } from "@/lib/api/schemas/parse";
 
 export interface SubmitCallbacksRequest {
   selectedPairIds: string[];
@@ -88,20 +90,22 @@ export const scoringApi = {
     apiClient.get(`/rounds/${roundId}/placements/${danceId}`, { headers: { 'X-Judge-Token': judgeTokenId } }).then((r) => r.data),
 
   getSectionSummary: (sectionId: string) =>
-    apiClient.get<SectionFinalSummaryResponse>(`/sections/${sectionId}/final-summary`).then((r) => r.data),
+    apiClient
+      .get(`/sections/${sectionId}/final-summary`)
+      .then((r) => parseApiResponse(SectionFinalSummarySchema, r.data, "scoringApi.getSectionSummary") as SectionFinalSummaryResponse),
 
   calculateSectionSummary: (sectionId: string) =>
     apiClient
-      .post<SectionFinalSummaryResponse>(`/sections/${sectionId}/final-summary/calculate`)
-      .then((r) => r.data),
+      .post(`/sections/${sectionId}/final-summary/calculate`)
+      .then((r) => parseApiResponse(SectionFinalSummarySchema, r.data, "scoringApi.calculateSectionSummary") as SectionFinalSummaryResponse),
 
   approveResults: (sectionId: string) =>
     apiClient.post(`/sections/${sectionId}/results/approve`).then((r) => r.data),
 
   resolveDanceOff: (sectionId: string, winnerId: string, loserId: string) =>
     apiClient
-      .post<SectionFinalSummaryResponse>(`/sections/${sectionId}/dance-off`, { winnerId, loserId })
-      .then((r) => r.data),
+      .post(`/sections/${sectionId}/dance-off`, { winnerId, loserId })
+      .then((r) => parseApiResponse(SectionFinalSummarySchema, r.data, "scoringApi.resolveDanceOff") as SectionFinalSummaryResponse),
 
   getJudgePlacements: (roundId: string) =>
     apiClient.get<JudgePlacementsResponse>(`/rounds/${roundId}/judge-placements`).then((r) => r.data),
