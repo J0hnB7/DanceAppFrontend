@@ -7,7 +7,7 @@
 
 ## Stack & Architektura
 
-- **Next.js 16.1.6** (App Router), TypeScript strict, Tailwind v4, React Query, Zustand, Axios (`src/lib/api-client.ts` auto-refresh)
+- **Next.js 16** (App Router), TypeScript strict, Tailwind v4, React Query, Zustand, Axios (`src/lib/api-client.ts` auto-refresh)
 - Backend: `http://localhost:8080`, endpointy s prefixem `/api/v1/`
 - Dev: `http://localhost:3000` (nebo 3001 pokud obsazeno — CORS má oba)
 
@@ -27,11 +27,19 @@ src/store/               # Zustand stores
 src/proxy.ts             # middleware (Next 16: proxy, ne middleware)
 ```
 
-### Node.js PATH
+## Commands
+
 ```bash
-#!/bin/zsh
-export PATH="/Users/janbystriansky/node/bin:$PATH"
+npm run dev              # next dev (port 3000 / 3001)
+npm run build            # next build
+npm run lint             # eslint
+npm test                 # vitest run
+npm run test:watch       # vitest watch
+npm run test:e2e         # playwright test
+npx tsc --noEmit         # type check (PostToolUse hook spouští automaticky po editu)
 ```
+
+Node.js PATH (ak `npm` nie je v defaultnej shell PATH): `export PATH="/Users/janbystriansky/node/bin:$PATH"` do `~/.zshrc`.
 
 ---
 
@@ -83,9 +91,9 @@ export PATH="/Users/janbystriansky/node/bin:$PATH"
 - Primární UI: **čeština**, sekundární angličtina. Vždy přidávej do obou `cs.json` + `en.json`
 - Použití: `const { t, locale } = useLocale()` z `@/contexts/locale-context`; `t('key', { n: 5 })` pro params
 - Locale-aware date: `toLocaleDateString(locale === "cs" ? "cs-CZ" : "en-GB", {...})`
+- `formatDate`/`formatTime`/`formatCurrency` v `src/lib/utils.ts` default `cs-CZ`; prijímajú optional `locale` param pre locale-aware render
 - **Namespace trap**: admin klíče (`/dashboard/**`) MUSÍ být top-level — NIKDY pod `dancer.*`. `registrations.*` a `dancer.registrations.*` jsou různé namespacy → záměna = raw klíče v UI
 - **Public pages toggle**: desktop v navu, mobile ve footeru (`.lang-toggle-nav` vs `.lang-toggle-footer`). Hardcoded Czech v public pages = bug
-- `formatDate`/`formatTime`/`formatCurrency` v `src/lib/utils.ts` stále používají `sk-SK` — **bug**, refaktor na `cs-CZ` / `locale` param
 
 ---
 
@@ -118,25 +126,16 @@ export PATH="/Users/janbystriansky/node/bin:$PATH"
 
 ---
 
-## FE API typy — ruční drift
+## FE API typy — hybrid: ruční + codegen
 
-`src/lib/api/*.ts` = ~25 ručně psaných interfejsů (ne z OpenAPI). Drifty se nedetekují.
+- **Generated:** `src/lib/api/generated.d.ts` z backend OpenAPI snapshot (`../danceapp-backend/docs/api/openapi.json`). Regen: `npm run api:types`. Use `components["schemas"]["PairDto"]` ako source of truth pre nové DTO.
+- **Legacy ručné:** `src/lib/api/*.ts` (~25 interfejsov). Postupne migrovať na `generated.d.ts` types. Driftové gotchas nižšie platia dokým sú ručné typy ešte v hre.
 
 - **InvoiceDto.amount vs BE totalAmount** — `inv.amount ?? inv.totalAmount ?? 0` (`payments.ts:86`)
-- **RoundStatus**: `rounds.ts:3` stale `"OPEN" | "CLOSED"` — BE má `PENDING | IN_PROGRESS | COMPLETED | CALCULATED`
 - **PairDto.competitionId je optional** — NIKDY pro URL construction (`/competitions//pairs/...` → 404). Předávej z route params jako prop
 - **CreateSectionRequest.dances** je `string[]` (commit b3a80b5). NIKDY `.map(name => ({ danceName: name }))` — `HttpMessageNotReadableException`. Platí pro create, update i import
 - **write-xlsx-file `type` field**: nikdy `type: undefined` — `val != null ? { value: val, type: Number } : { value: "" }`
 - **Default `[]` v useQuery tichý skrývá 500** — UI "žádná data" ale backend crashuje
-
----
-
-## Backend — critical
-
-- `restart při změně repository/query`: `./mvnw clean spring-boot:run -Dspring-boot.run.profiles=local -DskipTests > /tmp/backend.log 2>&1 &`. Bez `clean` "Nothing to compile" = změna se nenačetla
-- **onboardingCompleted flag**: update metody NESMÍ resetovat na `false`. Patří jen do `completeOnboarding()`/`activate()`. Auto-repair v `requireOnboarded()`: pokud false + firstName+lastName existují → oprav
-- `@Transactional` na private metodě je AOP ignorováno (funguje v kontextu volající @Transactional)
-- **Public SecurityConfig** `permitAll()`: `/competitions/*`, `/competitions/*/news`, `/competitions/*/sections`, `/sections/*/final-summary`, `/rounds/*/detail`
 
 ---
 
@@ -158,8 +157,13 @@ export PATH="/Users/janbystriansky/node/bin:$PATH"
 
 ## INDEX — kde najít co
 
-### Auto-trigger skills
+### Auto-trigger skills (.claude/skills/)
 - **`ui-ux-checklist`** — UI/UX patterns, accessibility, judge interface, results tables, mobile, forms, modals (triggers on page.tsx, new component, visual change)
+- **`ui-ux-pro-max`** — design systémy, styles, palettes, font pairings; spúšťaj pri novej `page.tsx` od nuly alebo väčšej vizuálnej komponente
+
+### Globálne skills relevantné pre FE
+- **`webapp-testing`** — Playwright screenshot po vizuálnej zmene (odhalí čo `tsc --noEmit` nevidí: font-weight, badge, data)
+- **`frontend-design`** — preklad HTML/Figma design reference → Next.js
 
 ### On-demand docs (docs/gotchas/, Read when relevant)
 - `realtime.md` — Live module, heat IDs, dance sync
