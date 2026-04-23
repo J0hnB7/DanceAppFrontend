@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   type Locale,
   DEFAULT_LOCALE,
@@ -11,6 +12,20 @@ import {
 } from "@/lib/i18n";
 import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/store/auth-store";
+
+// Prefixes that live under the [locale] segment — switching locale on these
+// pages must update the URL, not just the state.
+const LOCALIZED_PATH_PREFIXES = ["/competitions", "/scoreboard", "/privacy"];
+
+export function rewriteLocaleInPath(pathname: string, next: Locale): string | null {
+  const stripped = pathname.replace(/^\/(en|cs)(?=\/|$)/, "") || "/";
+  const isLocalized =
+    stripped === "/" ||
+    LOCALIZED_PATH_PREFIXES.some((p) => stripped === p || stripped.startsWith(p + "/"));
+  if (!isLocalized) return null;
+  // Czech is the default and gets no prefix; English is at /en/...
+  return next === "cs" ? stripped : `/en${stripped === "/" ? "" : stripped}`;
+}
 
 interface LocaleContextValue {
   locale: Locale;
@@ -37,6 +52,8 @@ export function LocaleProvider({
 }) {
   const user = useAuthStore((s) => s.user);
   const setStoreLocale = useAuthStore((s) => s.setLocale);
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Manual locale selection (fallback when user has no preference stored on backend).
   // Server passes `initialLocale` from the cookie so SSR matches client — without
@@ -49,6 +66,16 @@ export function LocaleProvider({
 
   // Derived: user's backend preference always wins over manual selection
   const locale = (user?.locale as Locale | undefined) ?? manualLocale;
+
+  // When a nested provider under /[locale]/** gets `initialLocale` from the URL,
+  // sync it to the cookie/localStorage/store so navigating to non-localized
+  // routes (dashboard) carries the user's URL-expressed choice.
+  useEffect(() => {
+    if (!initialLocale) return;
+    try { localStorage.setItem(LOCALE_STORAGE_KEY, initialLocale); } catch { /* Safari private mode */ }
+    writeLocaleCookie(initialLocale);
+    setStoreLocale(initialLocale);
+  }, [initialLocale, setStoreLocale]);
 
   // Persist user.locale to localStorage AND cookie when it changes — pure side-effect, no setState
   useEffect(() => {
@@ -73,7 +100,12 @@ export function LocaleProvider({
     if (user) {
       authApi.updateProfile({ locale: next }).catch((e) => { console.error("[i18n] Failed to sync locale to backend", e); });
     }
-  }, [setStoreLocale, user]);
+    // On localized public routes the URL must reflect the locale choice
+    // (/competitions/X ↔ /en/competitions/X). Non-localized routes (dashboard,
+    // judge, auth) carry locale via cookie only — URL is untouched.
+    const nextUrl = pathname ? rewriteLocaleInPath(pathname, next) : null;
+    if (nextUrl && nextUrl !== pathname) router.push(nextUrl);
+  }, [setStoreLocale, user, pathname, router]);
 
   const t = useMemo(() => {
     const dict = loadLocale(locale);
