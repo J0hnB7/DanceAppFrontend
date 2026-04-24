@@ -103,6 +103,8 @@ test('final tie triggers dance-off; winner gets the tied rank', async () => {
   // system resolved without the manual dance-off.
   expect([200, 400, 409]).toContain(danceOffRes.status());
 
+  // Publish results so the public summary endpoint is reachable.
+  await api.approveResults(org.accessToken, section.id).catch(() => void 0);
   const finalSummary = await api.getSectionSummary(section.id);
   const cRank = finalSummary.rankings.find(r => r.pairId === pairC)?.finalPlacement;
   const dRank = finalSummary.rankings.find(r => r.pairId === pairD)?.finalPlacement;

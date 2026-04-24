@@ -18,22 +18,32 @@ test('multi-section pair: sectionIds contains both section UUIDs', async () => {
     data: { email: dancerEmail, password: 'Dancer1!', firstName: 'Multi', lastName: 'Section', gdprAccepted: true },
   });
 
-  const pairBody = {
+  // Open registration on the competition — required by pair public-registration gate.
+  const patchRes = await ctx.put(`/api/v1/competitions/${competitionId}`, {
+    headers: { Authorization: `Bearer ${org.accessToken}`, 'Content-Type': 'application/json' },
+    data: { registrationOpen: true },
+  });
+  expect(patchRes.ok(), `Open registration failed: ${await patchRes.text()}`).toBeTruthy();
+
+  const body = {
+    sectionIds: [sectionAId, sectionBId],
     dancer1FirstName: 'Multi', dancer1LastName: 'Section',
     dancer2FirstName: 'Partner', dancer2LastName: 'Two',
-    club: 'Test Club', email: dancerEmail,
+    dancer1Club: 'Test Club',
+    dancer2Club: 'Test Club',
+    email: dancerEmail,
+    gdpr: true,
   };
+  const regRes = await ctx.post(`/api/v1/competitions/${competitionId}/pairs/public-registration`, { data: body });
+  expect(regRes.ok(), `Public registration failed: ${await regRes.text()}`).toBeTruthy();
 
-  const resA = await ctx.post(`/api/v1/competitions/${competitionId}/sections/${sectionAId}/pairs/public-registration`, { data: pairBody });
-  expect(resA.ok(), `Pair reg A failed: ${await resA.text()}`).toBeTruthy();
-
-  await ctx.post(`/api/v1/competitions/${competitionId}/sections/${sectionBId}/pairs/public-registration`, { data: pairBody });
-
-  const presRes = await ctx.get(`/api/v1/competitions/${competitionId}/pairs/presence`, {
+  const presRes = await ctx.get(`/api/v1/competitions/${competitionId}/presence`, {
     headers: { Authorization: `Bearer ${org.accessToken}` },
   });
   expect(presRes.ok()).toBeTruthy();
-  const pairs = await presRes.json() as Array<{ sectionIds: string[] }>;
+  const presBody = await presRes.json();
+  const pairs = Array.isArray(presBody) ? presBody as Array<{ sectionIds: string[] }>
+                                        : (presBody.content as Array<{ sectionIds: string[] }>) ?? [];
   const multiPair = pairs.find(p => Array.isArray(p.sectionIds) && p.sectionIds.length > 1);
   expect(multiPair, 'Expected a pair registered in multiple sections').toBeTruthy();
   expect(multiPair!.sectionIds).toContain(sectionAId);

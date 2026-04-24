@@ -105,20 +105,41 @@ export async function createApiClient(baseURL = 'http://localhost:8080'): Promis
     },
 
     async createSection(token, competitionId, body) {
-      const res = await ctx.post(`/api/v1/competitions/${competitionId}/sections`, { headers: authHeader(token), data: body });
+      const defaults = {
+        numberOfJudges: 3,
+        maxFinalPairs: 6,
+        orderIndex: 0,
+        competitorType: 'AMATEURS',
+        competitionType: 'COUPLE',
+        ageCategory: 'ADULT',
+        danceStyle: 'LATIN',
+        level: 'D',
+        dances: ['CHA_CHA'],
+      };
+      const res = await ctx.post(`/api/v1/competitions/${competitionId}/sections`, {
+        headers: authHeader(token),
+        data: { ...defaults, ...body },
+      });
       return jsonOrThrow<{ id: string }>(res, 'createSection');
     },
 
     async createPair(token, competitionId, sectionId, body) {
-      const res = await ctx.post(`/api/v1/competitions/${competitionId}/sections/${sectionId}/pairs`, {
-        headers: authHeader(token), data: body,
+      // Backend has both legacy dancer1Name (NOT NULL) and new dancer1FirstName / dancer1LastName
+      // columns. Synthesize the legacy name server-agnostically so registerPair works.
+      const b = body as Record<string, unknown>;
+      const dancer1Name = b.dancer1Name ?? [b.dancer1FirstName, b.dancer1LastName].filter(Boolean).join(' ');
+      const dancer2Name = b.dancer2Name ?? [b.dancer2FirstName, b.dancer2LastName].filter(Boolean).join(' ');
+      const res = await ctx.post(`/api/v1/competitions/${competitionId}/pairs`, {
+        headers: authHeader(token),
+        data: { ...body, sectionId, dancer1Name, dancer2Name },
       });
       return jsonOrThrow<{ id: string; startNumber?: number }>(res, 'createPair');
     },
 
     async listPairs(token, competitionId) {
       const res = await ctx.get(`/api/v1/competitions/${competitionId}/pairs`, { headers: authHeader(token) });
-      return jsonOrThrow<PairResponse[]>(res, 'listPairs');
+      const body = await jsonOrThrow<PairResponse[] | { content?: PairResponse[] }>(res, 'listPairs');
+      return Array.isArray(body) ? body : (body.content ?? []);
     },
 
     async setPresence(token, competitionId, pairId, status) {
@@ -148,8 +169,9 @@ export async function createApiClient(baseURL = 'http://localhost:8080'): Promis
     },
 
     async getSectionDances(token, competitionId, sectionId) {
-      const res = await ctx.get(`/api/v1/competitions/${competitionId}/sections/${sectionId}/dances`, { headers: authHeader(token) });
-      return jsonOrThrow<Array<{ id: string; danceName: string; danceOrder: number }>>(res, 'getSectionDances');
+      const res = await ctx.get(`/api/v1/competitions/${competitionId}/sections/${sectionId}`, { headers: authHeader(token) });
+      const section = await jsonOrThrow<{ dances?: Array<{ id: string; danceName: string; danceOrder: number }> }>(res, 'getSectionDances');
+      return section.dances ?? [];
     },
 
     async submitCallbacks(judgeTokenId, roundId, dance, selectedPairIds) {

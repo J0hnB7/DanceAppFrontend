@@ -11,7 +11,7 @@ export async function createJudgeToken(
   organizerToken: string,
   competitionId: string,
   judgeNumber: number,
-  role: 'ADJUDICATOR' | 'CHAIRPERSON' | 'SCRUTINEER' = 'ADJUDICATOR'
+  role: 'JUDGE' | 'CHAIR' | 'TECH_SUPPORT' | 'MODERATOR' | 'DJ' = 'JUDGE'
 ): Promise<JudgeTokenContext> {
   const ctx = await request.newContext({ baseURL: 'http://localhost:8080' });
   const res = await ctx.post(`/api/v1/competitions/${competitionId}/judge-tokens`, {
