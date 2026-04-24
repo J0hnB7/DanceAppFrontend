@@ -3,6 +3,7 @@ import { createOrganizer } from '../../factories/organizer-factory';
 import { createCompetitionWithSection } from '../../factories/competition-factory';
 import { createJudgeToken } from '../../factories/judge-factory';
 import { createApiClient } from '../../factories/api-client';
+import { request } from '@playwright/test';
 
 test('concurrent judges: 5 judges submit simultaneously, no data loss', async () => {
   const api = await createApiClient();
@@ -29,7 +30,6 @@ test('concurrent judges: 5 judges submit simultaneously, no data loss', async ()
   }
 
   const heat = await api.openRound(org.accessToken, competitionId, sectionId);
-
   const dances = await api.getSectionDances(org.accessToken, competitionId, sectionId);
   const danceName = dances[0]?.danceName ?? 'Cha-Cha';
 
@@ -41,7 +41,15 @@ test('concurrent judges: 5 judges submit simultaneously, no data loss', async ()
   await api.dispose();
 });
 
-test('same-judge double-submit succeeds on both (idempotent)', async () => {
+/**
+ * Regresní guard pro C2-lite commit 806a82c: když ten samý sudce pošle dva
+ * callback requesty současně, backend dělá delete-then-insert v jedné
+ * transakci → jedna instance commitne, druhá zahodí unique-constraint
+ * conflict (409). Sort statusů musí obsahovat alespoň jedno 200 nebo 204
+ * (data jsou zapsaná) — a duplicate-submit nesmí vrátit 5xx nebo tichý
+ * ztratit data. Per memory: "Same-judge double-tab → 409+200 (safe)".
+ */
+test('same-judge double-submit: one commits, the other safely conflicts', async () => {
   const api = await createApiClient();
   const org = await createOrganizer('cj-dup-org');
   const { competitionId, sectionId } = await createCompetitionWithSection(org.accessToken, {
@@ -59,12 +67,38 @@ test('same-judge double-submit succeeds on both (idempotent)', async () => {
   const dances = await api.getSectionDances(org.accessToken, competitionId, sectionId);
   const danceName = dances[0]?.danceName ?? 'Cha-Cha';
 
-  const [r1, r2] = await Promise.allSettled([
-    api.submitCallbacks(judge.id, heat.id, danceName, [p.id]),
-    api.submitCallbacks(judge.id, heat.id, danceName, [p.id]),
-  ]);
-  // Callbacks endpoint does delete-then-insert per judge+dance — both requests succeed, final state consistent.
-  expect([r1.status, r2.status]).toContain('fulfilled');
+  // Raw HTTP: the api-client wrapper throws on !ok, but we need the status
+  // codes to assert the race outcome.
+  const ctx = await request.newContext({ baseURL: 'http://localhost:8080' });
+  const submit = () => ctx.post(`/api/v1/rounds/${heat.id}/callbacks`, {
+    headers: { 'X-Judge-Token': judge.id },
+    data: { dance: danceName, selectedPairIds: [p.id] },
+  });
 
+  const [r1, r2] = await Promise.all([submit(), submit()]);
+  const statuses = [r1.status(), r2.status()].sort();
+
+  // Every response must be "handled" — no 500, no timeout.
+  for (const s of [r1.status(), r2.status()]) {
+    expect(s, `unexpected 5xx from concurrent submit: ${s}`).toBeLessThan(500);
+  }
+  // At least one request must have persisted the marks (200/204).
+  expect(statuses.some(s => s === 200 || s === 204),
+         `expected at least one 200/204 in concurrent double-submit, got ${statuses}`).toBeTruthy();
+  // The other may be a 409 (conflict — race lost cleanly) or another 200/204
+  // (delete-then-insert replayed safely). Anything else is a regression.
+  for (const s of statuses) {
+    expect([200, 204, 409], `unexpected status ${s} — not safe race outcome`).toContain(s);
+  }
+
+  // Final state must be consistent: the judge's stored callback set contains the pair.
+  const getRes = await ctx.get(`/api/v1/rounds/${heat.id}/callbacks`, {
+    headers: { 'X-Judge-Token': judge.id },
+  });
+  expect(getRes.ok()).toBeTruthy();
+  const stored = await getRes.json() as string[];
+  expect(stored).toContain(p.id);
+
+  await ctx.dispose();
   await api.dispose();
 });
