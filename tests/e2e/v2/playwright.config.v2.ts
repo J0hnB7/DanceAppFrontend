@@ -18,7 +18,16 @@ export default defineConfig({
     navigationTimeout: 15_000,
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      testIgnore: /specs\/extended\/mobile-.*\.spec\.ts$/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'mobile',
+      testMatch: /specs\/extended\/mobile-.*\.spec\.ts$/,
+      use: { ...devices['iPhone 12'] },
+    },
   ],
   webServer: {
     command: 'NEXT_PUBLIC_MOCK_API=false npm run dev',
