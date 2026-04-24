@@ -23,6 +23,8 @@ export async function createCompetition(
     eventDate: '2099-12-31',
     venue: 'Test Venue',
     contactEmail: 'test@test.local',
+    federation: 'NATIONAL',
+    roleMode: 'ORGANIZER_ONLY',
   });
   await api.dispose();
   return { id, name };
@@ -47,6 +49,8 @@ export async function createCompetitionWithSection(
     eventDate: '2099-12-31',
     venue: 'Test Venue',
     contactEmail: 'test@test.local',
+    federation: 'NATIONAL',
+    roleMode: 'ORGANIZER_ONLY',
   });
   const { id: sectionId } = await api.createSection(token, competitionId, {
     name: opts.sectionName ?? 'Test Section',
