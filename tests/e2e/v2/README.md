@@ -24,6 +24,8 @@ danceapp:
   test:
     auto-verify-email: true
     rate-limit-disabled: true    # required — see danceapp-backend/docs/gotchas/e2e-test-setup.md
+  cookie:
+    secure: false                # required for HTTP-only local dev (refresh-token cookie)
 ```
 
 Without `rate-limit-disabled: true` the suite hits two separate bucket rate limiters (`LoginAttemptService` and `RateLimitFilter`) inside the first ~12 `register` calls.
@@ -58,6 +60,7 @@ These cost hours the first time around — documented here so nobody learns them
 - GDPR endpoints: `GET /users/{id}/data-export`, `DELETE /users/{id}/personal-data`.
 - Public registration: `POST /competitions/{id}/pairs/public-registration`; competition needs `registrationOpen=true` via `PUT /competitions/{id}`.
 - Public result endpoints return 403 until `POST /sections/{id}/results/approve` — gated on `section.resultsPublishedAt`.
+- `SectionFinalSummaryResponse.rankings` includes **eliminated-in-SEMI pairs** at rank 7+ (their elimination rank), not just finalists 1..6. To assert the exact FINAL pair set, query `GET /rounds/{finalId}/placements/{danceId}` with a judge token (no publication gate, returns the authoritative set).
 - Language toggle is on `/` and `/competitions` only, never on `/login` (standalone auth-light).
 
 ## Add a new spec
