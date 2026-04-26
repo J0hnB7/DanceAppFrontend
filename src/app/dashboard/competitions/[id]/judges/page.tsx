@@ -267,6 +267,8 @@ function AutoSaveCell({
       setSaving(true);
       try {
         await onSave(val);
+      } catch (e) {
+        console.error("[AutoSaveCell] save failed", e);
       } finally {
         setSaving(false);
       }

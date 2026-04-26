@@ -197,7 +197,7 @@ function RegisterPageInner() {
                     <p style={{ fontSize: ".85rem", color: "#6B7280", marginTop: 6 }}>{t("dancer.register.subtitle")}</p>
                   </div>
 
-                  {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                  {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && mounted && (
                     <>
                       <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
                         <GoogleLogin
@@ -292,7 +292,7 @@ function RegisterPageInner() {
             </div>
 
             <p style={{ textAlign: "center", marginTop: 20, fontSize: ".78rem", color: "#9CA3AF" }}>
-              <Link href="/login" style={{ color: "#6B7280", textDecoration: "none" }}>
+              <Link href="/login" style={{ color: "#4B5563", textDecoration: "none" }}>
                 {t("auth.signIn")} →
               </Link>
             </p>

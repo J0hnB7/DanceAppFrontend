@@ -16,7 +16,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { googleAuthApi } from "@/lib/api/google-auth";
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
   password: z.string().min(1),
   totpCode: z.string().optional(),
 });
@@ -226,11 +226,11 @@ function LoginPageInner() {
                   {loading ? t("auth.signingIn") : t("auth.signIn")}
                 </button>
 
-                {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && mounted && (
                   <>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#9CA3AF", fontSize: ".8rem", margin: "4px 0" }}>
                       <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
-                      {mounted ? (locale === "en" ? "or" : "nebo") : ""}
+                      {locale === "en" ? "or" : "nebo"}
                       <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
                     </div>
 
@@ -270,7 +270,7 @@ function LoginPageInner() {
 
             {/* back to landing */}
             <p style={{ textAlign: "center", marginTop: 20, fontSize: ".78rem", color: "#9CA3AF" }}>
-              <Link href="/" style={{ color: "#6B7280", textDecoration: "none" }}>
+              <Link href="/" style={{ color: "#4B5563", textDecoration: "none" }}>
                 {t("auth.backToHome")}
               </Link>
             </p>

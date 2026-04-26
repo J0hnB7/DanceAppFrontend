@@ -29,6 +29,9 @@ export default function ForgotPasswordPage() {
     try {
       await authApi.forgotPassword(email);
       setSent(true);
+    } catch {
+      // forgotPassword always shows success to prevent email enumeration
+      setSent(true);
     } finally {
       setLoading(false);
     }

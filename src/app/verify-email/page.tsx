@@ -36,6 +36,8 @@ function VerifyEmailPageInner() {
     setResendLoading(true);
     try {
       await authApi.resendVerification(user.email);
+    } catch (e) {
+      console.error("[verify-email] resend failed", e);
     } finally {
       setResendLoading(false);
     }
