@@ -181,6 +181,7 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
   const [submitted, setSubmitted] = useState<Set<string>>(new Set());
   const [submittedDanceNames, setSubmittedDanceNames] = useState<Set<string>>(new Set());
   const [pingAlert, setPingAlert] = useState(false);
+  const [syncConflictWarning, setSyncConflictWarning] = useState(false);
   const [showViolationSheet, setShowViolationSheet] = useState(false);
   const [violationStep, setViolationStep] = useState<"pair" | "type" | "confirm">("pair");
   const [violationPairId, setViolationPairId] = useState<string | null>(null);
@@ -320,8 +321,13 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
   // Auto-sync pending offline marks when internet returns
   useEffect(() => {
     if (!isOnline || !adjudicatorId || !deviceToken) return;
-    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token).catch(() => {});
+    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token)
+      .then((result) => {
+        if (result.rejected > 0 || result.conflicts.length > 0) setSyncConflictWarning(true);
+      })
+      .catch(() => {});
   }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: syncing spinner omitted in final page — toast library (use-toast) is already wired
 
   const setPlacement = (danceId: string, pairId: string, placement: number) => {
     setPlacements((prev) => ({
@@ -433,6 +439,13 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
       {!isOnline && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
           <CloudOff className="h-3.5 w-3.5" /> {t("prelim.offline_local", locale)}
+        </div>
+      )}
+
+      {syncConflictWarning && (
+        <div className="flex items-start gap-3 border-b border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{t("judge.sync_rejected", locale)}</span>
         </div>
       )}
 

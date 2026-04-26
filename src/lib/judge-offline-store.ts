@@ -23,8 +23,10 @@ export interface RoundCacheData {
   roundId: string;
   roundType: string;
   dance: string;
+  dances?: Array<{ id: string; name: string; code?: string; danceName?: string }>;
   pairs: Array<{ id: string; startNumber: number; dancer1FirstName?: string; dancer1LastName?: string; dancer2FirstName?: string; dancer2LastName?: string }>;
-  heats?: Array<{ id: string; heatNumber: number; pairIds: string[] }>;
+  heats?: Array<{ id?: string; heatNumber: number; pairIds: string[] }>;
+  sectionName?: string;
   cachedAt: string;
 }
 
@@ -144,11 +146,19 @@ export const judgeOfflineStore = {
       }, { headers: { 'X-Judge-Token': judgeTokenId } });
 
       const result: SyncResult = response.data;
-      if (result.accepted > 0) {
-        await judgeOfflineStore.markAsSynced(pending.map((m) => m.key));
-      }
+      // Always purge after any server response — rejected marks are permanently dead
+      // (round already closed) and must not be retried on next reconnect.
+      // Network failures (catch block) leave marks intact for retry.
+      await judgeOfflineStore.markAsSynced(pending.map((m) => m.key));
       return result;
-    } catch {
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status && status >= 400 && status < 500) {
+        // 4xx = permanent business rejection (round closed, bad token) — purge dead marks
+        await judgeOfflineStore.markAsSynced(pending.map((m) => m.key));
+        return { accepted: 0, rejected: pending.length, conflicts: [] };
+      }
+      // 5xx or network error — keep marks for retry
       return { accepted: 0, rejected: 0, conflicts: [] };
     }
   },
@@ -156,6 +166,14 @@ export const judgeOfflineStore = {
   async getPendingCount(): Promise<number> {
     const pending = await judgeOfflineStore.getPendingMarks();
     return pending.length;
+  },
+
+  async cacheActiveRound(competitionId: string, data: RoundCacheData): Promise<void> {
+    return judgeOfflineStore.cacheRound(`active-${competitionId}`, data);
+  },
+
+  async getActiveRoundCache(competitionId: string): Promise<RoundCacheData | null> {
+    return judgeOfflineStore.getCachedRound(`active-${competitionId}`);
   },
 };
 

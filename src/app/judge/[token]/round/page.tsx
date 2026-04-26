@@ -42,6 +42,10 @@ interface ActiveRoundResponse {
   submittedDances?: string[];
 }
 
+function minutesAgo(isoTimestamp: string): number {
+  return Math.round((Date.now() - new Date(isoTimestamp).getTime()) / 60_000);
+}
+
 // ── Couple tile ───────────────────────────────────────────────────────────────
 
 type PairState = "none" | "tentative" | "selected";
@@ -182,6 +186,10 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [syncConflictWarning, setSyncConflictWarning] = useState(false);
+  const [usingCachedData, setUsingCachedData] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pingAlert, setPingAlert] = useState(false);
   const [showViolationSheet, setShowViolationSheet] = useState(false);
@@ -269,14 +277,69 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             setPairStates({});
           }
         }
+
+        // Cache round data for offline fallback
+        if (competitionId) {
+          judgeOfflineStore.cacheActiveRound(competitionId, {
+            roundId: r.data.round.id,
+            roundType: r.data.round.roundType,
+            dance: mappedDances[0]?.name ?? "",
+            dances: mappedDances,
+            pairs: r.data.pairs,
+            heats: r.data.heats ?? [],
+            sectionName: r.data.sectionName,
+            cachedAt: new Date().toISOString(),
+          }).catch(() => {});
+        }
       })
-      .catch(() => router.push(`/judge/${token}/lobby`))
+      .catch(async () => {
+        if (!navigator.onLine && competitionId) {
+          const cached = await judgeOfflineStore.getActiveRoundCache(competitionId).catch(() => null);
+          if (cached) {
+            // Verify cached round matches last known active round from lobby polling
+            const lastKnownRoundId = localStorage.getItem(`judge_active_round_${competitionId}`);
+            if (lastKnownRoundId && lastKnownRoundId !== cached.roundId) {
+              // Cache is from a different (older) round — unsafe to use
+              router.push(`/judge/${token}/lobby`);
+              return;
+            }
+            setRound({ id: cached.roundId, roundType: cached.roundType, roundNumber: 0, pairsToAdvance: null });
+            setDances(cached.dances ?? []);
+            setPairs(cached.pairs);
+            setHeats(cached.heats ?? []);
+            setSectionName(cached.sectionName ?? null);
+            setUsingCachedData(true);
+            setCachedAt(cached.cachedAt);
+            initialLoadRef.current = false;
+            return;
+          }
+        }
+        router.push(`/judge/${token}/lobby`);
+      })
       .finally(() => setLoading(false));
   }, [competitionId, adjudicatorId, token, router]);
 
   useEffect(() => {
     loadActiveRound();
   }, [loadActiveRound]);
+
+  // Restore pending offline marks into UI state after browser restart
+  useEffect(() => {
+    if (!adjudicatorId) return;
+    judgeOfflineStore.getPendingMarks().then((pending) => {
+      if (pending.length === 0) return;
+      const restoredPairStates: Record<string, PairState> = {};
+      const restoredSubmitted = new Set<string>();
+      for (const mark of pending) {
+        if (mark.recalled != null) restoredPairStates[mark.pairId] = mark.recalled ? "selected" : "none";
+        if (mark.dance) restoredSubmitted.add(mark.dance);
+      }
+      if (Object.keys(restoredPairStates).length > 0) {
+        setPairStates((prev) => ({ ...restoredPairStates, ...prev }));
+        setSubmittedDanceNames((prev) => new Set([...prev, ...restoredSubmitted]));
+      }
+    }).catch(() => {});
+  }, [adjudicatorId]);
 
   // Refs to avoid stale closure in SSE callback
   const loadActiveRoundRef = useRef(loadActiveRound);
@@ -386,7 +449,14 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   // Auto-sync pending offline marks when internet returns
   useEffect(() => {
     if (!isOnline || !adjudicatorId || !deviceToken) return;
-    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token).catch(() => {});
+    setSyncing(true);
+    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token)
+      .then((result) => {
+        if (result.rejected > 0 || result.conflicts.length > 0) setSyncConflictWarning(true);
+        if (usingCachedData) loadActiveRound();
+      })
+      .catch(() => {})
+      .finally(() => setSyncing(false));
   }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeDance = dances[activeDanceIdx];
@@ -612,7 +682,29 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         </div>
       )}
 
-      {!isOnline && (
+      {syncConflictWarning && (
+        <div className="flex items-start gap-3 border-b border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{t("judge.sync_rejected", locale)}</span>
+        </div>
+      )}
+
+      {usingCachedData && (
+        <div className="flex flex-col gap-0.5 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+          <div className="flex items-center justify-center gap-2">
+            <CloudOff className="h-3.5 w-3.5 shrink-0" />
+            <span>{t("judge.offline_cached_data", locale, { minutes: cachedAt ? String(minutesAgo(cachedAt)) : "?" })}</span>
+          </div>
+          {cachedAt && minutesAgo(cachedAt) > 5 && (
+            <div className="flex items-center justify-center gap-1.5 text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="h-3 w-3 shrink-0" />
+              <span>{t("judge.offline_cached_stale", locale)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isOnline && !usingCachedData && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
           <CloudOff className="h-3.5 w-3.5" /> {t("prelim.offline_local", locale)}
         </div>
@@ -636,7 +728,8 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            {!isOnline && <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
+            {syncing && <Spinner className="h-3.5 w-3.5 text-[var(--accent)]" aria-label="Synchronizuji..." />}
+            {!isOnline && !syncing && <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
             <button onClick={toggleLocale}
               aria-label={locale === "cs" ? "Switch to English" : "Přepnout do češtiny"}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] px-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
