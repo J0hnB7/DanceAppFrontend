@@ -108,6 +108,7 @@
       "name": "Name",
       "namePlaceholder": "John Doe",
       "email": "Email",
+      "invalidEmail": "Enter a valid email address",
       "send": "Send Invitation"
     }
   },

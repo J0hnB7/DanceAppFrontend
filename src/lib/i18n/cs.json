@@ -108,6 +108,7 @@
       "name": "Jméno",
       "namePlaceholder": "Jan Novák",
       "email": "E-mail",
+      "invalidEmail": "Zadejte platný e-mail",
       "send": "Odeslat pozvánku"
     }
   },
