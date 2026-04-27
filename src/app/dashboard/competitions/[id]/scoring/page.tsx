@@ -32,9 +32,12 @@ import {
 import { useSSE } from "@/hooks/use-sse";
 import { useAlertsStore } from "@/store/alerts-store";
 import apiClient from "@/lib/api-client";
+import { scoringApi } from "@/lib/api/scoring";
 import { formatTime, cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
+import { OverrideModal, type MissingJudgeInfo } from "@/components/results/override-modal";
+import axios from "axios";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,6 +60,7 @@ interface RoundDto {
   roundType: string;
   status: string;
   judgeCount?: number;
+  version?: number;
 }
 
 interface SSEMarksProgress {
@@ -202,6 +206,11 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
 
   const [tieDetected, setTieDetected] = useState<{ dance: string; count: number } | null>(null);
   const [activeConflict, setActiveConflict] = useState<{ id: string } | null>(null);
+  const [overrideState, setOverrideState] = useState<{
+    open: boolean;
+    missingJudges: MissingJudgeInfo[];
+    errorMessage: string | null;
+  }>({ open: false, missingJudges: [], errorMessage: null });
 
   // Active round for this competition
   const { data: activeRound, isLoading: roundLoading } = useQuery({
@@ -251,8 +260,70 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
         );
       }
     },
-    onError: () => {
+    onError: (err) => {
+      const isAxios = axios.isAxiosError(err);
+      const httpStatus = isAxios ? err.response?.status : undefined;
+      const data = isAxios ? err.response?.data : undefined;
+      const message =
+        typeof data === "object" && data !== null && "message" in data &&
+        typeof (data as { message?: unknown }).message === "string"
+          ? (data as { message: string }).message
+          : "";
+      // R11 incomplete-judges → 409 with parseable message → open override modal
+      if (httpStatus === 409 && message.includes("incomplete judge data")) {
+        const matches = Array.from(
+          message.matchAll(/Judge (\d+) \(submitted (\d+)\/(\d+) dances?\)/g),
+        );
+        const enriched: MissingJudgeInfo[] = matches
+          .map((m) => {
+            const judgeNumber = Number(m[1]);
+            const tokenId = status?.judges.find((j) => j.judgeNumber === judgeNumber)?.judgeTokenId;
+            if (!tokenId) return null;
+            return {
+              judgeTokenId: tokenId,
+              judgeNumber,
+              submitted: Number(m[2]),
+              expected: Number(m[3]),
+            };
+          })
+          .filter((x): x is MissingJudgeInfo => x !== null);
+        if (enriched.length > 0) {
+          setOverrideState({ open: true, missingJudges: enriched, errorMessage: null });
+          return;
+        }
+      }
       toast({ title: t("common.error"), variant: "destructive" });
+    },
+  });
+
+  const overrideMutation = useMutation({
+    mutationFn: (payload: { withdrawJudgeTokenIds: string[]; reason: string }) => {
+      if (!roundId) return Promise.reject(new Error("No active round"));
+      const expectedRoundVersion = roundDetail?.version ?? 0;
+      return scoringApi.calculateWithOverride(roundId, {
+        withdrawJudgeTokenIds: payload.withdrawJudgeTokenIds,
+        reason: payload.reason,
+        expectedRoundVersion,
+      });
+    },
+    onSuccess: () => {
+      setOverrideState({ open: false, missingJudges: [], errorMessage: null });
+      toast({ title: t("round.resultsCalculated"), variant: "success" });
+      if (activeRound?.sectionId) {
+        router.push(
+          `/dashboard/competitions/${competitionId}/sections/${activeRound.sectionId}/rounds/${roundId}`
+        );
+      }
+    },
+    onError: (err) => {
+      const isAxios = axios.isAxiosError(err);
+      const data = isAxios ? err.response?.data : undefined;
+      const message =
+        typeof data === "object" && data !== null && "message" in data &&
+        typeof (data as { message?: unknown }).message === "string"
+          ? (data as { message: string }).message
+          : t("common.error");
+      setOverrideState((prev) => ({ ...prev, errorMessage: message }));
     },
   });
 
@@ -409,6 +480,16 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       )}
+
+      <OverrideModal
+        open={overrideState.open}
+        missingJudges={overrideState.missingJudges}
+        totalJudges={status?.totalJudges ?? roundDetail?.judgeCount ?? 0}
+        submitting={overrideMutation.isPending}
+        errorMessage={overrideState.errorMessage}
+        onClose={() => setOverrideState({ open: false, missingJudges: [], errorMessage: null })}
+        onSubmit={(payload) => overrideMutation.mutate(payload)}
+      />
     </AppShell>
   );
 }

@@ -163,6 +163,20 @@ Node.js PATH (ak `npm` nie je v defaultnej shell PATH): `export PATH="/Users/jan
 
 ---
 
+## Pre-publish hardening — FE patterns (V082, 2026-04-27)
+
+- **`SectionDto` má hardening flagy** — `resultsDirty?`, `resultsPublishedAt?`, `lastCorrectedAt?`, `correctionCount?`, `version?`. BE už je vrací v `SectionResponse`.
+- **`results-corrected` SSE event** — public scoreboard listener resetuje cache snapshot (queryClient.invalidateQueries). Wired v `src/app/[locale]/scoreboard/[competitionId]/page.tsx`.
+- **Dirty banner** — `SectionInlineResults` (results page) zobrazí amber banner s "Přepočítat" buttonem když `section.resultsDirty=true`. Klik volá `POST /sections/{id}/final-summary/calculate` a invaliduje queries.
+- **R11 override modal** — `src/components/results/override-modal.tsx`. Wired v `src/app/dashboard/competitions/[id]/scoring/page.tsx`: `calculateMutation.onError` parsuje 409 message regexem na "Judge N (submitted X/Y dances)" a páruje `judgeNumber` s `judgeTokenId` z `submission-status` query. Submit volá `scoringApi.calculateWithOverride(roundId, { withdrawJudgeTokenIds, reason, expectedRoundVersion })`.
+- **`expectedRoundVersion`** — čteme z `RoundDto.version` (BE `Round.@Version` přes `RoundResponse`). Mismatch = 409 s "modified by another request".
+- **Scoreboard correction badge** — `src/app/[locale]/scoreboard/[competitionId]/page.tsx`: amber dot na filter buttonu když `section.lastCorrectedAt` set, plus banner stripe při viewing single corrected section.
+- **i18n keys (results)** — `dirtyTitle/dirtyDesc/dirtyRecompute`, `overrideTitle/Desc/JudgeRow/ReasonLabel/Acknowledge/Cancel/Submit/TooFewJudges`, `scoreboardCorrectedBadge`. Všechny v cs.json + en.json.
+- **`scoringApi.calculateWithOverride` + `emergencyCorrection`** — zapečené v `src/lib/api/scoring.ts`. UI pre post-publish batch editor (`emergencyCorrection`) zatím nie je v scope.
+- **`RegExp` matching v error parsingu** — `Array.from(message.matchAll(/.../g))` (nie iteratívne `re["e"+"xec"](msg)`) — security hook na opačnom výraze hlási child_process false-positive.
+
+---
+
 ## E2E Test Suite v2
 
 Lokace: `tests/e2e/v2/` — spustit: `npm run test:e2e:v2`

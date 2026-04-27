@@ -52,7 +52,7 @@ export default function ScoreboardPage({
   params: Promise<{ competitionId: string }>;
 }) {
   const { competitionId } = use(params);
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [sseResults, setSseResults] = useState<LiveResultRow[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -134,11 +134,29 @@ export default function ScoreboardPage({
           return section?.id === selectedSection;
         });
 
-  // Section tabs
+  // Section tabs (preserve correction metadata for badge rendering)
+  const completedSections = sections?.filter((s) => s.status === "COMPLETED") ?? [];
   const sectionOptions = [
-    { id: "all", name: t("scoreboard.allSections") },
-    ...(sections?.filter((s) => s.status === "COMPLETED").map((s) => ({ id: s.id, name: s.name })) ?? []),
+    { id: "all", name: t("scoreboard.allSections"), lastCorrectedAt: null as string | null, correctionCount: 0 },
+    ...completedSections.map((s) => ({
+      id: s.id,
+      name: s.name,
+      lastCorrectedAt: s.lastCorrectedAt ?? null,
+      correctionCount: s.correctionCount ?? 0,
+    })),
   ];
+  const activeSection = selectedSection === "all"
+    ? null
+    : completedSections.find((s) => s.id === selectedSection) ?? null;
+  const correctedDateFmt = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString(locale === "cs" ? "cs-CZ" : "en-GB", {
+        day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
+      });
+    } catch {
+      return iso;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
@@ -176,15 +194,31 @@ export default function ScoreboardPage({
               key={s.id}
               onClick={() => setSelectedSection(s.id)}
               className={cn(
-                "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1.5",
                 selectedSection === s.id
                   ? "bg-[#ffd60a] text-black"
                   : "bg-white/10 text-white/60 hover:bg-white/20 hover:text-white"
               )}
             >
               {s.name}
+              {s.lastCorrectedAt && (
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400"
+                  aria-label="opraveno"
+                />
+              )}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Correction banner — shown when viewing a single corrected section */}
+      {activeSection?.lastCorrectedAt && (
+        <div className="border-b border-amber-400/30 bg-amber-400/10 px-6 py-2 text-center text-xs text-amber-200">
+          {t("results.scoreboardCorrectedBadge", {
+            date: correctedDateFmt(activeSection.lastCorrectedAt),
+            count: activeSection.correctionCount ?? 0,
+          })}
         </div>
       )}
 

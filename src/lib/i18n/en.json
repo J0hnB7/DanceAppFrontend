@@ -995,7 +995,19 @@
     "calculateAllTitle": "Recalculate overall standings for all categories",
     "calculateAllLabel": "Create overall standings for all categories",
     "calculateAllBtn": "Create overall standings ({{count}})",
-    "calculatingAllBtn": "Recalculating… {{done}}/{{total}}"
+    "calculatingAllBtn": "Recalculating… {{done}}/{{total}}",
+    "dirtyTitle": "Results are stale",
+    "dirtyDesc": "Recompute is required after the last correction before publishing.",
+    "dirtyRecompute": "Recompute",
+    "overrideTitle": "Recalculate with reduced judges",
+    "overrideDesc": "{{missing}} of {{total}} judges have incomplete data. Select those to exclude from the calculation.",
+    "overrideJudgeRow": "Judge {{number}} — submitted {{submitted}}/{{expected}} dances",
+    "overrideReasonLabel": "Reason (min 10 chars): hardware failure, judge withdrew…",
+    "overrideAcknowledge": "I understand this modifies the official calculation",
+    "overrideCancel": "Cancel",
+    "overrideSubmit": "Recalculate with {{remaining}} judges",
+    "overrideTooFewJudges": "Too few judges remain (need ≥ 3).",
+    "scoreboardCorrectedBadge": "Corrected {{date}} ({{count}} changes)"
   },
   "diplomas": {
     "title": "Diplomas",

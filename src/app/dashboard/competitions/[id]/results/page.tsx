@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, use, useState } from "react";
-import { Trophy, ChevronRight, ChevronDown, BarChart3, Clock, CheckCircle2, Download, Medal } from "lucide-react";
+import { Trophy, ChevronRight, ChevronDown, BarChart3, Clock, CheckCircle2, Download, Medal, AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
@@ -168,12 +168,28 @@ function SectionInlineResults({
   competitionId: string;
 }) {
   const { t } = useLocale();
+  const queryClient = useQueryClient();
   const [detailPairId, setDetailPairId] = useState<string | null>(null);
+  const [recomputing, setRecomputing] = useState(false);
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ["section-summary", section.id],
     queryFn: () => scoringApi.getSectionSummary(section.id),
   });
+
+  const handleRecomputeFromBanner = async () => {
+    if (recomputing) return;
+    setRecomputing(true);
+    try {
+      await apiClient.post(`/sections/${section.id}/final-summary/calculate`);
+      await queryClient.invalidateQueries({ queryKey: ["section-summary", section.id] });
+      await queryClient.invalidateQueries({ queryKey: ["sections", competitionId] });
+    } catch (err) {
+      console.error("[results] dirty banner recompute failed", err);
+    } finally {
+      setRecomputing(false);
+    }
+  };
 
   if (isLoading) return <Skeleton className="h-32 w-full" />;
 
@@ -257,6 +273,26 @@ function SectionInlineResults({
 
   return (
     <div className="space-y-3">
+      {section.resultsDirty && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-amber-900 dark:text-amber-200">{t("results.dirtyTitle")}</p>
+              <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{t("results.dirtyDesc")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRecomputeFromBanner}
+              disabled={recomputing}
+              className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/40 cursor-pointer min-h-[36px]"
+            >
+              {recomputing ? t("results.recalculating") : t("results.dirtyRecompute")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Summary table — segmented by reached round */}
       {hasSummary && (
         <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">

@@ -995,7 +995,19 @@
     "calculateAllTitle": "Přepočítat celkové pořadí pro všechny kategorie",
     "calculateAllLabel": "Vytvořit celkové pořadí pro všechny kategorie",
     "calculateAllBtn": "Vytvořit celkové pořadí ({{count}})",
-    "calculatingAllBtn": "Přepočítávám… {{done}}/{{total}}"
+    "calculatingAllBtn": "Přepočítávám… {{done}}/{{total}}",
+    "dirtyTitle": "Výsledky jsou zastaralé",
+    "dirtyDesc": "Po poslední opravě je potřeba spustit přepočet před publikováním.",
+    "dirtyRecompute": "Přepočítat",
+    "overrideTitle": "Přepočítat s redukovaným počtem rozhodčích",
+    "overrideDesc": "{{missing}} z {{total}} rozhodčích nemá kompletní data. Vyberte ty, kteří mají být vyřazeni z výpočtu.",
+    "overrideJudgeRow": "Rozhodčí {{number}} — odevzdal {{submitted}}/{{expected}} tanců",
+    "overrideReasonLabel": "Důvod (min 10 znaků): hardware failure, rozhodčí odešel…",
+    "overrideAcknowledge": "Rozumím, že měním oficiální výpočet",
+    "overrideCancel": "Zrušit",
+    "overrideSubmit": "Přepočítat s {{remaining}} rozhodčími",
+    "overrideTooFewJudges": "Příliš málo rozhodčích zbývá (potřeba ≥ 3).",
+    "scoreboardCorrectedBadge": "Opraveno {{date}} ({{count}} změn)"
   },
   "diplomas": {
     "title": "Diplomy",
