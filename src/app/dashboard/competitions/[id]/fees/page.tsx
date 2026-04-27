@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { competitionsApi } from "@/lib/api/competitions";
 import { feesApi } from "@/lib/api/fees";
 import { sectionsApi, type SectionDto } from "@/lib/api/sections";
 import { formatCurrency } from "@/lib/utils";
@@ -66,6 +67,43 @@ export default function FeesPage({ params }: { params: Promise<{ id: string }> }
   const { data: discounts } = useQuery({
     queryKey: ["discounts", id],
     queryFn: () => feesApi.listDiscounts(id),
+  });
+
+  const { data: competition } = useQuery({
+    queryKey: ["competition", id, "detail"],
+    queryFn: () => competitionsApi.get(id),
+  });
+
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discount2nd, setDiscount2nd] = useState(50);
+  const [discount3rdPlus, setDiscount3rdPlus] = useState(70);
+
+  useEffect(() => {
+    if (!competition) return;
+    const hasDiscount =
+      (competition.discount2ndPct ?? 0) > 0 ||
+      (competition.discount3rdPlusPct ?? 0) > 0;
+    setDiscountEnabled(hasDiscount);
+    if (competition.discount2ndPct != null) {
+      setDiscount2nd(Number(competition.discount2ndPct));
+    }
+    if (competition.discount3rdPlusPct != null) {
+      setDiscount3rdPlus(Number(competition.discount3rdPlusPct));
+    }
+  }, [competition]);
+
+  const saveDiscountMutation = useMutation({
+    mutationFn: () =>
+      competitionsApi.update(id, {
+        discount2ndPct: discountEnabled ? discount2nd : 0,
+        discount3rdPlusPct: discountEnabled ? discount3rdPlus : 0,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["competition", id, "detail"] });
+      toast({ title: t("fees.discountSaved"), variant: "success" });
+    },
+    onError: () =>
+      toast({ title: t("fees.discountSaveFailed"), variant: "destructive" }),
   });
 
   const upsertFee = useMutation({
@@ -183,6 +221,82 @@ export default function FeesPage({ params }: { params: Promise<{ id: string }> }
             ))}
           </div>
         )}
+      </div>
+
+      <Separator className="mb-8" />
+
+      {/* Volume discount */}
+      <div className="mb-8">
+        <h3 className="mb-3 font-semibold text-[var(--text-primary)]">
+          {t("fees.volumeDiscount")}
+        </h3>
+        <Card>
+          <CardContent className="space-y-4 py-5">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={discountEnabled}
+                onChange={(e) => setDiscountEnabled(e.target.checked)}
+                className="h-4 w-4 cursor-pointer accent-[var(--accent)]"
+              />
+              <span className="text-sm">{t("fees.volumeDiscountEnable")}</span>
+            </label>
+
+            <div
+              className={`space-y-3 ${
+                !discountEnabled ? "opacity-40 pointer-events-none" : ""
+              }`}
+              aria-disabled={!discountEnabled}
+            >
+              <div className="flex items-center gap-3">
+                <label
+                  htmlFor="discount-2nd"
+                  className="w-56 text-sm text-[var(--text-secondary)]"
+                >
+                  {t("fees.volumeDiscount2nd")}
+                </label>
+                <input
+                  id="discount-2nd"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={discount2nd}
+                  onChange={(e) => setDiscount2nd(Number(e.target.value))}
+                  className="w-20 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-sm"
+                />
+                <span className="text-sm text-[var(--text-tertiary)]">%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <label
+                  htmlFor="discount-3rd"
+                  className="w-56 text-sm text-[var(--text-secondary)]"
+                >
+                  {t("fees.volumeDiscount3rdPlus")}
+                </label>
+                <input
+                  id="discount-3rd"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={discount3rdPlus}
+                  onChange={(e) => setDiscount3rdPlus(Number(e.target.value))}
+                  className="w-20 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-sm"
+                />
+                <span className="text-sm text-[var(--text-tertiary)]">%</span>
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={() => saveDiscountMutation.mutate()}
+              loading={saveDiscountMutation.isPending}
+            >
+              {t("common.save")}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <Separator className="mb-8" />
