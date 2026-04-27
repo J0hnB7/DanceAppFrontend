@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useDebouncedCallback } from "use-debounce";
 import { Maximize2, Minimize2, Trophy, RefreshCw, Filter, AlertTriangle } from "lucide-react";
 import { useSSE } from "@/hooks/use-sse";
 import { Badge } from "@/components/ui/badge";
@@ -66,27 +67,32 @@ export default function ScoreboardPage({
     retry: 2,
   });
 
-  // Load results for completed sections
-  useEffect(() => {
+  const loadSectionResults = useCallback(async () => {
     if (!sections) return;
     const completedSections = sections.filter((s) => s.status === "COMPLETED");
     if (completedSections.length === 0) return;
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingResults(true);
-    Promise.all(
+    const allResults = await Promise.all(
       completedSections.map((s) => fetchSectionResults(competitionId, s.id, s.name))
-    ).then((allResults) => {
-      setSectionResults(allResults.flat());
-      setLastUpdate(new Date());
-      setLoadingResults(false);
-    });
+    );
+    setSectionResults(allResults.flat());
+    setLastUpdate(new Date());
+    setLoadingResults(false);
   }, [sections, competitionId]);
+
+  // Load results for completed sections
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { loadSectionResults(); }, [loadSectionResults]);
+
+  // Debounced version for SSE-triggered reloads (reconnect storms)
+  const debouncedLoad = useDebouncedCallback(loadSectionResults, 500);
 
   useSSE<ScoreboardEvent>(competitionId, "RESULT_UPDATED", (data) => {
     if (data.payload.results) {
       setSseResults(data.payload.results);
       setLastUpdate(new Date());
+    } else {
+      debouncedLoad();
     }
   });
 
