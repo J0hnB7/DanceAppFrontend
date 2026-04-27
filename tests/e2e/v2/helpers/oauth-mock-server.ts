@@ -35,7 +35,8 @@ export async function startOAuthMockServer(preferredPort = 0): Promise<OAuthMock
     const path = url.pathname;
 
     if (req.method === 'GET' && path === '/authorize') {
-      const redirectUri = url.searchParams.get('redirect_uri') ?? '/';
+      const raw = url.searchParams.get('redirect_uri') ?? '/';
+      const redirectUri = (raw.startsWith('http://localhost') || raw.startsWith('http://127.0.0.1')) ? raw : '/';
       const sep = redirectUri.includes('?') ? '&' : '?';
       res.writeHead(302, { Location: `${redirectUri}${sep}code=fake-code-123&state=${url.searchParams.get('state') ?? ''}` });
       res.end();
