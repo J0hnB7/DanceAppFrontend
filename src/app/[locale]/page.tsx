@@ -822,11 +822,11 @@ const CSS = `
   }
   .lp-footer-links { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; }
   .lp-footer-links a {
-    font-size: .76rem; color: #6b7280;
+    font-size: .76rem; color: #9ca3af;
     text-decoration: none; transition: color .2s; letter-spacing: -.01em;
   }
   .lp-footer-links a:hover { color: #d1d5db; }
-  .lp-footer-copy { font-size: .72rem; color: #6b7280; letter-spacing: -.01em; margin: 0; }
+  .lp-footer-copy { font-size: .72rem; color: #9ca3af; letter-spacing: -.01em; margin: 0; }
 
   /* Soutěže — centered absolutely in nav on mobile, hidden on desktop */
   .lp-nav-competitions-btn {

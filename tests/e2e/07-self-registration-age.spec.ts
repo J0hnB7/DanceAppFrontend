@@ -67,19 +67,19 @@ test.describe('dancer self-registration — age filter + batch', () => {
     }
 
     // Self-register card appears (authenticated section)
-    const selfRegisterCard = page.locator('text=Přihlášení, text=Self-registration, text=loginToRegister').first();
+    const selfRegisterCard = page.locator(':text("Přihlášení"), :text("Self-registration"), :text("loginToRegister")').first();
     await expect(selfRegisterCard).toBeVisible({ timeout: 10_000 }).catch(() => {});
 
     // Either eligible sections render OR "no eligible sections" warning
     const eligibleOrEmpty = page.locator(
-      'button[aria-pressed], text=Žádná vhodná, text=No eligible, text=noEligibleSections'
+      'button[aria-pressed], :text("Žádná vhodná"), :text("No eligible"), :text("noEligibleSections")'
     ).first();
     await expect(eligibleOrEmpty).toBeVisible({ timeout: 8_000 });
 
     // When eligible sections exist, age-warning for missing birthYear must NOT show
     // (dancer has onboardingCompleted + birthYear)
     await expect(
-      page.locator('text=missingBirthYear, text=Dokončete profil, text=Complete profile').first()
+      page.locator(':text("missingBirthYear"), :text("Dokončete profil"), :text("Complete profile")').first()
     ).toHaveCount(0);
   });
 

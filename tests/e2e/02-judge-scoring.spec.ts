@@ -40,7 +40,7 @@ test.describe('judge scoring flow', () => {
 
     // After successful PIN → either scoring page or lobby (waiting for round)
     await expect(
-      page.locator('text=Čekám na zahájení, text=Waiting for round, .grid button, button:has-text("Odeslat")').first()
+      page.locator('.grid button, button:has-text("Odeslat"), :text("Čekám"), :text("Waiting for round")').first()
     ).toBeVisible({ timeout: 10_000 });
   });
 

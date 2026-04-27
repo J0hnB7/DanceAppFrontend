@@ -14,6 +14,9 @@ export async function createSection(
     level: string;
     dances: string[];
     numberOfJudges: number;
+    minBirthYear: number;
+    maxBirthYear: number;
+    competitionType: string;
   }> = {}
 ): Promise<SectionContext> {
   const api = await createApiClient();
@@ -23,9 +26,11 @@ export async function createSection(
     danceStyle: opts.danceStyle ?? 'LATIN',
     level: opts.level ?? 'D',
     competitorType: 'AMATEURS',
-    competitionType: 'COUPLE',
+    competitionType: opts.competitionType ?? 'COUPLE',
     dances: opts.dances ?? ['CHA_CHA', 'SAMBA'],
     numberOfJudges: opts.numberOfJudges ?? 3,
+    ...(opts.minBirthYear != null && { minBirthYear: opts.minBirthYear }),
+    ...(opts.maxBirthYear != null && { maxBirthYear: opts.maxBirthYear }),
   });
   await api.dispose();
   return { id };

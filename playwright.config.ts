@@ -1,4 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config as dotenvConfig } from 'dotenv';
+import { existsSync } from 'fs';
+import path from 'path';
+
+// Load seed-generated env vars when present (created by tests/e2e/seed-e2e-data.sh)
+const envFile = path.resolve(__dirname, '.env.test.local');
+if (existsSync(envFile)) dotenvConfig({ path: envFile });
 
 /**
  * E2E tests — run with real backend (NEXT_PUBLIC_MOCK_API=false).
