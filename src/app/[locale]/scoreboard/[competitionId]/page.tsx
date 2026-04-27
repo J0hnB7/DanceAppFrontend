@@ -72,20 +72,23 @@ export default function ScoreboardPage({
     const completedSections = sections.filter((s) => s.status === "COMPLETED");
     if (completedSections.length === 0) return;
     setLoadingResults(true);
-    const allResults = await Promise.all(
-      completedSections.map((s) => fetchSectionResults(competitionId, s.id, s.name))
-    );
-    setSectionResults(allResults.flat());
-    setLastUpdate(new Date());
-    setLoadingResults(false);
+    try {
+      const allResults = await Promise.all(
+        completedSections.map((s) => fetchSectionResults(competitionId, s.id, s.name))
+      );
+      setSectionResults(allResults.flat());
+      setLastUpdate(new Date());
+    } finally {
+      setLoadingResults(false);
+    }
   }, [sections, competitionId]);
+
+  // Debounced version for SSE-triggered reloads (reconnect storms)
+  const debouncedLoad = useDebouncedCallback(loadSectionResults, 500);
 
   // Load results for completed sections
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadSectionResults(); }, [loadSectionResults]);
-
-  // Debounced version for SSE-triggered reloads (reconnect storms)
-  const debouncedLoad = useDebouncedCallback(loadSectionResults, 500);
 
   useSSE<ScoreboardEvent>(competitionId, "RESULT_UPDATED", (data) => {
     if (data.payload.results) {
