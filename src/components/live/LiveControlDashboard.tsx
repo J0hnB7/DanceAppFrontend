@@ -10,6 +10,7 @@ import { useSSE } from '@/hooks/use-sse'
 import { useSSEConnected } from '@/lib/sse-client'
 import { useJudgeStatusPolling } from '@/hooks/use-judge-status-polling'
 import { useRoundControl } from '@/hooks/use-round-control'
+import { useToast } from '@/hooks/use-toast'
 
 import { LiveStatusBar } from './LiveStatusBar'
 import { RoundSelector, type RoundItem } from './RoundSelector'
@@ -79,6 +80,7 @@ export function LiveControlDashboard({
   } = useLiveStore()
 
   const { t } = useLocale()
+  const { toast } = useToast()
   const [showHelp, setShowHelp] = useState(false)
   const [showIncidentModal, setShowIncidentModal] = useState(false)
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)
@@ -183,6 +185,9 @@ export function LiveControlDashboard({
   useSSE(competitionId, 'dance-closed', onDanceClosed)
   useSSE(competitionId, 'violation-reported', () => {
     violationsApi.list(competitionId, 'PENDING_REVIEW').then(v => { setViolations(v); pingAudio() }).catch(() => {})
+  })
+  useSSE(competitionId, 'sync:rejected', () => {
+    toast({ title: "Sync rejected: judge's offline scores were not applied because the round was already closed.", variant: 'destructive' })
   })
 
   // ← → heat navigation
