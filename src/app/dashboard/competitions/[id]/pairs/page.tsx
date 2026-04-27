@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useRef } from "react";
+import React, { use, useState, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -43,7 +43,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePairs, useCreatePair, useDeletePair, useImportPairs } from "@/hooks/queries/use-pairs";
+import { usePairs, useCreatePair, useDeletePair, useImportPairs, useRemovePairFromSection } from "@/hooks/queries/use-pairs";
 import { useSections } from "@/hooks/queries/use-sections";
 import { competitionsApi } from "@/lib/api/competitions";
 import { pairsApi } from "@/lib/api/pairs";
@@ -376,6 +376,55 @@ function printStartNumbers(pairs: PairDto[], competitionName: string, sections: 
   win.print();
 }
 
+// ── AddSectionDropdown ────────────────────────────────────────────────────────
+function AddSectionDropdown({
+  competitionId,
+  pairId,
+  assignedSectionIds,
+  allSections,
+}: {
+  competitionId: string;
+  pairId: string;
+  assignedSectionIds: string[];
+  allSections: { id: string; name: string }[];
+}) {
+  const { t } = useLocale();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const available = allSections.filter((s) => !assignedSectionIds.includes(s.id));
+
+  const add = useMutation({
+    mutationFn: (sectionId: string) =>
+      apiClient.post(`/competitions/${competitionId}/pairs/${pairId}/sections/${sectionId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pairs", competitionId] }),
+  });
+
+  if (available.length === 0) return null;
+
+  return (
+    <Select
+      open={open}
+      onOpenChange={setOpen}
+      onValueChange={(sectionId) => {
+        add.mutate(sectionId);
+        setOpen(false);
+      }}
+    >
+      <SelectTrigger className="h-7 w-auto gap-1 border-dashed text-xs">
+        <Plus className="h-3 w-3" />
+        <span>{t("pairs.addCategory")}</span>
+      </SelectTrigger>
+      <SelectContent>
+        {available.map((s) => (
+          <SelectItem key={s.id} value={s.id}>
+            {s.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function PairsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -388,6 +437,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
   const [checkinToken, setCheckinToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [contactPair, setContactPair] = useState<PairDto | null>(null);
+  const [expandedPairId, setExpandedPairId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const xlsxFileRef = useRef<HTMLInputElement>(null);
   const [xlsxResult, setXlsxResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
@@ -403,6 +453,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
   const createPair = useCreatePair(id);
   const deletePair = useDeletePair(id);
   const importPairs = useImportPairs(id);
+  const removePairFromSection = useRemovePairFromSection(id);
 
   const generateCheckinLink = useMutation({
     mutationFn: () =>
@@ -756,7 +807,11 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
               const regStatus = pair.registrationStatus ?? "UNCONFIRMED";
               const statusCfg = REG_STATUS_CONFIG[regStatus];
               return (
-                <TableRow key={pair.id}>
+                <React.Fragment key={pair.id}>
+                <TableRow
+                  className="cursor-pointer"
+                  onClick={() => setExpandedPairId((prev) => (prev === pair.id ? null : pair.id))}
+                >
                   <TableCell className="font-mono font-semibold">
                     {String(pair.startNumber).padStart(3, "0")}
                   </TableCell>
@@ -828,7 +883,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                   <TableCell>
                     <NoteCell pair={pair} competitionId={id} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1">
                       {pair.email && (
                         <Button
@@ -863,6 +918,58 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
                     </div>
                   </TableCell>
                 </TableRow>
+                {expandedPairId === pair.id && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="bg-muted/30 px-6 py-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm text-muted-foreground mr-1">
+                          {t("pairs.categories")}:
+                        </span>
+                        {(pair.sections ?? []).map((ps) => (
+                          <Badge
+                            key={ps.sectionId}
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
+                            {ps.sectionName ?? sections?.find((s) => s.id === ps.sectionId)?.name ?? ps.sectionId}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removePairFromSection.mutate(
+                                  { pairId: pair.id, sectionId: ps.sectionId },
+                                  {
+                                    onSuccess: (data) => {
+                                      if (data.hadScoringData) {
+                                        toast({ description: t("pairs.removedWithScoringData") });
+                                      }
+                                    },
+                                    onError: () => {
+                                      toast({
+                                        description: t("pairs.cannotRemoveOnlySection"),
+                                        variant: "destructive",
+                                      });
+                                    },
+                                  }
+                                );
+                              }}
+                              className="ml-1 rounded-full hover:bg-destructive/20 p-0.5"
+                              aria-label={`Remove ${ps.sectionName}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                        <AddSectionDropdown
+                          competitionId={id}
+                          pairId={pair.id}
+                          assignedSectionIds={(pair.sections ?? []).map((s) => s.sectionId)}
+                          allSections={(sections ?? []).map((s) => ({ id: s.id, name: s.name }))}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                </React.Fragment>
               );
             })}
           </TableBody>
