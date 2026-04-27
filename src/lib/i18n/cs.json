@@ -1613,7 +1613,15 @@
     "valueLabel": "Hodnota",
     "maxUsesLabel": "Max. použití (volitelné)",
     "expiresAtLabel": "Platnost do (volitelné)",
-    "codeMinLength": "Min. 3 znaky"
+    "codeMinLength": "Min. 3 znaky",
+    "volumeDiscount": "Objemová sleva",
+    "volumeDiscountEnable": "Zapnout objemovou slevu",
+    "volumeDiscount2nd": "2. kategorie",
+    "volumeDiscount3rdPlus": "3. kategorie a každá další",
+    "volumeDiscountSave": "Ušetříte",
+    "volumeDiscountTotal": "Celkem",
+    "discountSaved": "Sleva uložena",
+    "discountSaveFailed": "Nepodařilo se uložit slevu"
   },
   "payments": {
     "title": "Faktury a platby",

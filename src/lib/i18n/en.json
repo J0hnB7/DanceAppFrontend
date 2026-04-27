@@ -1613,7 +1613,15 @@
     "valueLabel": "Value",
     "maxUsesLabel": "Max uses (optional)",
     "expiresAtLabel": "Expires at (optional)",
-    "codeMinLength": "Min 3 characters"
+    "codeMinLength": "Min 3 characters",
+    "volumeDiscount": "Volume discount",
+    "volumeDiscountEnable": "Enable volume discount",
+    "volumeDiscount2nd": "2nd category",
+    "volumeDiscount3rdPlus": "3rd category and beyond",
+    "volumeDiscountSave": "You save",
+    "volumeDiscountTotal": "Total",
+    "discountSaved": "Discount saved",
+    "discountSaveFailed": "Failed to save discount"
   },
   "payments": {
     "title": "Invoices & Payments",
