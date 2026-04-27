@@ -99,6 +99,13 @@ export default function ScoreboardPage({
     }
   });
 
+  // Emergency correction broadcast: server recomputed published results.
+  // Drop any in-memory SSE results so the next render fetches fresh data.
+  useSSE(competitionId, "results-corrected", () => {
+    setSseResults([]);
+    debouncedLoad();
+  });
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();

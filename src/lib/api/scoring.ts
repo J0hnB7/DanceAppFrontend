@@ -102,6 +102,22 @@ export const scoringApi = {
   approveResults: (sectionId: string) =>
     apiClient.post(`/sections/${sectionId}/results/approve`).then((r) => r.data),
 
+  calculateWithOverride: (
+    roundId: string,
+    payload: { withdrawJudgeTokenIds: string[]; reason: string; expectedRoundVersion: number },
+  ) =>
+    apiClient.post(`/rounds/${roundId}/calculate-with-override`, payload).then((r) => r.data),
+
+  emergencyCorrection: (
+    sectionId: string,
+    payload: {
+      corrections: Array<{ scoreId: string; scoreTable: string; newValue: string }>;
+      reason: string;
+      expectedSectionVersion: number;
+    },
+  ) =>
+    apiClient.post(`/sections/${sectionId}/emergency-correction`, payload).then((r) => r.data),
+
   resolveDanceOff: (sectionId: string, winnerId: string, loserId: string) =>
     apiClient
       .post(`/sections/${sectionId}/dance-off`, { winnerId, loserId })
