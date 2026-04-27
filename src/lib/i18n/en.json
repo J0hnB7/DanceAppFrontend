@@ -356,7 +356,11 @@
     "paymentPending": "Pending",
     "paymentPaid": "Paid",
     "paymentWaived": "Waived",
-    "cyclePaymentTitle": "Click to change payment to: {{next}}"
+    "cyclePaymentTitle": "Click to change payment to: {{next}}",
+    "removedWithScoringData": "Pair removed from section. Scoring data is preserved.",
+    "cannotRemoveOnlySection": "A pair must belong to at least one section.",
+    "addCategory": "Add category",
+    "categories": "Categories"
   },
   "judges": {
     "title": "Judge Tokens",

@@ -356,7 +356,11 @@
     "paymentPending": "Čeká",
     "paymentPaid": "Zaplaceno",
     "paymentWaived": "Prominuto",
-    "cyclePaymentTitle": "Kliknutím změníš platbu na: {{next}}"
+    "cyclePaymentTitle": "Kliknutím změníš platbu na: {{next}}",
+    "removedWithScoringData": "Pár odebrán z kategorie. Scoring data jsou zachována.",
+    "cannotRemoveOnlySection": "Pár musí mít alespoň jednu kategorii.",
+    "addCategory": "Přidat kategorii",
+    "categories": "Kategorie"
   },
   "judges": {
     "title": "Tokeny porotců",
