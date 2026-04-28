@@ -78,10 +78,13 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
     set({ loginError: null });
     try {
       const res = await apiClient.post("/judge-access/connect", { token: qrToken, pin });
-      const { accessToken, adjudicatorId, competitionId, competitionName, deviceToken, judgeName } = res.data;
+      const { adjudicatorId, competitionId, competitionName, deviceToken, judgeName } = res.data;
 
-      // Store JWT and device token — scoped by QR token to prevent cross-session leaks
-      localStorage.setItem(`judge_access_token_${qrToken}`, accessToken);
+      // Persist non-credential session context. JWT (accessToken) intentionally NOT
+      // stored — backend authenticates judge requests via the X-Judge-Token header
+      // (deviceToken) plus deviceToken / adjudicatorId session, so the JWT is unused
+      // for transport. Storing it in localStorage exposes it to any XSS without any
+      // upside.
       localStorage.setItem(`judge_device_token_${qrToken}`, deviceToken);
       localStorage.setItem(`judge_competition_id_${qrToken}`, competitionId);
       localStorage.setItem(`judge_adjudicator_id_${qrToken}`, adjudicatorId);
