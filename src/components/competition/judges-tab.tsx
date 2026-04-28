@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { judgeTokensApi, type JudgeTokenDto, type JudgeTokenCreatedResponse } from "@/lib/api/judge-tokens";
+import { judgeCredentialsCache } from "@/lib/judge-credentials-cache";
 import { liveApi } from "@/lib/api/live";
 import { useLiveStore } from "@/store/live-store";
 import { useSSE } from "@/hooks/use-sse";
@@ -36,26 +37,42 @@ function QRCanvas({ url, size = 140 }: { url: string; size?: number }) {
   return <canvas ref={canvasRef} width={size} height={size} className="rounded" />;
 }
 
+// Resolve raw token from session cache (CRIT-2 — backend no longer returns plaintext
+// on list endpoints). Returns null if creds not captured this session → admin must
+// revoke + reissue to get new QR.
+function resolveJudgeUrl(judgeUrl: string, token: JudgeTokenDto): string | null {
+  const creds = judgeCredentialsCache.get(token.id);
+  if (creds?.rawToken) return `${judgeUrl}/${creds.rawToken}`;
+  // Legacy mock fallback (MSW dev only). Production tok.token is always undefined.
+  if (token.token) return `${judgeUrl}/${token.token}`;
+  return null;
+}
+
 function JudgeQRCard({ token, judgeUrl }: { token: JudgeTokenDto; judgeUrl: string }) {
-  const url = `${judgeUrl}/${token.rawToken ?? token.token}`;
+  const url = resolveJudgeUrl(judgeUrl, token);
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center print:break-inside-avoid">
       <p className="text-lg font-bold text-[var(--text-primary)]">#{token.judgeNumber}</p>
       {token.name && <p className="text-sm text-[var(--text-secondary)]">{token.name}</p>}
-      <QRCanvas url={url} size={160} />
-      <div className="w-full rounded-lg bg-[var(--surface-secondary)] px-3 py-2">
-        <p className="text-xs text-[var(--text-tertiary)]">Token</p>
-        <code className="text-xs font-bold">{token.token}</code>
-      </div>
-      <p className="text-xs text-[var(--text-tertiary)] break-all">{url}</p>
+      {url ? (
+        <>
+          <QRCanvas url={url} size={160} />
+          <p className="text-xs text-[var(--text-tertiary)] break-all">{url}</p>
+        </>
+      ) : (
+        <div className="rounded-lg bg-[var(--warning)]/10 px-3 py-2 text-xs text-[var(--warning)]">
+          QR nedostupné — vystavte nový token
+        </div>
+      )}
     </div>
   );
 }
 
 function QRModal({ token, judgeUrl, onClose }: { token: JudgeTokenDto; judgeUrl: string; onClose: () => void }) {
   const { t } = useLocale();
-  const url = `${judgeUrl}/${token.rawToken ?? token.token}`;
+  const url = resolveJudgeUrl(judgeUrl, token);
   const handleDownload = () => {
+    if (!url) return;
     const canvas = document.createElement("canvas");
     QRCode.toCanvas(canvas, url, { width: 512, margin: 2 }, () => {
       const link = document.createElement("a");
@@ -71,19 +88,27 @@ function QRModal({ token, judgeUrl, onClose }: { token: JudgeTokenDto; judgeUrl:
           <DialogTitle>{t("judges.qrTitle", { number: String(token.judgeNumber) })}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4">
-          <QRCanvas url={url} size={220} />
-          <div className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3 text-center">
-            <p className="mb-1 text-xs text-[var(--text-tertiary)]">{t("judges.judgeLink")}</p>
-            <code className="break-all text-xs">{url}</code>
-          </div>
-          <div className="flex w-full gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => { navigator.clipboard.writeText(url); toast({ title: t("judges.linkCopied") }); }}>
-              <Copy className="h-4 w-4" /> {t("common.copy")}
-            </Button>
-            <Button className="flex-1" onClick={handleDownload}>
-              <Download className="h-4 w-4" /> {t("judges.downloadPng")}
-            </Button>
-          </div>
+          {url ? (
+            <>
+              <QRCanvas url={url} size={220} />
+              <div className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3 text-center">
+                <p className="mb-1 text-xs text-[var(--text-tertiary)]">{t("judges.judgeLink")}</p>
+                <code className="break-all text-xs">{url}</code>
+              </div>
+              <div className="flex w-full gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { navigator.clipboard.writeText(url); toast({ title: t("judges.linkCopied") }); }}>
+                  <Copy className="h-4 w-4" /> {t("common.copy")}
+                </Button>
+                <Button className="flex-1" onClick={handleDownload}>
+                  <Download className="h-4 w-4" /> {t("judges.downloadPng")}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg bg-[var(--warning)]/10 px-4 py-3 text-center text-sm text-[var(--warning)]">
+              QR kód není dostupný — vystavte nový token a okamžitě jej zachyťte.
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -270,6 +295,11 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
       return results;
     },
     onSuccess: (results) => {
+      // Persist the just-returned plaintext credentials in session cache so QR cards,
+      // copy-link buttons, and the table row keep showing them until reload.
+      results.forEach((r) =>
+        judgeCredentialsCache.set(r.id, { rawToken: r.rawToken, rawPin: r.pin })
+      );
       qc.invalidateQueries({ queryKey: ["judge-tokens", competitionId] });
       setCreateOpen(false);
       setNewTokens(results);
@@ -278,7 +308,9 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
 
   const revokeToken = useMutation({
     mutationFn: (tokenId: string) => judgeTokensApi.deletePermanent(competitionId, tokenId),
-    onSuccess: () => {
+    onSuccess: (_data, tokenId) => {
+      // Drop cached creds for the revoked token (no point keeping them).
+      judgeCredentialsCache.delete(tokenId);
       qc.invalidateQueries({ queryKey: ["judge-tokens", competitionId] });
       setRevokeConfirmId(null);
       toast({ title: t("judges.tokenDeleted"), variant: "success" });
@@ -425,8 +457,16 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
                     onBlur={(e) => handleBlurSave(tok, getEditVal(tok).name, e.target.value)}
                   />
                 </TableCell>
-                <TableCell><code className="rounded bg-[var(--surface-secondary)] px-2 py-0.5 text-xs">{(tok.rawToken ?? tok.token ?? "").slice(0, 16)}…</code></TableCell>
-                <TableCell><PinCell pin={tok.rawPin ?? tok.pin} /></TableCell>
+                <TableCell>
+                  {(() => {
+                    const cached = judgeCredentialsCache.get(tok.id);
+                    const raw = cached?.rawToken ?? tok.token ?? "";
+                    return raw
+                      ? <code className="rounded bg-[var(--surface-secondary)] px-2 py-0.5 text-xs">{raw.slice(0, 16)}…</code>
+                      : <span className="text-xs text-[var(--text-tertiary)]">—</span>;
+                  })()}
+                </TableCell>
+                <TableCell><PinCell pin={judgeCredentialsCache.get(tok.id)?.rawPin ?? tok.pin} /></TableCell>
                 <TableCell><Badge variant={tok.active ? "success" : "secondary"}>{tok.active ? t("judges.active") : t("judges.revoked")}</Badge></TableCell>
                 <TableCell>
                   <div className="flex items-center justify-center">
@@ -436,7 +476,15 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => setQrToken(tok)}><QrCode className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon-sm" onClick={() => { navigator.clipboard.writeText(`${judgeBaseUrl}/${tok.rawToken ?? tok.token}`); toast({ title: t("judges.linkCopied") }); }}><Copy className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => {
+                      const url = resolveJudgeUrl(judgeBaseUrl, tok);
+                      if (!url) {
+                        toast({ title: "Token nedostupný — vystavte nový", variant: "destructive" });
+                        return;
+                      }
+                      navigator.clipboard.writeText(url);
+                      toast({ title: t("judges.linkCopied") });
+                    }}><Copy className="h-3.5 w-3.5" /></Button>
                     {/* Ping — only when live heat is active and judge is pending/scoring */}
                     {selectedHeatId && tok.id && (() => {
                       const status = judgeStatuses[tok.id];
@@ -474,7 +522,12 @@ export function JudgesTab({ competitionId }: { competitionId: string }) {
             {activeTokens.map((tok) => (
               <button key={tok.id} onClick={() => setQrToken(tok)} className="flex flex-col items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center transition-all hover:border-[var(--accent)]/40 hover:shadow-md">
                 <p className="text-xs font-semibold text-[var(--text-secondary)]">#{tok.judgeNumber}</p>
-                <QRCanvas url={`${judgeBaseUrl}/${tok.rawToken ?? tok.token}`} size={100} />
+                {(() => {
+                  const url = resolveJudgeUrl(judgeBaseUrl, tok);
+                  return url
+                    ? <QRCanvas url={url} size={100} />
+                    : <div className="flex h-[100px] w-[100px] items-center justify-center rounded bg-[var(--warning)]/10 px-2 text-[10px] text-[var(--warning)]">QR nedost.</div>;
+                })()}
                 <p className="text-xs text-[var(--text-tertiary)]">{t("judges.clickToEnlarge")}</p>
               </button>
             ))}
