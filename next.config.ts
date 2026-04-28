@@ -29,6 +29,19 @@ const csp = [
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
+  // HSTS: tell the browser to only ever load this origin over HTTPS for 1 year.
+  // includeSubDomains + preload required for browser HSTS preload list eligibility.
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  // CSP frame-ancestors 'none' covers clickjacking, but X-Frame-Options is the
+  // legacy header that older bots/crawlers still respect.
+  { key: "X-Frame-Options", value: "DENY" },
+  // Refuse to interpret responses as a different MIME type than declared
+  // (defeats <script src="/uploaded.txt"> attacks where attacker uploads JS as text).
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  // Don't leak full URL (incl. ?authToken=, ?token=) to cross-origin destinations.
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Disable powerful browser APIs we don't use.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
 ];
 
 const nextConfig: NextConfig = {
