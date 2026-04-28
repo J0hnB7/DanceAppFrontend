@@ -23,11 +23,27 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
+/**
+ * Open-redirect protection: only accept callbackUrl values that are same-origin
+ * relative paths starting with a single "/" (rejects "//evil.com", "https://evil.com",
+ * "javascript:..."). Required because router.replace(callbackUrl) without validation
+ * lands the user off-origin after legitimate login.
+ */
+function isSafeCallbackUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  if (url.length < 2 || url[0] !== "/") return false;
+  // Reject protocol-relative ("//evil.com") and any embedded scheme
+  if (url[1] === "/" || url[1] === "\\") return false;
+  if (/^\/[^\/]*:/.test(url)) return false;
+  return true;
+}
+
 function LoginPageInner() {
   const { t: _t, locale } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const rawCallback = searchParams.get("callbackUrl");
+  const callbackUrl = isSafeCallbackUrl(rawCallback) ? rawCallback : "/dashboard";
   const { loginWithTokens } = useAuthStore();
 
   const [mounted, setMounted] = useState(false);
