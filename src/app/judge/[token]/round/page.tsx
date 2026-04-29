@@ -227,6 +227,18 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   // waiting-for-admin screen — only admin's floor-control SSE event drives dance changes.
   const initialLoadRef = useRef(true);
 
+  // MED-32: retry-with-backoff for transient 5xx/network errors on /judge/active-round.
+  // Avoids judge mass-exodus during Railway redeploys / DB pool exhaustion / timeouts.
+  // Cleared on unmount.
+  const loadRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadRetryAttemptsRef = useRef(0);
+  useEffect(() => () => {
+    if (loadRetryTimerRef.current) {
+      clearTimeout(loadRetryTimerRef.current);
+      loadRetryTimerRef.current = null;
+    }
+  }, []);
+
   // Reload active round data — called on mount and when SSE signals a new heat/dance
   const loadActiveRound = useCallback(() => {
     if (!competitionId) { router.push(`/judge/${token}`); return; }
@@ -236,6 +248,8 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         ...(adjudicatorId ? { headers: { 'X-Judge-Token': adjudicatorId } } : {}),
       })
       .then((r) => {
+        // Successful load → reset transient-error retry counter
+        loadRetryAttemptsRef.current = 0;
         // Final rounds use placement UI — redirect to /final
         if (r.data.round.roundType === "FINAL") {
           router.replace(`/judge/${token}/final`);
@@ -302,7 +316,36 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
           }).catch(() => {});
         }
       })
-      .catch(async () => {
+      .catch(async (err: unknown) => {
+        // MED-32: differentiate terminal (404 / "round gone") from transient
+        // (5xx, network error, timeout — Railway redeploy, DB pool, etc.).
+        // 401/403 are already handled by the apiClient response interceptor
+        // (refresh+retry / auth rejection). We only fall here on its failure
+        // path, which we treat as terminal as before.
+        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+        const isTransient =
+          status === undefined          // network error / timeout / no response
+          || (status >= 500 && status <= 599);
+
+        if (isTransient && navigator.onLine) {
+          // Schedule exponential-backoff retry: 2s, 4s, 8s, then give up.
+          const attempt = loadRetryAttemptsRef.current;
+          if (attempt < 3) {
+            const delayMs = 2000 * Math.pow(2, attempt); // 2000, 4000, 8000
+            loadRetryAttemptsRef.current = attempt + 1;
+            if (loadRetryTimerRef.current) clearTimeout(loadRetryTimerRef.current);
+            loadRetryTimerRef.current = setTimeout(() => {
+              loadRetryTimerRef.current = null;
+              loadActiveRoundRef.current();
+            }, delayMs);
+            // Keep judge state intact (no router.push) — they stay in the round
+            // and the next attempt populates the data when the backend recovers.
+            return;
+          }
+          // Exhausted retries — fall through to terminal handling below.
+          loadRetryAttemptsRef.current = 0;
+        }
+
         if (!navigator.onLine && competitionId) {
           const cached = await judgeOfflineStore.getActiveRoundCache(competitionId).catch(() => null);
           if (cached) {
