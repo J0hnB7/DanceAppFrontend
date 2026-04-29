@@ -4568,8 +4568,8 @@ export interface components {
             invoiceId?: string;
             /** Format: date-time */
             refundedAt?: string;
+            refundReference?: string;
             status?: string;
-            stripeRefundId?: string;
         };
         RegisterRequest: {
             /** Format: email */
