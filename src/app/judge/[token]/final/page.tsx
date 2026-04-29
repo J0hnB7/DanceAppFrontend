@@ -321,15 +321,21 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
     };
   }, [adjudicatorId]);
 
-  // Auto-sync pending offline marks when internet returns
+  // Auto-sync pending offline marks when internet returns.
+  // HIGH-28: re-read localStorage at sync time so a tablet that's been re-logged
+  // into by a different judge syncs under the *current* identity, not the one
+  // captured at first render. See round/page.tsx for full rationale.
   useEffect(() => {
-    if (!isOnline || !adjudicatorId || !deviceToken) return;
-    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token)
+    if (!isOnline) return;
+    const currentAdjudicatorId = localStorage.getItem(`judge_adjudicator_id_${token}`);
+    const currentDeviceToken = localStorage.getItem(`judge_device_token_${token}`);
+    if (!currentAdjudicatorId || !currentDeviceToken) return;
+    judgeOfflineStore.syncAll(currentAdjudicatorId, currentDeviceToken, token)
       .then((result) => {
         if (result.rejected > 0 || result.conflicts.length > 0) setSyncConflictWarning(true);
       })
       .catch(() => {});
-  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOnline, token]);
   // Note: syncing spinner omitted in final page — toast library (use-toast) is already wired
 
   const setPlacement = (danceId: string, pairId: string, placement: number) => {
