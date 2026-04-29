@@ -40,7 +40,12 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
 function writeLocaleCookie(locale: Locale) {
   if (typeof document === "undefined") return;
   // 1 year, all paths, lax so it survives top-level nav from email links.
-  document.cookie = `${LOCALE_STORAGE_KEY}=${locale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  // Secure flag in production so the cookie cannot be sniffed over HTTP
+  // redirects or downgrade attacks (MED-15). Localhost dev served over
+  // HTTP would reject Secure cookies, so omit it there.
+  const isSecureContext = typeof window !== "undefined" && window.location.protocol === "https:";
+  const secureAttr = isSecureContext ? "; secure" : "";
+  document.cookie = `${LOCALE_STORAGE_KEY}=${locale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax${secureAttr}`;
 }
 
 export function LocaleProvider({
