@@ -484,6 +484,8 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
                 size="lg"
                 onClick={() => calculateMutation.mutate()}
                 loading={calculateMutation.isPending}
+                disabled={tieDetected !== null}
+                title={tieDetected !== null ? t("scoring.resolveTieFirst") ?? "Resolve tie first" : undefined}
               >
                 <BarChart3 className="h-4 w-4" />
                 {t("scoring.calculate")}
