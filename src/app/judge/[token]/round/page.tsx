@@ -345,6 +345,11 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   // Refs to avoid stale closure in SSE callback
   const loadActiveRoundRef = useRef(loadActiveRound);
   useEffect(() => { loadActiveRoundRef.current = loadActiveRound; }, [loadActiveRound]);
+
+  // Mirror usingCachedData into a ref so the offline-sync effect can read its
+  // current value without re-running every time the flag flips (HIGH-28).
+  const usingCachedDataRef = useRef(usingCachedData);
+  useEffect(() => { usingCachedDataRef.current = usingCachedData; }, [usingCachedData]);
   const dancesRef = useRef<DanceDto[]>([]);
   const heatsRef  = useRef<HeatGroup[]>([]);
   const submittedDanceNamesRef = useRef<Set<string>>(new Set());
@@ -438,18 +443,31 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     };
   }, [adjudicatorId]);
 
-  // Auto-sync pending offline marks when internet returns
+  // Auto-sync pending offline marks when internet returns.
+  //
+  // HIGH-28: previously deps were [isOnline] with eslint-disable, capturing
+  // adjudicatorId / deviceToken / token at first render. On a shared tablet
+  // (judges swap between sections), a second judge logging in writes new
+  // localStorage values, but this effect kept syncing under the FIRST judge's
+  // identity → cross-judge mark contamination.
+  //
+  // Fix: re-read localStorage at sync time so the value reflects whichever
+  // judge is currently logged in to this token. The effect still only fires
+  // on isOnline transitions, but the inputs to syncAll are read fresh.
   useEffect(() => {
-    if (!isOnline || !adjudicatorId || !deviceToken) return;
+    if (!isOnline) return;
+    const currentAdjudicatorId = localStorage.getItem(`judge_adjudicator_id_${token}`);
+    const currentDeviceToken = localStorage.getItem(`judge_device_token_${token}`);
+    if (!currentAdjudicatorId || !currentDeviceToken) return;
     setSyncing(true);
-    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token)
+    judgeOfflineStore.syncAll(currentAdjudicatorId, currentDeviceToken, token)
       .then((result) => {
         if (result.rejected > 0 || result.conflicts.length > 0) setSyncConflictWarning(true);
-        if (usingCachedData) loadActiveRound();
+        if (usingCachedDataRef.current) loadActiveRoundRef.current();
       })
       .catch(() => {})
       .finally(() => setSyncing(false));
-  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOnline, token]);
 
   const activeDance = dances[activeDanceIdx];
   const activeHeat  = heats.length > 0 ? heats[activeHeatIdx] : null;
