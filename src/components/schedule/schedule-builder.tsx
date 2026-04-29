@@ -28,7 +28,8 @@ import { Button } from "@/components/ui/button";
 import { SimpleDialog } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import apiClient from "@/lib/api-client";
 import type { SectionDto } from "@/lib/api/sections";
 import type { CompetitionDto } from "@/lib/api/competitions";
@@ -314,7 +315,7 @@ function RoundCard({
       toast({ title: t("scheduleBuilder.drawError"), variant: "destructive" });
     }
   }, [competitionId, slot.id, redrawQuery, toast, t]);
-  const updateStatus = useMutation({
+  const updateStatus = useApiMutation({
     mutationFn: (status: BlockLiveStatus) => scheduleApi.updateBlockStatus(competitionId, slot.id, status),
     onError: () => toast({ title: t("scheduleBuilder.updateStatusError"), variant: "destructive" }),
   });
