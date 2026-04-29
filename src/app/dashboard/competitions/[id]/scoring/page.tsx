@@ -253,6 +253,18 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
   const calculateMutation = useMutation({
     mutationFn: () => apiClient.post(`/rounds/${roundId}/calculate`),
     onSuccess: () => {
+      // HIGH-25: invalidate caches the results page reads on mount.
+      // Without this, the navigated-to results page hits stale cache for ~30s
+      // (default staleTime), showing "calculating..." even though results are
+      // already persisted. SSE results-corrected may also fire before the new
+      // page subscribes; the cache eviction makes the eventual subscribe see
+      // fresh data.
+      qc.invalidateQueries({ queryKey: ["sections", competitionId] });
+      qc.invalidateQueries({ queryKey: ["rounds", roundId] });
+      qc.invalidateQueries({ queryKey: ["rounds", roundId, "submission-status"] });
+      if (activeRound?.sectionId) {
+        qc.invalidateQueries({ queryKey: ["section", activeRound.sectionId, "final-summary"] });
+      }
       toast({ title: t("round.resultsCalculated"), variant: "success" });
       if (activeRound?.sectionId) {
         router.push(
