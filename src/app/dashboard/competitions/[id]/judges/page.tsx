@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { judgeTokensApi, type JudgeTokenDto, type JudgeTokenCreatedResponse } from "@/lib/api/judge-tokens";
 import { judgeCredentialsCache } from "@/lib/judge-credentials-cache";
 import { toast } from "@/hooks/use-toast";
@@ -379,7 +380,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
     queryFn: () => judgeTokensApi.list(id),
   });
 
-  const createTokens = useMutation({
+  const createTokens = useApiMutation({
     mutationFn: async (): Promise<JudgeTokenCreatedResponse[]> => {
       const n = parseInt(count) || 1;
       const existingNumbers = new Set((tokens ?? []).map((tk) => tk.judgeNumber));
@@ -422,7 +423,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
     },
   });
 
-  const deleteTokenPermanent = useMutation({
+  const deleteTokenPermanent = useApiMutation({
     mutationFn: (tokenId: string) => judgeTokensApi.deletePermanent(id, tokenId),
     onSuccess: (_data, tokenId) => {
       judgeCredentialsCache.delete(tokenId);
