@@ -5,7 +5,8 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Tag, Pencil } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
@@ -92,7 +93,7 @@ export default function FeesPage({ params }: { params: Promise<{ id: string }> }
     }
   }, [competition]);
 
-  const saveDiscountMutation = useMutation({
+  const saveDiscountMutation = useApiMutation({
     mutationFn: () =>
       competitionsApi.update(id, {
         discount2ndPct: discountEnabled ? discount2nd : 0,
@@ -106,7 +107,7 @@ export default function FeesPage({ params }: { params: Promise<{ id: string }> }
       toast({ title: t("fees.discountSaveFailed"), variant: "destructive" }),
   });
 
-  const upsertFee = useMutation({
+  const upsertFee = useApiMutation({
     mutationFn: (d: FeeForm & { sectionId: string }) =>
       feesApi.upsertSectionFee(d.sectionId, {
         amount: parseFloat(d.amount),
@@ -122,7 +123,7 @@ export default function FeesPage({ params }: { params: Promise<{ id: string }> }
     onError: () => toast({ title: t("fees.feeSaveFailed"), variant: "destructive" }),
   });
 
-  const createDiscount = useMutation({
+  const createDiscount = useApiMutation({
     mutationFn: (d: DiscountForm) =>
       feesApi.createDiscount(id, {
         code: d.code,
@@ -139,7 +140,7 @@ export default function FeesPage({ params }: { params: Promise<{ id: string }> }
     },
   });
 
-  const deactivateDiscount = useMutation({
+  const deactivateDiscount = useApiMutation({
     mutationFn: (discountId: string) => feesApi.deactivateDiscount(id, discountId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["discounts", id] }),
   });
