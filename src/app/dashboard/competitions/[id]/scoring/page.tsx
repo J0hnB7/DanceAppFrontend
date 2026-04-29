@@ -227,12 +227,13 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
 
   const roundId = activeRound?.roundId ?? null;
 
-  // Submission status (replaces marks-progress)
+  // Submission status (replaces marks-progress) — refresh driven by `marks-progress`
+  // and `all-marks-in` SSE handlers below; polling removed to avoid double-update
+  // storms when SSE is also delivering events for the same data (MED-48).
   const { data: status, isLoading: statusLoading } = useQuery({
     queryKey: ["rounds", roundId, "submission-status"],
     queryFn: () => fetchSubmissionStatus(roundId!),
     enabled: !!roundId,
-    refetchInterval: 5_000,
   });
 
   // Round detail (for type/number info)
@@ -349,12 +350,14 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
   useSSE<SSEMarksProgress>(competitionId, "marks-progress", useCallback((data) => {
     if (data.roundId === roundId) {
       qc.invalidateQueries({ queryKey: ["rounds", roundId, "marks-progress"] });
+      qc.invalidateQueries({ queryKey: ["rounds", roundId, "submission-status"] });
     }
   }, [roundId, qc]));
 
   useSSE<SSEMarksProgress>(competitionId, "all-marks-in", useCallback((data) => {
     if (data.roundId === roundId) {
       qc.invalidateQueries({ queryKey: ["rounds", roundId, "marks-progress"] });
+      qc.invalidateQueries({ queryKey: ["rounds", roundId, "submission-status"] });
       addAlert({ level: "success", title: t("scoring.calculate") });
     }
   }, [roundId, qc, addAlert, t]));
