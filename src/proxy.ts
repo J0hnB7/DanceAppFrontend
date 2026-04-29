@@ -70,7 +70,10 @@ function buildCsp(nonce: string): string {
     // separate effort. Audit (HIGH-19) only flagged script-src.
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https:",
-    `connect-src 'self' ${apiUrl} wss: ws: https://*.ingest.sentry.io https://sentry.io`,
+    // No WebSocket transport in the app (SSE + REST only) — wss:/ws: were
+    // historically allowed but are unused, so dropping them tightens the
+    // attack surface (MED-13).
+    `connect-src 'self' ${apiUrl} https://*.ingest.sentry.io https://sentry.io`,
     "font-src 'self' https://fonts.gstatic.com",
     "worker-src 'self' blob:",
     "frame-src https://accounts.google.com",
