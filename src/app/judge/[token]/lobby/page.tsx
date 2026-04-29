@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
 import { judgeOfflineStore } from "@/lib/judge-offline-store";
 import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
-import { useJudgeSSERehydration } from "@/hooks/use-sse";
+import { useJudgeSSERehydration, useSSE } from "@/hooks/use-sse";
 
 interface RoundInfo {
   id: string;
@@ -194,38 +194,34 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
     };
   }, [adjudicatorId]);
 
-  // Listen for judge-ping and heat-sent on public SSE channel.
-  // Uses refs for currentRound/navigate/checkRound so the EventSource is never
-  // recreated when round state changes — prevents the race where heat-sent arrives
-  // during the brief close→reopen gap and is missed without Last-Event-ID replay.
-  useEffect(() => {
-    if (!competitionId || !adjudicatorId) return;
-    const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
-
-    // Admin pinged this judge
-    es.addEventListener("judge-ping", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { judgeTokenId: string };
-        if (data.judgeTokenId === adjudicatorId) {
-          setPingAlert(true);
-          setTimeout(() => setPingAlert(false), 4000);
-        }
-      } catch { /* ignore */ }
-    });
-
-    // Admin sent a heat to judges — navigate to scoring
-    es.addEventListener("heat-sent", () => {
+  // Listen for judge-ping and heat-sent on public SSE channel via shared sseClient
+  // (HIGH-26 — was raw EventSource with no Last-Event-ID replay or backoff).
+  // sseClient handles exponential backoff, Last-Event-ID replay on reconnect,
+  // and polling fallback after 3 consecutive failures.
+  useSSE<{ judgeTokenId: string }>(
+    competitionId,
+    'judge-ping',
+    (data) => {
+      if (data.judgeTokenId === adjudicatorId) {
+        setPingAlert(true);
+        setTimeout(() => setPingAlert(false), 4000);
+      }
+    },
+    'public',
+  );
+  useSSE<unknown>(
+    competitionId,
+    'heat-sent',
+    () => {
       const round = currentRoundRef.current;
-      if (round?.status === "IN_PROGRESS") {
+      if (round?.status === 'IN_PROGRESS') {
         navigateToScoringRef.current(round);
       } else {
         checkRoundRef.current();
       }
-    });
-
-    return () => es.close();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId, adjudicatorId]);
+    },
+    'public',
+  );
 
   if (loading) {
     return (

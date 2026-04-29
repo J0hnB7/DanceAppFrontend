@@ -13,6 +13,7 @@ import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { violationsApi, type PenaltyType } from "@/lib/api/violations";
+import { useSSE } from "@/hooks/use-sse";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -258,45 +259,47 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
   const dancesRef = useRef<DanceDto[]>([]);
   useEffect(() => { dancesRef.current = dances; }, [dances]);
 
-  // SSE: floor-control + judge-ping + dance-closed
-  useEffect(() => {
-    if (!competitionId) return;
-    const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
-    // floor-control is the single source of truth for which dance is active.
-    // Move to exactly the dance admin sent; never auto-skip past it.
-    es.addEventListener("floor-control", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { danceName?: string };
-        if (data.danceName) {
-          const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
-          if (idx >= 0) setActiveDanceIdx(idx);
-        }
-      } catch { /* ignore malformed */ }
+  // SSE on public channel via shared sseClient (HIGH-26 — was raw EventSource
+  // without Last-Event-ID replay, exponential backoff, or polling fallback).
+  useSSE<{ danceName?: string }>(
+    competitionId,
+    'floor-control',
+    (data) => {
+      if (data.danceName) {
+        const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
+        if (idx >= 0) setActiveDanceIdx(idx);
+      }
       loadActiveRoundRef.current();
-    });
-    es.addEventListener("heat-sent", () => {
-      loadActiveRoundRef.current();
-    });
-    es.onerror = () => console.warn("[judge-final] SSE connection error");
-    es.addEventListener("judge-ping", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { judgeTokenId: string };
-        if (data.judgeTokenId === adjudicatorId) {
-          setPingAlert(true);
-          setTimeout(() => setPingAlert(false), 4000);
-        }
-      } catch { /* ignore */ }
-    });
-    es.addEventListener("dance-closed", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { danceName: string };
-        if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
-          setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
-        }
-      } catch { /* ignore */ }
-    });
-    return () => es.close();
-  }, [competitionId, adjudicatorId]);
+    },
+    'public',
+  );
+  useSSE<unknown>(
+    competitionId,
+    'heat-sent',
+    () => loadActiveRoundRef.current(),
+    'public',
+  );
+  useSSE<{ judgeTokenId: string }>(
+    competitionId,
+    'judge-ping',
+    (data) => {
+      if (data.judgeTokenId === adjudicatorId) {
+        setPingAlert(true);
+        setTimeout(() => setPingAlert(false), 4000);
+      }
+    },
+    'public',
+  );
+  useSSE<{ danceName: string }>(
+    competitionId,
+    'dance-closed',
+    (data) => {
+      if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
+        setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
+      }
+    },
+    'public',
+  );
 
   // Heartbeat every 20s
   const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
