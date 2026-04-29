@@ -82,11 +82,23 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
 
   const { data: competition } = useCompetition(id);
 
-  const { data: presencePairs = [], isLoading } = useQuery<PairPresence[]>({
+  // MED-24: do NOT default `data` to []. A 5xx from the BE was previously
+  // indistinguishable from "no pairs registered" — UI silently showed empty
+  // list during a backend outage. Now the page renders an explicit error
+  // banner (see early return below) so the organizer knows it's a server
+  // issue, not a registration problem. Downstream code keeps using
+  // `presencePairs` as an array via the `?? []` fallback.
+  const {
+    data: presenceData,
+    isLoading,
+    isError,
+    refetch: refetchPresence,
+  } = useQuery<PairPresence[]>({
     queryKey: ["presence", id],
     queryFn: () => apiClient.get(`/competitions/${id}/presence`).then((r) => r.data),
     refetchInterval: 5000,
   });
+  const presencePairs = presenceData ?? [];
 
   const { data: sections = [] } = useQuery<SectionDto[]>({
     queryKey: ["sections", id, "list"],
@@ -251,6 +263,36 @@ export default function PresencePage({ params }: { params: Promise<{ id: string 
     ).sort((a, b) => a.startNumber - b.startNumber),
     [dialogPairs]
   );
+
+  // MED-24: surface BE 5xx as a real error, not as "no pairs". Renders
+  // alongside the back button so the page chrome stays familiar; refetch
+  // button lets the organizer retry without a full reload.
+  if (isError) {
+    return (
+      <AppShell sidebar={<CompetitionSidebar competitionId={id} />}>
+        <button
+          onClick={() => router.push(`/dashboard/competitions/${id}`)}
+          className="mb-4 flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {competition?.name ?? t("common.back")}
+        </button>
+        <div className="mx-auto max-w-md rounded-[var(--radius-lg)] border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 p-6 text-center">
+          <XCircle className="mx-auto mb-3 h-8 w-8 text-[var(--destructive)]" />
+          <h2 className="mb-1 text-lg font-semibold text-[var(--text-primary)]">
+            {t("presence.loadErrorTitle") ?? "Failed to load presence"}
+          </h2>
+          <p className="mb-4 text-sm text-[var(--text-secondary)]">
+            {t("presence.loadErrorDesc") ?? "The server returned an error. This is not a registration problem — please retry or contact support."}
+          </p>
+          <Button onClick={() => refetchPresence()} variant="outline">
+            <RotateCcw className="mr-2 h-4 w-4" />
+            {t("common.retry") ?? "Retry"}
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell sidebar={<CompetitionSidebar competitionId={id} />}>
