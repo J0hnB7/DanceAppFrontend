@@ -151,6 +151,7 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
       return;
     }
 
+    const keys = recalls.map((r) => `${adjudicatorId}-${currentRound.id}-${dance}-${r.pairId}`);
     try {
       const selectedPairIds = recalls.filter((r) => r.recalled).map((r) => r.pairId);
       await apiClient.post(
@@ -161,14 +162,24 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
         },
         { headers: { 'X-Judge-Token': adjudicatorId } }
       );
-      // Mark as synced
-      await judgeOfflineStore.markAsSynced(
-        recalls.map((r) => `${adjudicatorId}-${currentRound.id}-${dance}-${r.pairId}`)
-      );
+      await judgeOfflineStore.markAsSynced(keys);
     } catch (err: unknown) {
-      const msg = "Odeslání selhalo — hodnocení uloženo offline";
-      set({ submitError: msg });
-      useAlertsStore.getState().addAlert({ level: "warning", title: msg });
+      // MED-49: distinguish 4xx (permanent business rejection — round closed,
+      // pair not in round, validation failed) from 5xx / network (transient —
+      // safe to retry). Without this split the IDB keeps dead marks that 422
+      // forever, the user sees "Saved offline" indefinitely while the data is
+      // actually rejected. Mirrors syncAll() in judge-offline-store.
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status && status >= 400 && status < 500) {
+        await judgeOfflineStore.markAsSynced(keys);
+        const msg = "Hodnocení odmítnuto serverem (kolo již uzavřeno nebo neplatný stav)";
+        set({ submitError: msg });
+        useAlertsStore.getState().addAlert({ level: "error", title: msg });
+      } else {
+        const msg = "Odeslání selhalo — hodnocení uloženo offline, znovu odešleme po obnovení spojení";
+        set({ submitError: msg });
+        useAlertsStore.getState().addAlert({ level: "warning", title: msg });
+      }
     }
     await get().updatePendingCount();
   },
@@ -222,10 +233,20 @@ export const useJudgeStore = create<JudgeStore>((set, get) => ({
       await judgeOfflineStore.markAsSynced(
         placements.map((p) => `${adjudicatorId}-${currentRound.id}-${p.danceId}-${p.pairId}`)
       );
-    } catch {
-      const msg = "Odeslání selhalo — hodnocení uloženo offline";
-      set({ submitError: msg });
-      useAlertsStore.getState().addAlert({ level: "warning", title: msg });
+    } catch (err: unknown) {
+      // MED-49: same 4xx-vs-5xx split as submitCallbacks.
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const keys = placements.map((p) => `${adjudicatorId}-${currentRound.id}-${p.danceId}-${p.pairId}`);
+      if (status && status >= 400 && status < 500) {
+        await judgeOfflineStore.markAsSynced(keys);
+        const msg = "Hodnocení odmítnuto serverem (kolo již uzavřeno nebo neplatný stav)";
+        set({ submitError: msg });
+        useAlertsStore.getState().addAlert({ level: "error", title: msg });
+      } else {
+        const msg = "Odeslání selhalo — hodnocení uloženo offline, znovu odešleme po obnovení spojení";
+        set({ submitError: msg });
+        useAlertsStore.getState().addAlert({ level: "warning", title: msg });
+      }
     }
     await get().updatePendingCount();
   },
