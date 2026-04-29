@@ -8,7 +8,16 @@ export interface ApiError {
 
 const apiClient = axios.create({
   baseURL: "/api/v1",
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+    // Defence-in-depth against CSRF (MED-16). Browsers refuse to send custom
+    // headers on simple cross-origin form submits without a CORS preflight,
+    // so a forged form on evil.com cannot include this header → any state-
+    // changing request without it can be treated as suspect by the BE. We
+    // already have SameSite=Strict on the refresh cookie (MED-6) and Bearer-
+    // token auth on every other endpoint; this header is the third layer.
+    "X-Requested-With": "XMLHttpRequest",
+  },
   withCredentials: true,
   timeout: 15000, // 15 s — prevents infinite hang when backend is down
 });
