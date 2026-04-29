@@ -143,12 +143,18 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const [fullscreen, setFullscreen] = useState(false);
   const { loadSchedule, scheduleStatus, slots } = useScheduleStore();
 
-  const { data: competition } = useQuery({
+  // MED-23: surface backend errors instead of rendering an empty schedule
+  // grid that's indistinguishable from "no events scheduled".
+  const {
+    data: competition,
+    isError: isCompetitionError,
+    refetch: refetchCompetition,
+  } = useQuery({
     queryKey: ["competition", competitionId],
     queryFn: () => competitionsApi.get(competitionId),
   });
 
-  const { data: sections = [] } = useQuery({
+  const { data: sections = [], isError: isSectionsError } = useQuery({
     queryKey: ["sections", competitionId, "list"],
     queryFn: () => sectionsApi.list(competitionId),
   });
@@ -181,6 +187,23 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
         slotBufferMinutes: competition.slotBufferMinutes,
       }
     : undefined;
+
+  if (isCompetitionError || isSectionsError) {
+    return (
+      <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
+        <div className="mx-auto mt-12 max-w-md rounded-[var(--radius-lg)] border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 p-6 text-center">
+          <p className="mb-2 text-lg font-semibold text-[var(--text-primary)]">Failed to load schedule</p>
+          <p className="mb-4 text-sm text-[var(--text-secondary)]">The server returned an error. This is not a missing-data problem — please retry.</p>
+          <button
+            onClick={() => refetchCompetition()}
+            className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm hover:bg-[var(--surface-secondary)]"
+          >
+            Retry
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell sidebar={fullscreen ? null : <CompetitionSidebar competitionId={competitionId} />}>
