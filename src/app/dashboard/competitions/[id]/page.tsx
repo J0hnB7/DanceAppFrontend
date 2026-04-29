@@ -61,7 +61,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatDate } from "@/lib/utils";
+import { formatDate, safeQrImageSrc } from "@/lib/utils";
 import {
   useCompetition,
   useUpdateCompetition,
@@ -1685,9 +1685,9 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                       <div>
                         <p className="mb-1 text-xs font-medium text-[var(--text-secondary)]">QR kód pro platbu</p>
                         <div className="flex items-start gap-4">
-                          {bankQrCode ? (
+                          {(() => { const safeBankQr = safeQrImageSrc(bankQrCode); return safeBankQr ? (
                             <div className="relative shrink-0">
-                              <img src={bankQrCode} alt="QR kód" className="h-24 w-24 rounded-lg border border-[var(--border)] object-contain bg-white p-1" />
+                              <img src={safeBankQr} alt="QR kód" className="h-24 w-24 rounded-lg border border-[var(--border)] object-contain bg-white p-1" />
                               <button
                                 type="button"
                                 onClick={() => { setBankQrCode(""); scheduleSave({ paymentConfig: { iban: bankIban, bic: bankBic, holder: bankHolder, address: bankAddress, qrCode: "" } }); }}
@@ -1717,7 +1717,7 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                                 }}
                               />
                             </label>
-                          )}
+                          ); })()}
                           <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)]">
                             Nahrajte QR kód pro platbu převodem. Zobrazí se na veřejné registrační stránce vedle bankovních údajů.
                           </p>

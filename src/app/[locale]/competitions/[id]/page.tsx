@@ -12,7 +12,7 @@ import { competitionKeys } from "@/hooks/queries/use-competitions";
 import type { SectionDto } from "@/lib/api/sections";
 import { sectionsApi } from "@/lib/api/sections";
 import { ResultsSection } from "@/components/public/ResultsSection";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, safeQrImageSrc } from "@/lib/utils";
 import { calculatePricing } from "@/lib/utils/pricing";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
@@ -358,12 +358,15 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                           <p style={{ fontSize: ".9rem", color: "#374151" }}>{pc.address}</p>
                         </div>
                       )}
-                      {pc.qrCode && (
-                        <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 16, marginTop: 4 }}>
-                          <img src={pc.qrCode} alt="QR kód pro platbu" style={{ width: 90, height: 90, borderRadius: 8, border: "1px solid #E5E7EB" }} />
-                          <p style={{ fontSize: ".8rem", color: "#6B7280", lineHeight: 1.5 }}>Naskenujte QR kód<br />pro platbu převodem</p>
-                        </div>
-                      )}
+                      {(() => {
+                        const safeSrc = safeQrImageSrc(pc.qrCode);
+                        return safeSrc ? (
+                          <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 16, marginTop: 4 }}>
+                            <img src={safeSrc} alt="QR kód pro platbu" style={{ width: 90, height: 90, borderRadius: 8, border: "1px solid #E5E7EB" }} />
+                            <p style={{ fontSize: ".8rem", color: "#6B7280", lineHeight: 1.5 }}>Naskenujte QR kód<br />pro platbu převodem</p>
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                   )}
 
