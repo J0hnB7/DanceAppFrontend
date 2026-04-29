@@ -848,7 +848,8 @@ const CSS = `
     .lp-nav-competitions-btn { display: block; }
     .lp-sec-cols { grid-template-columns: 1fr !important; }
     .lp-lang-btn:not(.lp-footer-lang-btn) { display: none; }
-    .lp-footer-lang-btn { display: inline-block; color: #6b7280; background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); }
+    /* MED-36: #6b7280 on #0f0f14 was 3.8:1 (fails AA); #9ca3af lifts to 4.7:1 */
+    .lp-footer-lang-btn { display: inline-block; color: #9ca3af; background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); }
     .lp-footer-lang-btn:hover { color: #d1d5db; background: rgba(255,255,255,.12); }
   }
   @media (max-width: 680px) {

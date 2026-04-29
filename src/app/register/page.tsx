@@ -93,7 +93,8 @@ function RegisterPageInner() {
         @keyframes orb{0%,100%{transform:translate(0,0)}33%{transform:translate(15px,-25px)}66%{transform:translate(-12px,18px)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
         .dreg-fadein{animation:fadeUp .5s ease both}
-        .dreg-input:focus{outline:none;border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+        /* MED-37: outline transparent + offset preserves high-contrast mode focus ring */
+        .dreg-input:focus{outline:2px solid transparent;outline-offset:2px;border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
         .dreg-btn{width:100%;padding:11px;border-radius:9px;background:linear-gradient(135deg,#4F46E5,#6D28D9);color:#fff;font-size:.93rem;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
         .dreg-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,.35)}
         .dreg-btn:disabled{opacity:.6;cursor:not-allowed}
