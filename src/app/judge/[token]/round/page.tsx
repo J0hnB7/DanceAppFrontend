@@ -12,6 +12,7 @@ import { judgeOfflineStore } from "@/lib/judge-offline-store";
 import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 import { violationsApi, type PenaltyType } from "@/lib/api/violations";
+import { useSSE } from "@/hooks/use-sse";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -353,76 +354,67 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   // Pending floor-control: when dance list is empty at SSE time, apply after reload
   const pendingFloorControlRef = useRef<{ danceName?: string; heatNumber?: number } | null>(null);
 
-  // Subscribe to public SSE channel: floor-control + judge-ping
-  useEffect(() => {
-    if (!competitionId) return;
-    const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
-    // floor-control is the single source of truth for which dance/heat the admin
-    // has put on the floor. Parse the payload, move activeDanceIdx / activeHeatIdx
-    // to exactly what admin sent, and reset the per-dance submission state only
-    // when the admin switches to a dance the judge has not yet submitted.
-    es.addEventListener("floor-control", (e: MessageEvent) => {
-      console.log("[judge-round] SSE floor-control received:", e.data);
-      try {
-        const data = JSON.parse(e.data) as { danceName?: string; heatNumber?: number };
-        if (data.danceName) {
-          const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
-          if (idx >= 0) {
-            setActiveDanceIdx(idx);
-            // If admin re-opened a dance this judge already submitted, keep the
-            // "waiting" screen (submitted=true). Otherwise start fresh scoring grid.
-            const alreadySubmitted = submittedDanceNamesRef.current.has(data.danceName);
-            setSubmitted(alreadySubmitted);
-            setPairStates({});
-          } else {
-            // Dance not yet in list (dances still loading) — stash and apply after reload
-            pendingFloorControlRef.current = data;
-          }
+  // Subscribe to public SSE channel via shared sseClient (HIGH-26 — was raw
+  // EventSource without Last-Event-ID replay, exponential backoff, or polling
+  // fallback). sseClient handles all that plus de-duplicates a single connection
+  // across hooks on the same channel.
+  useSSE<{ danceName?: string; heatNumber?: number }>(
+    competitionId,
+    'floor-control',
+    (data) => {
+      if (data.danceName) {
+        const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
+        if (idx >= 0) {
+          setActiveDanceIdx(idx);
+          const alreadySubmitted = submittedDanceNamesRef.current.has(data.danceName);
+          setSubmitted(alreadySubmitted);
+          setPairStates({});
+        } else {
+          pendingFloorControlRef.current = data;
         }
-        if (typeof data.heatNumber === "number" && data.heatNumber >= 1) {
-          setActiveHeatIdx(data.heatNumber - 1);
-        }
-      } catch { /* ignore malformed */ }
-      // Refresh pairs/heats/submittedDances from backend — but loadActiveRound
-      // will NOT auto-skip because initialLoadRef is already false.
+      }
+      if (typeof data.heatNumber === 'number' && data.heatNumber >= 1) {
+        setActiveHeatIdx(data.heatNumber - 1);
+      }
       loadActiveRoundRef.current();
-    });
-    // heat-sent is broadcast alongside floor-control; we only need a data refresh,
-    // all navigation is driven by floor-control above.
-    es.addEventListener("heat-sent", (e: MessageEvent) => {
-      console.log("[judge-round] SSE heat-sent received:", e.data);
-      loadActiveRoundRef.current();
-    });
-    es.onerror = () => console.warn("[judge-round] SSE connection error");
-    es.onopen = () => console.log("[judge-round] SSE connected");
-    es.addEventListener("judge-ping", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { judgeTokenId: string };
-        if (data.judgeTokenId === adjudicatorId) {
-          setPingAlert(true);
-          setTimeout(() => setPingAlert(false), 4000);
-        }
-      } catch { /* ignore */ }
-    });
-    es.addEventListener("dance-closed", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { danceName: string };
-        if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
-          // Lock the dance tab — judge can no longer submit for this dance
-          setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
-        }
-      } catch { /* ignore malformed */ }
-    });
-    es.addEventListener("round-status", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { status?: string };
-        if (data.status === "RUNNING") {
-          loadActiveRoundRef.current();
-        }
-      } catch { /* ignore malformed */ }
-    });
-    return () => es.close();
-  }, [competitionId, adjudicatorId]);
+    },
+    'public',
+  );
+  useSSE<unknown>(
+    competitionId,
+    'heat-sent',
+    () => loadActiveRoundRef.current(),
+    'public',
+  );
+  useSSE<{ judgeTokenId: string }>(
+    competitionId,
+    'judge-ping',
+    (data) => {
+      if (data.judgeTokenId === adjudicatorId) {
+        setPingAlert(true);
+        setTimeout(() => setPingAlert(false), 4000);
+      }
+    },
+    'public',
+  );
+  useSSE<{ danceName: string }>(
+    competitionId,
+    'dance-closed',
+    (data) => {
+      if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
+        setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
+      }
+    },
+    'public',
+  );
+  useSSE<{ status?: string }>(
+    competitionId,
+    'round-status',
+    (data) => {
+      if (data.status === 'RUNNING') loadActiveRoundRef.current();
+    },
+    'public',
+  );
 
   // Heartbeat every 20s — keeps admin dashboard online indicator accurate
   // Uses a ref for the interval so React Strict Mode double-invocation doesn't

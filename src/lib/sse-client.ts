@@ -6,65 +6,77 @@ interface SSESubscription {
   unsubscribe: () => void;
 }
 
+export type SSEChannel = 'admin' | 'public' | 'chair';
+
 const BACKOFF_INITIAL_MS = 1_000;
 const BACKOFF_MAX_MS = 30_000;
 /** After this many consecutive failures, trigger polling fallback */
 const MAX_RECONNECTS_BEFORE_POLLING = 3;
+
+const key = (competitionId: string, channel: SSEChannel) => `${competitionId}:${channel}`;
 
 class SSEClient {
   private sources: Map<string, EventSource> = new Map();
   private handlers: Map<string, Map<string, Set<SSEEventHandler>>> = new Map();
   private retryDelays: Map<string, number> = new Map();
   private retryTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-  /** Tracks the last eventId seen per competition (from `eventId` in SSE payloads) */
+  /** Tracks the last eventId seen per (competitionId, channel) (from `eventId` in SSE payloads) */
   private lastEventIds: Map<string, string> = new Map();
-  /** Counts consecutive reconnect failures per competition */
+  /** Counts consecutive reconnect failures per (competitionId, channel) */
   private reconnectFailures: Map<string, number> = new Map();
-  /** Callbacks to call after successful SSE (re)connect, per competition */
+  /** Callbacks to call after successful SSE (re)connect, per (competitionId, channel) */
   private reconnectCallbacks: Map<string, Set<() => void>> = new Map();
-  /** Callbacks to call after MAX_RECONNECTS_BEFORE_POLLING failures (polling fallback), per competition */
+  /** Callbacks to call after MAX_RECONNECTS_BEFORE_POLLING failures (polling fallback), per (competitionId, channel) */
   private pollingFallbackCallbacks: Map<string, Set<() => void>> = new Map();
 
-  /** Register a callback that fires on every successful SSE (re)open for a competition */
-  onReconnect(competitionId: string, cb: () => void): () => void {
-    if (!this.reconnectCallbacks.has(competitionId)) {
-      this.reconnectCallbacks.set(competitionId, new Set());
+  /** Register a callback that fires on every successful SSE (re)open for a channel */
+  onReconnect(competitionId: string, cb: () => void, channel: SSEChannel = 'admin'): () => void {
+    const k = key(competitionId, channel);
+    if (!this.reconnectCallbacks.has(k)) {
+      this.reconnectCallbacks.set(k, new Set());
     }
-    this.reconnectCallbacks.get(competitionId)!.add(cb);
-    return () => this.reconnectCallbacks.get(competitionId)?.delete(cb);
+    this.reconnectCallbacks.get(k)!.add(cb);
+    return () => this.reconnectCallbacks.get(k)?.delete(cb);
   }
 
   /** Register a callback that fires when polling fallback is triggered (after MAX_RECONNECTS failures) */
-  onPollingFallback(competitionId: string, cb: () => void): () => void {
-    if (!this.pollingFallbackCallbacks.has(competitionId)) {
-      this.pollingFallbackCallbacks.set(competitionId, new Set());
+  onPollingFallback(competitionId: string, cb: () => void, channel: SSEChannel = 'admin'): () => void {
+    const k = key(competitionId, channel);
+    if (!this.pollingFallbackCallbacks.has(k)) {
+      this.pollingFallbackCallbacks.set(k, new Set());
     }
-    this.pollingFallbackCallbacks.get(competitionId)!.add(cb);
-    return () => this.pollingFallbackCallbacks.get(competitionId)?.delete(cb);
+    this.pollingFallbackCallbacks.get(k)!.add(cb);
+    return () => this.pollingFallbackCallbacks.get(k)?.delete(cb);
   }
 
   /** Call this when an SSE payload contains an eventId to track for Last-Event-ID replay. */
-  trackEventId(competitionId: string, eventId: string) {
-    this.lastEventIds.set(competitionId, eventId);
+  trackEventId(competitionId: string, eventId: string, channel: SSEChannel = 'admin') {
+    this.lastEventIds.set(key(competitionId, channel), eventId);
   }
 
-  subscribe(competitionId: string, event: string, handler: SSEEventHandler): SSESubscription {
-    if (!this.sources.has(competitionId)) {
-      this.connect(competitionId);
+  subscribe(
+    competitionId: string,
+    event: string,
+    handler: SSEEventHandler,
+    channel: SSEChannel = 'admin',
+  ): SSESubscription {
+    const k = key(competitionId, channel);
+    if (!this.sources.has(k)) {
+      this.connect(competitionId, channel);
     }
 
-    const compHandlers = this.handlers.get(competitionId)!;
+    const compHandlers = this.handlers.get(k)!;
     if (!compHandlers.has(event)) {
       compHandlers.set(event, new Set());
-      const source = this.sources.get(competitionId)!;
-      this.attachListener(source, competitionId, event);
+      const source = this.sources.get(k)!;
+      this.attachListener(source, k, event);
     }
 
     compHandlers.get(event)!.add(handler);
 
     return {
       unsubscribe: () => {
-        const h = this.handlers.get(competitionId);
+        const h = this.handlers.get(k);
         h?.get(event)?.delete(handler);
         if (h?.get(event)?.size === 0) h.delete(event);
 
@@ -72,123 +84,123 @@ class SSEClient {
         let totalHandlers = 0;
         h?.forEach((set) => (totalHandlers += set.size));
         if (totalHandlers === 0) {
-          this.teardown(competitionId);
+          this.teardown(k);
         }
       },
     };
   }
 
-  private connect(competitionId: string) {
-    const lastEventId = this.lastEventIds.get(competitionId);
-    // EventSource can't send Authorization headers — pass JWT as query param instead
-    const token = getAccessToken();
+  private connect(competitionId: string, channel: SSEChannel) {
+    const k = key(competitionId, channel);
+    const lastEventId = this.lastEventIds.get(k);
     const params = new URLSearchParams();
     if (lastEventId) params.set('lastEventId', lastEventId);
-    if (token) params.set('authToken', token);
-    const qs = params.toString();
-    const url = `/api/v1/sse/competitions/${competitionId}/admin${qs ? `?${qs}` : ''}`;
-    const source = new EventSource(url, { withCredentials: true });
 
-    if (!this.handlers.has(competitionId)) {
-      this.handlers.set(competitionId, new Map());
+    // Only the admin/chair channels require an auth token. The public channel is
+    // open by design so judges (X-Judge-Token only) and unauthenticated viewers
+    // can read scoreboard updates without an admin JWT.
+    if (channel !== 'public') {
+      const token = getAccessToken();
+      if (token) params.set('authToken', token);
+    }
+
+    const qs = params.toString();
+    const url = `/api/v1/sse/competitions/${competitionId}/${channel}${qs ? `?${qs}` : ''}`;
+    const source = new EventSource(url, { withCredentials: channel !== 'public' });
+
+    if (!this.handlers.has(k)) {
+      this.handlers.set(k, new Map());
     }
 
     source.onopen = () => {
-      // Reset backoff + failure count on successful connection
-      this.retryDelays.set(competitionId, BACKOFF_INITIAL_MS);
-      this.reconnectFailures.set(competitionId, 0);
-      // Notify reconnect callbacks (e.g. judge rehydration)
-      this.reconnectCallbacks.get(competitionId)?.forEach((cb) => cb());
+      this.retryDelays.set(k, BACKOFF_INITIAL_MS);
+      this.reconnectFailures.set(k, 0);
+      this.reconnectCallbacks.get(k)?.forEach((cb) => cb());
     };
 
     source.onerror = () => {
       source.close();
-      this.sources.delete(competitionId);
+      this.sources.delete(k);
 
-      // Don't reconnect if all subscriptions were removed
-      const h = this.handlers.get(competitionId);
+      const h = this.handlers.get(k);
       let totalHandlers = 0;
       h?.forEach((set) => (totalHandlers += set.size));
       if (totalHandlers === 0) return;
 
-      const failures = (this.reconnectFailures.get(competitionId) ?? 0) + 1;
-      this.reconnectFailures.set(competitionId, failures);
+      const failures = (this.reconnectFailures.get(k) ?? 0) + 1;
+      this.reconnectFailures.set(k, failures);
       if (failures >= MAX_RECONNECTS_BEFORE_POLLING) {
-        // Trigger polling fallback — stop SSE reconnect attempts
-        this.pollingFallbackCallbacks.get(competitionId)?.forEach((cb) => cb());
-        this.teardown(competitionId);
+        this.pollingFallbackCallbacks.get(k)?.forEach((cb) => cb());
+        this.teardown(k);
         return;
       }
 
-      const delay = this.retryDelays.get(competitionId) ?? BACKOFF_INITIAL_MS;
-      this.retryDelays.set(competitionId, Math.min(delay * 2, BACKOFF_MAX_MS));
+      const delay = this.retryDelays.get(k) ?? BACKOFF_INITIAL_MS;
+      this.retryDelays.set(k, Math.min(delay * 2, BACKOFF_MAX_MS));
 
       const timer = setTimeout(() => {
-        this.retryTimers.delete(competitionId);
-        // Re-connect and re-attach all existing event listeners
-        this.connect(competitionId);
-        const newSource = this.sources.get(competitionId)!;
-        this.handlers.get(competitionId)?.forEach((_, event) => {
-          this.attachListener(newSource, competitionId, event);
+        this.retryTimers.delete(k);
+        this.connect(competitionId, channel);
+        const newSource = this.sources.get(k)!;
+        this.handlers.get(k)?.forEach((_, event) => {
+          this.attachListener(newSource, k, event);
         });
       }, delay);
 
-      this.retryTimers.set(competitionId, timer);
+      this.retryTimers.set(k, timer);
     };
 
-    this.sources.set(competitionId, source);
+    this.sources.set(k, source);
   }
 
-  private attachListener(source: EventSource, competitionId: string, event: string) {
+  private attachListener(source: EventSource, k: string, event: string) {
     source.addEventListener(event, (e) => {
       try {
         const data = JSON.parse((e as MessageEvent).data);
-        // Track eventId for Last-Event-ID replay on reconnect
-        if (data && typeof data === "object" && "eventId" in data && typeof data.eventId === "string") {
-          this.lastEventIds.set(competitionId, data.eventId);
+        if (data && typeof data === 'object' && 'eventId' in data && typeof data.eventId === 'string') {
+          this.lastEventIds.set(k, data.eventId);
         }
-        this.handlers.get(competitionId)?.get(event)?.forEach((h) => h(data));
+        this.handlers.get(k)?.get(event)?.forEach((h) => h(data));
       } catch {
-        console.warn("[SSE] Malformed payload for event", event, (e as MessageEvent).data);
+        console.warn('[SSE] Malformed payload for event', event, (e as MessageEvent).data);
       }
     });
   }
 
-  private teardown(competitionId: string) {
-    this.sources.get(competitionId)?.close();
-    this.sources.delete(competitionId);
-    this.handlers.delete(competitionId);
-    this.retryDelays.delete(competitionId);
-    this.lastEventIds.delete(competitionId);
-    this.reconnectFailures.delete(competitionId);
-    this.reconnectCallbacks.delete(competitionId);
-    this.pollingFallbackCallbacks.delete(competitionId);
-    const timer = this.retryTimers.get(competitionId);
+  private teardown(k: string) {
+    this.sources.get(k)?.close();
+    this.sources.delete(k);
+    this.handlers.delete(k);
+    this.retryDelays.delete(k);
+    this.lastEventIds.delete(k);
+    this.reconnectFailures.delete(k);
+    this.reconnectCallbacks.delete(k);
+    this.pollingFallbackCallbacks.delete(k);
+    const timer = this.retryTimers.get(k);
     if (timer !== undefined) {
       clearTimeout(timer);
-      this.retryTimers.delete(competitionId);
+      this.retryTimers.delete(k);
     }
   }
 }
 
 export const sseClient = new SSEClient();
 
-// Hook that tracks SSE connection state for a competition.
-// Returns true when EventSource is open, false on disconnect/polling fallback.
 import { useState, useEffect } from 'react';
 
-export function useSSEConnected(competitionId: string): boolean {
+/** Hook that tracks SSE connection state for a competition channel. */
+export function useSSEConnected(competitionId: string, channel: SSEChannel = 'admin'): boolean {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const unsubReconnect = sseClient.onReconnect(competitionId, () => setConnected(true));
-    const unsubFallback = sseClient.onPollingFallback(competitionId, () => setConnected(false));
+    const unsubReconnect = sseClient.onReconnect(competitionId, () => setConnected(true), channel);
+    const unsubFallback = sseClient.onPollingFallback(competitionId, () => setConnected(false), channel);
 
     return () => {
       unsubReconnect();
       unsubFallback();
     };
-  }, [competitionId]);
+  }, [competitionId, channel]);
 
   return connected;
 }
