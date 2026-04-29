@@ -4,31 +4,14 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
-const isDev = process.env.NODE_ENV === "development";
-
 // Defensive: Vercel env var with trailing newline (%0A) corrupts CSP header and
 // rewrites destination → serverless crash. Always sanitize.
 const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").trim();
 
-const csp = [
-  "default-src 'self'",
-  isDev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com"
-    : "script-src 'self' 'unsafe-inline' https://accounts.google.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob: https:",
-  `connect-src 'self' ${apiUrl} wss: ws: https://*.ingest.sentry.io https://sentry.io`,
-  "font-src 'self' https://fonts.gstatic.com",
-  "worker-src 'self' blob:",
-  "frame-src https://accounts.google.com",
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
-
+// CSP is set per-request in src/proxy.ts (middleware) so each response carries
+// a fresh script-src nonce — closes HIGH-19 / CRIT-8 sub-fix D ('unsafe-inline'
+// removed). The other security headers below remain static.
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
   // HSTS: tell the browser to only ever load this origin over HTTPS for 1 year.
   // includeSubDomains + preload required for browser HSTS preload list eligibility.
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
