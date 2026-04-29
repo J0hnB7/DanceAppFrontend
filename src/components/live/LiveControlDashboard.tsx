@@ -159,7 +159,13 @@ export function LiveControlDashboard({
   }
 
   // SSE event handlers
-  useSSE(competitionId, 'score-submitted', (data: { judgeTokenId: string }) => {
+  useSSE(competitionId, 'score-submitted', (data: { judgeTokenId: string; roundId?: string }) => {
+    // MED-29: BE includes roundId in score-submitted payload (SseEventPublisher.onScoreSubmitted).
+    // When admin switches rounds, an in-flight event from the previous round can land
+    // moments after live-store wipes judgeStatuses — drop it so the dashboard doesn't
+    // light up stale judge state for a round that's no longer selected.
+    const currentRoundId = useLiveStore.getState().selectedRoundId
+    if (data.roundId && currentRoundId && data.roundId !== currentRoundId) return
     if (data.judgeTokenId) {
       updateJudgeStatus(data.judgeTokenId, 'submitted')
       // Also refresh full judge statuses + danceConfirmations so counter stays in sync
