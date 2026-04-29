@@ -91,7 +91,8 @@ function LoginPageInner() {
         .login-fadein-2{animation:fadeUp .5s ease .16s both}
         .login-fadein-3{animation:fadeUp .5s ease .24s both}
         .badge-dot-g{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:pdot 2s infinite;display:inline-block;flex-shrink:0}
-        .login-input:focus{outline:none;border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+        /* MED-37: outline transparent + offset preserves high-contrast mode focus ring */
+        .login-input:focus{outline:2px solid transparent;outline-offset:2px;border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
         .login-btn{width:100%;padding:11px;border-radius:9px;background:linear-gradient(135deg,#4F46E5,#6D28D9);color:#fff;font-size:.93rem;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
         .login-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,.35)}
         .login-btn:disabled{opacity:.6;cursor:not-allowed}
