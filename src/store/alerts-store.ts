@@ -32,7 +32,15 @@ export const useAlertsStore = create<AlertsState>((set, get) => ({
       alerts: [
         {
           ...alert,
-          id: `alert-${Date.now()}`,
+          // MED-28: Date.now()-based IDs collided when SSE bursts arrived in
+          // the same millisecond (tie-detected + mark-conflict commonly fire
+          // simultaneously during round close). Duplicate IDs caused React
+          // key-collision warnings and made markRead(id) silently mark both
+          // alerts. crypto.randomUUID is supported in all current browsers
+          // and Node 20+ that the toolchain targets.
+          id: globalThis.crypto?.randomUUID
+            ? globalThis.crypto.randomUUID()
+            : `alert-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
           createdAt: new Date(),
           read: false,
         },

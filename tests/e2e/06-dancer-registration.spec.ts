@@ -46,7 +46,7 @@ test('blokuje odeslání bez GDPR souhlasu', async ({ page }) => {
 
   // Error message for gdprAccepted stays on page (no success view)
   await expect(
-    page.locator('text=Souhlas, text=Consent, text=povinný, text=required').first()
+    page.getByText(/Souhlas|Consent|povinný|required/i).first()
   ).toBeVisible({ timeout: 5_000 });
   expect(page.url()).toContain('/register');
 });

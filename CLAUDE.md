@@ -153,6 +153,53 @@ Node.js PATH (ak `npm` nie je v defaultnej shell PATH): `export PATH="/Users/jan
 - **Schedule modul**: `/Users/janbystriansky/Documents/DanceAPP/MD/files-3/TASK_SCHEDULE_MODULE_v5.md`
   - Route: `/dashboard/competitions/[id]/schedule`, D&D: `@dnd-kit/core`
 
+## Judge Offline — gotchas
+
+- **`syncAll()` return value** — vždy čti `SyncResult.rejected` + `SyncResult.conflicts.length`; ignorování = porotce neví o zavřeném kole
+- **Infinite retry loop** — `markAsSynced` volej po 2xx; 4xx (kolo zavřeno) → purge + `rejected: pending.length`; 5xx/network → nech pro retry
+- **Cache klíč** — `active-{competitionId}` v `round-cache` store. Lobby zapisuje `judge_active_round_{competitionId}` do localStorage. Round page MUSÍ ověřit roundId před použitím cache (mismatch → lobby)
+- **UI hydration po restartu** — `pairStates` + `submittedDanceNames` se restorují z `getPendingMarks()` při mountu round/page
+- **Timestamp banneru** — počítej `Date.now() - new Date(cachedAt).getTime()` (device-local diff, server čas nehraje roli)
+
+---
+
+## Pre-publish hardening — FE patterns (V082, 2026-04-27)
+
+- **`SectionDto` má hardening flagy** — `resultsDirty?`, `resultsPublishedAt?`, `lastCorrectedAt?`, `correctionCount?`, `version?`. BE už je vrací v `SectionResponse`.
+- **`results-corrected` SSE event** — public scoreboard listener resetuje cache snapshot (queryClient.invalidateQueries). Wired v `src/app/[locale]/scoreboard/[competitionId]/page.tsx`.
+- **Dirty banner** — `SectionInlineResults` (results page) zobrazí amber banner s "Přepočítat" buttonem když `section.resultsDirty=true`. Klik volá `POST /sections/{id}/final-summary/calculate` a invaliduje queries.
+- **R11 override modal** — `src/components/results/override-modal.tsx`. Wired v `src/app/dashboard/competitions/[id]/scoring/page.tsx`: `calculateMutation.onError` parsuje 409 message regexem na "Judge N (submitted X/Y dances)" a páruje `judgeNumber` s `judgeTokenId` z `submission-status` query. Submit volá `scoringApi.calculateWithOverride(roundId, { withdrawJudgeTokenIds, reason, expectedRoundVersion })`.
+- **`expectedRoundVersion`** — čteme z `RoundDto.version` (BE `Round.@Version` přes `RoundResponse`). Mismatch = 409 s "modified by another request".
+- **Scoreboard correction badge** — `src/app/[locale]/scoreboard/[competitionId]/page.tsx`: amber dot na filter buttonu když `section.lastCorrectedAt` set, plus banner stripe při viewing single corrected section.
+- **i18n keys (results)** — `dirtyTitle/dirtyDesc/dirtyRecompute`, `overrideTitle/Desc/JudgeRow/ReasonLabel/Acknowledge/Cancel/Submit/TooFewJudges`, `scoreboardCorrectedBadge`. Všechny v cs.json + en.json.
+- **`scoringApi.calculateWithOverride` + `emergencyCorrection`** — zapečené v `src/lib/api/scoring.ts`. UI pre post-publish batch editor (`emergencyCorrection`) zatím nie je v scope.
+- **`RegExp` matching v error parsingu** — `Array.from(message.matchAll(/.../g))` (nie iteratívne `re["e"+"xec"](msg)`) — security hook na opačnom výraze hlási child_process false-positive.
+
+---
+
+## E2E Test Suite v2
+
+Lokace: `tests/e2e/v2/` — spustit: `npm run test:e2e:v2`
+
+- **`CreateCompetitionRequest` vyžaduje `federation` (FederationType, `@NotNull`) a `roleMode` (RoleMode, `@NotNull`)** — factories musí tyto pole posílat (např. `federation: 'CSTS', roleMode: 'COUPLE'`); bez nich → 400
+- Cleanup fixture: `autoCleanup` (auto) volá `DELETE /api/v1/test/cleanup/{TEST_PREFIX}` po každém testu
+- `api-client.ts` obsahuje plný set metod: createPair, listPairs, setPresence, openRound, submitCallbacks, submitPlacements, calculateRound, calculateSectionSummary, approveResults, getSectionSummary
+- `wait-for-sse.ts` implementovaný: `waitForSseEvent<T>()` + `waitForRoundOpened()` přes browser EventSource
+
+### Playwright locator gotchas
+- **`text=X, text=Y` broken v CSS OR** — `text=` selector nefunguje v comma-separated CSS liste. Použi `:text("X"), :text("Y")` alebo `getByText(/X|Y/)`. Symptóm: "element(s) not found" napriek viditeľnému textu; CSS parse error pri `text=X` mixovanom s iným selectorom.
+- **`playwright.config.ts` používa `__dirname`** — nie `import.meta.url` (Playwright kompiluje config ako CJS). `dotenv` na načítanie `.env.test.local`.
+
+### E2E fixture seed
+- **`tests/e2e/seed-e2e-data.sh`** — vytvorí competition + section + judge token + dancer, zapíše `.env.test.local`. Spustiť pred testami keď chýbajú env vars (`E2E_JUDGE_TOKEN`, `E2E_DANCER_EMAIL`, `E2E_COMPETITION_ID`).
+- **ADMIN dashboard** — `/dashboard` pre ADMIN rolu nezobrazuje `a[href*="/dashboard/competitions/{id}"]`; testy hľadajúce tieto linky skipnú. Fix: nastaviť `E2E_COMPETITION_ID` explicitne.
+- **Verejná `/competitions` stránka** — karty renderujú `/cs/competitions/{id}` (locale prefix); `a[href^="/competitions/"]` ich nenájde. Fix: nastaviť `E2E_COMPETITION_SLUG`.
+- **`CreateSectionRequest.orderIndex`** — povinné pole (primitívny `int`); bez neho → 500. Vždy posielaj `orderIndex: 0`.
+
+### Color contrast
+- **`#6b7280` na `#0f0f14`** (landing footer dark bg) — kontrast ~3.8:1, pod 4.5:1. Použi `#9ca3af`.
+- **`#6B7280` na `#F3F4F6`** (auth page light panel) — kontrast ~4.3:1, pod 4.5:1. Použi `#4B5563`.
+
 ---
 
 ## INDEX — kde najít co

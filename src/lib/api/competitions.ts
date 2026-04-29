@@ -76,6 +76,8 @@ export interface CompetitionDto {
   judgeBreakAfterMinutes?: number;
   judgeBreakDurationMinutes?: number;
   slotBufferMinutes?: number;
+  discount2ndPct?: number | null;
+  discount3rdPlusPct?: number | null;
 }
 
 export interface CompetitionNewsItem {
@@ -123,6 +125,8 @@ export interface UpdateCompetitionRequest {
   contactEmail?: string;
   propozice?: string;
   paymentInfo?: string;
+  discount2ndPct?: number | null;
+  discount3rdPlusPct?: number | null;
 }
 
 export interface PageResponse<T> {

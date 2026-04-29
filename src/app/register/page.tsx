@@ -34,7 +34,7 @@ function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
-  const { loginWithTokens } = useAuthStore();
+  const loginWithTokens = useAuthStore((s) => s.loginWithTokens);
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -93,7 +93,8 @@ function RegisterPageInner() {
         @keyframes orb{0%,100%{transform:translate(0,0)}33%{transform:translate(15px,-25px)}66%{transform:translate(-12px,18px)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
         .dreg-fadein{animation:fadeUp .5s ease both}
-        .dreg-input:focus{outline:none;border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+        /* MED-37: outline transparent + offset preserves high-contrast mode focus ring */
+        .dreg-input:focus{outline:2px solid transparent;outline-offset:2px;border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
         .dreg-btn{width:100%;padding:11px;border-radius:9px;background:linear-gradient(135deg,#4F46E5,#6D28D9);color:#fff;font-size:.93rem;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
         .dreg-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,.35)}
         .dreg-btn:disabled{opacity:.6;cursor:not-allowed}
@@ -178,7 +179,7 @@ function RegisterPageInner() {
                   <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "1.2rem", fontWeight: 800, color: "#111827", marginBottom: 10 }}>
                     {t("dancer.register.successTitle")}
                   </h2>
-                  <p style={{ fontSize: ".9rem", color: "#6B7280", lineHeight: 1.6, marginBottom: 24 }}>
+                  <p style={{ fontSize: ".9rem", color: "#4B5563", lineHeight: 1.6, marginBottom: 24 }}>
                     {t("dancer.register.successDesc")}
                   </p>
                   <Link href="/login" className="dreg-btn" style={{ display: "block", textAlign: "center", textDecoration: "none", padding: "11px", borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#6D28D9)", color: "#fff", fontWeight: 600 }}>
@@ -194,10 +195,10 @@ function RegisterPageInner() {
                         {t("dancer.register.title")}
                       </h1>
                     </div>
-                    <p style={{ fontSize: ".85rem", color: "#6B7280", marginTop: 6 }}>{t("dancer.register.subtitle")}</p>
+                    <p style={{ fontSize: ".85rem", color: "#4B5563", marginTop: 6 }}>{t("dancer.register.subtitle")}</p>
                   </div>
 
-                  {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                  {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && mounted && (
                     <>
                       <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
                         <GoogleLogin
@@ -269,7 +270,7 @@ function RegisterPageInner() {
                         style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0, cursor: "pointer", accentColor: "#4F46E5" }}
                         {...register("gdprAccepted")}
                       />
-                      <label htmlFor="gdpr-dancer" style={{ fontSize: ".82rem", color: "#6B7280", lineHeight: 1.5, cursor: "pointer" }}>
+                      <label htmlFor="gdpr-dancer" style={{ fontSize: ".82rem", color: "#4B5563", lineHeight: 1.5, cursor: "pointer" }}>
                         {t("dancer.register.gdprText")}{" "}
                         <Link href="/privacy" className="dreg-link">{t("dancer.register.gdprLink")}</Link>
                       </label>
@@ -282,7 +283,7 @@ function RegisterPageInner() {
                       {loading ? t("dancer.register.creating") : t("dancer.register.submit")}
                     </button>
 
-                    <p style={{ textAlign: "center", fontSize: ".83rem", color: "#6B7280", marginTop: 4 }}>
+                    <p style={{ textAlign: "center", fontSize: ".83rem", color: "#4B5563", marginTop: 4 }}>
                       {t("auth.hasAccount")}{" "}
                       <Link href="/login" className="dreg-link">{t("auth.signIn")}</Link>
                     </p>
@@ -292,7 +293,7 @@ function RegisterPageInner() {
             </div>
 
             <p style={{ textAlign: "center", marginTop: 20, fontSize: ".78rem", color: "#9CA3AF" }}>
-              <Link href="/login" style={{ color: "#6B7280", textDecoration: "none" }}>
+              <Link href="/login" style={{ color: "#4B5563", textDecoration: "none" }}>
                 {t("auth.signIn")} →
               </Link>
             </p>

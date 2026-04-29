@@ -14,6 +14,7 @@ export interface RoundDto {
   startedAt?: string;
   closedAt?: string;
   completedAt?: string;
+  version?: number;
 }
 
 export interface CompleteRoundRequest {

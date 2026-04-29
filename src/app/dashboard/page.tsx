@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("all");
   const all = useCompetitions();
   const { t, locale } = useLocale();
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
 
   if (all.isError) {
     return (

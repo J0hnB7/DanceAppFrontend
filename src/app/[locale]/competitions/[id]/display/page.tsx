@@ -10,6 +10,7 @@
 import { use, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLiveStore } from "@/store/live-store";
+import { useShallow } from "zustand/react/shallow";
 import { competitionsApi } from "@/lib/api/competitions";
 import { useSSE } from "@/hooks/use-sse";
 import { useLocale } from "@/contexts/locale-context";
@@ -22,7 +23,12 @@ export default function CompetitionDisplayPage({
   const { id } = use(params);
   const { t } = useLocale();
 
-  const { data: competition } = useQuery({
+  // MED-23: kiosk display previously rendered a black screen until SSE arrived,
+  // indistinguishable from "BE down" or "competition not found". Now an
+  // explicit "loading" state covers the cold cache, and a visible error
+  // banner surfaces when the BE call fails — important on a TV that nobody
+  // is interactively retrying.
+  const { data: competition, isLoading, isError } = useQuery({
     queryKey: ["competitions", "detail", id],
     queryFn: () => competitionsApi.get(id),
   });
@@ -35,7 +41,17 @@ export default function CompetitionDisplayPage({
     heatResults,
     updateJudgeStatus,
     hydrateFromServer,
-  } = useLiveStore();
+  } = useLiveStore(
+    useShallow((s) => ({
+      selectedRoundId: s.selectedRoundId,
+      selectedDanceId: s.selectedDanceId,
+      selectedHeatId: s.selectedHeatId,
+      judgeStatuses: s.judgeStatuses,
+      heatResults: s.heatResults,
+      updateJudgeStatus: s.updateJudgeStatus,
+      hydrateFromServer: s.hydrateFromServer,
+    })),
+  );
 
   // Hydrate when heat is set
   useEffect(() => {
@@ -60,6 +76,31 @@ export default function CompetitionDisplayPage({
     (s) => s === "submitted"
   ).length;
   const totalJudges = Object.keys(judgeStatuses).length;
+
+  if (isLoading) {
+    return (
+      <div
+        className="flex min-h-screen flex-col items-center justify-center"
+        style={{ background: "#000", color: "rgba(255,255,255,.4)", fontFamily: "var(--font-sora)" }}
+      >
+        <p className="text-2xl font-bold">{t("display.loading") ?? "Loading…"}</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div
+        className="flex min-h-screen flex-col items-center justify-center gap-3"
+        style={{ background: "#000", color: "#ff6b6b", fontFamily: "var(--font-sora)" }}
+      >
+        <p className="text-2xl font-bold">{t("display.errorTitle") ?? "Connection error"}</p>
+        <p className="text-sm" style={{ color: "rgba(255,255,255,.4)" }}>
+          {t("display.errorDesc") ?? "Cannot reach server. Will reconnect automatically."}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div

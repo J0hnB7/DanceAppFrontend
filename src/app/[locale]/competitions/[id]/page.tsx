@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useMemo } from "react";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -12,7 +12,8 @@ import { competitionKeys } from "@/hooks/queries/use-competitions";
 import type { SectionDto } from "@/lib/api/sections";
 import { sectionsApi } from "@/lib/api/sections";
 import { ResultsSection } from "@/components/public/ResultsSection";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, safeQrImageSrc } from "@/lib/utils";
+import { calculatePricing } from "@/lib/utils/pricing";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 import { useAuthStore } from "@/store/auth-store";
@@ -40,7 +41,8 @@ const sectionLabel = (icon: string, text: string) => (
 /* ── Nav ───────────────────────────────────────────────── */
 function PublicNav() {
   const { t: _t, locale, setLocale } = useLocale();
-  const { isAuthenticated, user } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
@@ -89,7 +91,8 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   const { id } = use(params);
   const { t } = useLocale();
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [registeredSections, setRegisteredSections] = useState<Record<string, SelfRegistrationResponse>>({});
@@ -357,12 +360,15 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                           <p style={{ fontSize: ".9rem", color: "#374151" }}>{pc.address}</p>
                         </div>
                       )}
-                      {pc.qrCode && (
-                        <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 16, marginTop: 4 }}>
-                          <img src={pc.qrCode} alt="QR kód pro platbu" style={{ width: 90, height: 90, borderRadius: 8, border: "1px solid #E5E7EB" }} />
-                          <p style={{ fontSize: ".8rem", color: "#6B7280", lineHeight: 1.5 }}>Naskenujte QR kód<br />pro platbu převodem</p>
-                        </div>
-                      )}
+                      {(() => {
+                        const safeSrc = safeQrImageSrc(pc.qrCode);
+                        return safeSrc ? (
+                          <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 16, marginTop: 4 }}>
+                            <img src={safeSrc} alt="QR kód pro platbu" style={{ width: 90, height: 90, borderRadius: 8, border: "1px solid #E5E7EB" }} />
+                            <p style={{ fontSize: ".8rem", color: "#6B7280", lineHeight: 1.5 }}>Naskenujte QR kód<br />pro platbu převodem</p>
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                   )}
 
@@ -440,9 +446,20 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
           {/* Auth-gated self-registration (dancer accounts) */}
           {isOpen && sections.length > 0 && (() => {
             const currency = eligibleSections.find(s => s.entryFeeCurrency)?.entryFeeCurrency ?? "CZK";
-            const total = eligibleSections
-              .filter(s => selectedSections.has(s.id) && s.entryFee)
+            const selectedSectionObjs = eligibleSections.filter(s => selectedSections.has(s.id));
+            const total = selectedSectionObjs
+              .filter(s => s.entryFee)
               .reduce((sum, s) => sum + (s.entryFee ?? 0), 0);
+            const pricing = calculatePricing(
+              selectedSectionObjs.map(s => ({
+                id: s.id,
+                name: s.name,
+                entryFee: s.entryFee ?? null,
+                entryFeeCurrency: s.entryFeeCurrency ?? null,
+              })),
+              competition?.discount2ndPct ?? null,
+              competition?.discount3rdPlusPct ?? null,
+            );
             const canSubmit = selectedSections.size > 0 && !submitting;
             const allDone = Object.keys(registeredSections).length > 0 &&
               eligibleSections.every(s => registeredSections[s.id]);
@@ -557,10 +574,40 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
                           </label>
                         );
                       })}
+                      {!allDone && eligibleSections.length > 0 && pricing && (
+                        <div style={{ marginTop: 8, padding: 14, borderRadius: 9, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: ".85rem" }}>
+                          {pricing.items.map((item) => (
+                            <div key={item.sectionId} style={{ display: "flex", justifyContent: "space-between", gap: 12, color: "#374151", marginBottom: 4 }}>
+                              <span>{item.sectionName}</span>
+                              <span style={{ whiteSpace: "nowrap" }}>
+                                {item.discountPct > 0 ? (
+                                  <>
+                                    <span style={{ textDecoration: "line-through", color: "#9CA3AF", marginRight: 8 }}>
+                                      {formatCurrency(item.original, pricing.currency)}
+                                    </span>
+                                    <strong style={{ color: "#059669" }}>{formatCurrency(item.discounted, pricing.currency)}</strong>
+                                    <span style={{ marginLeft: 6, color: "#6B7280", fontSize: ".78rem" }}>(−{item.discountPct} %)</span>
+                                  </>
+                                ) : (
+                                  <span>{formatCurrency(item.original, pricing.currency)}</span>
+                                )}
+                              </span>
+                            </div>
+                          ))}
+                          <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 8, paddingTop: 8, display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#111827" }}>
+                            <span>{t("fees.volumeDiscountTotal")}</span>
+                            <span>{formatCurrency(pricing.total, pricing.currency)}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", color: "#059669", fontSize: ".78rem", marginTop: 2 }}>
+                            <span>{t("fees.volumeDiscountSave")}</span>
+                            <span>{formatCurrency(pricing.saved, pricing.currency)}</span>
+                          </div>
+                        </div>
+                      )}
                       {!allDone && eligibleSections.length > 0 && (
                         <div style={{ borderTop: "1px solid #F3F4F6", marginTop: 4, paddingTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                           <div>
-                            {total > 0 && (
+                            {!pricing && total > 0 && (
                               <p style={{ fontSize: ".875rem", color: "#6B7280" }}>
                                 {t("publicCompetition.entryFeeLabel")}: <strong style={{ color: "#111827" }}>{formatCurrency(total, currency)}</strong>
                               </p>

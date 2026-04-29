@@ -3,12 +3,12 @@
 import { use, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useOnline } from "@/hooks/use-online";
-import { Trophy, WifiOff, Clock, CheckCircle2, Bell } from "lucide-react";
+import { Trophy, WifiOff, Clock, CheckCircle2, Bell, AlertTriangle } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/api-client";
 import { judgeOfflineStore } from "@/lib/judge-offline-store";
 import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
-import { useJudgeSSERehydration } from "@/hooks/use-sse";
+import { useJudgeSSERehydration, useSSE } from "@/hooks/use-sse";
 
 interface RoundInfo {
   id: string;
@@ -18,10 +18,22 @@ interface RoundInfo {
   pairsToAdvance?: number | null;
 }
 
+interface LobbyPairDto {
+  id: string;
+  startNumber: number;
+  dancer1FirstName?: string;
+  dancer1LastName?: string;
+  dancer2FirstName?: string;
+  dancer2LastName?: string;
+}
+
 interface ActiveRoundResponse {
   round: RoundInfo;
-  pairs: unknown[];
+  pairs: LobbyPairDto[];
   heatSent: boolean;
+  dances?: Array<{ id: string; name?: string; code?: string; danceName?: string }>;
+  heats?: Array<{ id?: string; heatNumber: number; pairIds: string[] }>;
+  sectionName?: string;
 }
 
 const POLL_INTERVAL = 3000;
@@ -38,6 +50,8 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
   const [currentRound, setCurrentRound] = useState<RoundInfo | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [syncConflictWarning, setSyncConflictWarning] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const competitionId = typeof window !== "undefined"
     ? localStorage.getItem(`judge_competition_id_${token}`)
@@ -61,9 +75,33 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
     try {
       const res = await apiClient.get<ActiveRoundResponse>("/judge/active-round", {
         params: { competitionId },
+        ...(adjudicatorId ? { headers: { 'X-Judge-Token': adjudicatorId } } : {}),
       });
       const round = res.data.round;
       setCurrentRound(round);
+
+      // Track last known active roundId for offline verification in round page
+      if (round.status === "IN_PROGRESS") {
+        localStorage.setItem(`judge_active_round_${competitionId}`, round.id);
+      }
+
+      // Pre-cache round data so judges can work offline if connection drops mid-round
+      if (round.status === "IN_PROGRESS" && res.data.pairs?.length) {
+        const dances = (res.data.dances ?? []).map((d: { id: string; name?: string; code?: string; danceName?: string }) => ({
+          ...d,
+          name: d.danceName ?? d.name ?? "",
+        }));
+        judgeOfflineStore.cacheActiveRound(competitionId, {
+          roundId: round.id,
+          roundType: round.roundType,
+          dance: dances[0]?.name ?? "",
+          dances,
+          pairs: res.data.pairs,
+          heats: res.data.heats ?? [],
+          sectionName: res.data.sectionName,
+          cachedAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
 
       // Navigate only when admin has sent a heat to judges (not just round IN_PROGRESS)
       if (round.status === "IN_PROGRESS" && res.data.heatSent) {
@@ -73,7 +111,7 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
       // 404 = no active round, keep waiting
       setCurrentRound(null);
     }
-  }, [competitionId, navigateToScoring]);
+  }, [competitionId, adjudicatorId, navigateToScoring]);
 
   // Refs for stable SSE handlers — same pattern as round/page.tsx
   const currentRoundRef = useRef(currentRound);
@@ -124,9 +162,14 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
     if (isOnline && pendingCount > 0) {
       const deviceToken = localStorage.getItem(`judge_device_token_${token}`);
       if (adjudicatorId && deviceToken) {
-        judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token).then(() => {
-          judgeOfflineStore.getPendingCount().then(setPendingCount);
-        });
+        setSyncing(true);
+        judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token)
+          .then((result) => {
+            if (result.rejected > 0 || result.conflicts.length > 0) setSyncConflictWarning(true);
+            judgeOfflineStore.getPendingCount().then(setPendingCount);
+          })
+          .catch(() => {})
+          .finally(() => setSyncing(false));
       }
     }
   }, [isOnline, pendingCount]);
@@ -151,38 +194,34 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
     };
   }, [adjudicatorId]);
 
-  // Listen for judge-ping and heat-sent on public SSE channel.
-  // Uses refs for currentRound/navigate/checkRound so the EventSource is never
-  // recreated when round state changes — prevents the race where heat-sent arrives
-  // during the brief close→reopen gap and is missed without Last-Event-ID replay.
-  useEffect(() => {
-    if (!competitionId || !adjudicatorId) return;
-    const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
-
-    // Admin pinged this judge
-    es.addEventListener("judge-ping", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { judgeTokenId: string };
-        if (data.judgeTokenId === adjudicatorId) {
-          setPingAlert(true);
-          setTimeout(() => setPingAlert(false), 4000);
-        }
-      } catch { /* ignore */ }
-    });
-
-    // Admin sent a heat to judges — navigate to scoring
-    es.addEventListener("heat-sent", () => {
+  // Listen for judge-ping and heat-sent on public SSE channel via shared sseClient
+  // (HIGH-26 — was raw EventSource with no Last-Event-ID replay or backoff).
+  // sseClient handles exponential backoff, Last-Event-ID replay on reconnect,
+  // and polling fallback after 3 consecutive failures.
+  useSSE<{ judgeTokenId: string }>(
+    competitionId,
+    'judge-ping',
+    (data) => {
+      if (data.judgeTokenId === adjudicatorId) {
+        setPingAlert(true);
+        setTimeout(() => setPingAlert(false), 4000);
+      }
+    },
+    'public',
+  );
+  useSSE<unknown>(
+    competitionId,
+    'heat-sent',
+    () => {
       const round = currentRoundRef.current;
-      if (round?.status === "IN_PROGRESS") {
+      if (round?.status === 'IN_PROGRESS') {
         navigateToScoringRef.current(round);
       } else {
         checkRoundRef.current();
       }
-    });
-
-    return () => es.close();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId, adjudicatorId]);
+    },
+    'public',
+  );
 
   if (loading) {
     return (
@@ -214,6 +253,13 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
         <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
           <WifiOff className="h-3.5 w-3.5" />
           {t("judge.lobby_offline", locale)}
+        </div>
+      )}
+
+      {syncConflictWarning && (
+        <div className="flex items-start gap-3 border-b border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{t("judge.sync_rejected", locale)}</span>
         </div>
       )}
 
@@ -283,7 +329,13 @@ export default function JudgeLobbyPage({ params }: { params: Promise<{ token: st
               <div className="h-2 w-2 rounded-full bg-[#30d158]" />
               {t("judge.waiting_for_admin", locale)}
             </div>
-            {!isOnline && pendingCount > 0 && (
+            {syncing && (
+              <div className="flex items-center gap-2 rounded-full bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-medium text-[var(--accent)]">
+                <Spinner className="h-3.5 w-3.5" />
+                {t("judge.syncing", locale)}
+              </div>
+            )}
+            {!isOnline && !syncing && pendingCount > 0 && (
               <div className="flex items-center gap-2 rounded-full bg-[var(--warning)]/10 px-3 py-1.5 text-xs font-medium text-[var(--warning)]">
                 <Clock className="h-3.5 w-3.5" />
                 {pendingCount} {t("judge.offline_marks", locale)}

@@ -55,6 +55,11 @@ export interface SectionDto {
   scoringSystem?: string;
   minBirthYear?: number | null;
   maxBirthYear?: number | null;
+  resultsPublishedAt?: string | null;
+  resultsDirty?: boolean;
+  lastCorrectedAt?: string | null;
+  correctionCount?: number;
+  version?: number;
 }
 
 export type RegistrationStatus = "PENDING_PARTNER" | "CONFIRMED" | "ORGANIZER_APPROVED" | "ORGANIZER_REJECTED";

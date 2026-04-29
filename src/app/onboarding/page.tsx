@@ -33,7 +33,7 @@ type Step = (typeof STEPS)[number];
 export default function OnboardingPage() {
   const { t } = useLocale();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
 
   const [step, setStep] = useState<Step>("profile");
   const [loading, setLoading] = useState(false);

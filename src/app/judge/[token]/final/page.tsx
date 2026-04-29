@@ -13,6 +13,7 @@ import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { violationsApi, type PenaltyType } from "@/lib/api/violations";
+import { useSSE } from "@/hooks/use-sse";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,7 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
   const [submitted, setSubmitted] = useState<Set<string>>(new Set());
   const [submittedDanceNames, setSubmittedDanceNames] = useState<Set<string>>(new Set());
   const [pingAlert, setPingAlert] = useState(false);
+  const [syncConflictWarning, setSyncConflictWarning] = useState(false);
   const [showViolationSheet, setShowViolationSheet] = useState(false);
   const [violationStep, setViolationStep] = useState<"pair" | "type" | "confirm">("pair");
   const [violationPairId, setViolationPairId] = useState<string | null>(null);
@@ -257,45 +259,47 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
   const dancesRef = useRef<DanceDto[]>([]);
   useEffect(() => { dancesRef.current = dances; }, [dances]);
 
-  // SSE: floor-control + judge-ping + dance-closed
-  useEffect(() => {
-    if (!competitionId) return;
-    const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
-    // floor-control is the single source of truth for which dance is active.
-    // Move to exactly the dance admin sent; never auto-skip past it.
-    es.addEventListener("floor-control", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { danceName?: string };
-        if (data.danceName) {
-          const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
-          if (idx >= 0) setActiveDanceIdx(idx);
-        }
-      } catch { /* ignore malformed */ }
+  // SSE on public channel via shared sseClient (HIGH-26 — was raw EventSource
+  // without Last-Event-ID replay, exponential backoff, or polling fallback).
+  useSSE<{ danceName?: string }>(
+    competitionId,
+    'floor-control',
+    (data) => {
+      if (data.danceName) {
+        const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
+        if (idx >= 0) setActiveDanceIdx(idx);
+      }
       loadActiveRoundRef.current();
-    });
-    es.addEventListener("heat-sent", () => {
-      loadActiveRoundRef.current();
-    });
-    es.onerror = () => console.warn("[judge-final] SSE connection error");
-    es.addEventListener("judge-ping", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { judgeTokenId: string };
-        if (data.judgeTokenId === adjudicatorId) {
-          setPingAlert(true);
-          setTimeout(() => setPingAlert(false), 4000);
-        }
-      } catch { /* ignore */ }
-    });
-    es.addEventListener("dance-closed", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { danceName: string };
-        if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
-          setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
-        }
-      } catch { /* ignore */ }
-    });
-    return () => es.close();
-  }, [competitionId, adjudicatorId]);
+    },
+    'public',
+  );
+  useSSE<unknown>(
+    competitionId,
+    'heat-sent',
+    () => loadActiveRoundRef.current(),
+    'public',
+  );
+  useSSE<{ judgeTokenId: string }>(
+    competitionId,
+    'judge-ping',
+    (data) => {
+      if (data.judgeTokenId === adjudicatorId) {
+        setPingAlert(true);
+        setTimeout(() => setPingAlert(false), 4000);
+      }
+    },
+    'public',
+  );
+  useSSE<{ danceName: string }>(
+    competitionId,
+    'dance-closed',
+    (data) => {
+      if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
+        setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
+      }
+    },
+    'public',
+  );
 
   // Heartbeat every 20s
   const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -317,11 +321,22 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
     };
   }, [adjudicatorId]);
 
-  // Auto-sync pending offline marks when internet returns
+  // Auto-sync pending offline marks when internet returns.
+  // HIGH-28: re-read localStorage at sync time so a tablet that's been re-logged
+  // into by a different judge syncs under the *current* identity, not the one
+  // captured at first render. See round/page.tsx for full rationale.
   useEffect(() => {
-    if (!isOnline || !adjudicatorId || !deviceToken) return;
-    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token).catch(() => {});
-  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!isOnline) return;
+    const currentAdjudicatorId = localStorage.getItem(`judge_adjudicator_id_${token}`);
+    const currentDeviceToken = localStorage.getItem(`judge_device_token_${token}`);
+    if (!currentAdjudicatorId || !currentDeviceToken) return;
+    judgeOfflineStore.syncAll(currentAdjudicatorId, currentDeviceToken, token)
+      .then((result) => {
+        if (result.rejected > 0 || result.conflicts.length > 0) setSyncConflictWarning(true);
+      })
+      .catch(() => {});
+  }, [isOnline, token]);
+  // Note: syncing spinner omitted in final page — toast library (use-toast) is already wired
 
   const setPlacement = (danceId: string, pairId: string, placement: number) => {
     setPlacements((prev) => ({
@@ -433,6 +448,13 @@ export default function JudgeFinalPage({ params }: { params: Promise<{ token: st
       {!isOnline && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
           <CloudOff className="h-3.5 w-3.5" /> {t("prelim.offline_local", locale)}
+        </div>
+      )}
+
+      {syncConflictWarning && (
+        <div className="flex items-start gap-3 border-b border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{t("judge.sync_rejected", locale)}</span>
         </div>
       )}
 

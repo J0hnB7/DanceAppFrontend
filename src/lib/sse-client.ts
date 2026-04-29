@@ -1,4 +1,4 @@
-import { getAccessToken } from './api-client';
+import apiClient from './api-client';
 
 type SSEEventHandler = (data: unknown) => void;
 
@@ -6,65 +6,111 @@ interface SSESubscription {
   unsubscribe: () => void;
 }
 
+export type SSEChannel = 'admin' | 'public' | 'chair';
+
 const BACKOFF_INITIAL_MS = 1_000;
 const BACKOFF_MAX_MS = 30_000;
 /** After this many consecutive failures, trigger polling fallback */
 const MAX_RECONNECTS_BEFORE_POLLING = 3;
+
+const key = (competitionId: string, channel: SSEChannel) => `${competitionId}:${channel}`;
+
+/**
+ * Fetches a single-use SSE ticket for the given (competition, channel). The
+ * BE issues a 5-min TTL ticket bound to the authenticated user, and the
+ * EventSource passes it as ?ticket=… instead of the long-lived JWT
+ * (CRIT-8 sub-fix C — keeps the JWT out of URLs / referrer headers / logs).
+ */
+async function fetchSseTicket(competitionId: string, channel: 'admin' | 'chair'): Promise<string> {
+  const res = await apiClient.post<{ ticket: string }>('/sse/ticket', { competitionId, channel });
+  return res.data.ticket;
+}
 
 class SSEClient {
   private sources: Map<string, EventSource> = new Map();
   private handlers: Map<string, Map<string, Set<SSEEventHandler>>> = new Map();
   private retryDelays: Map<string, number> = new Map();
   private retryTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-  /** Tracks the last eventId seen per competition (from `eventId` in SSE payloads) */
+  /** Tracks the last eventId seen per (competitionId, channel) (from `eventId` in SSE payloads) */
   private lastEventIds: Map<string, string> = new Map();
-  /** Counts consecutive reconnect failures per competition */
+  /** Counts consecutive reconnect failures per (competitionId, channel) */
   private reconnectFailures: Map<string, number> = new Map();
-  /** Callbacks to call after successful SSE (re)connect, per competition */
+  /** Callbacks to call after successful SSE (re)connect, per (competitionId, channel) */
   private reconnectCallbacks: Map<string, Set<() => void>> = new Map();
-  /** Callbacks to call after MAX_RECONNECTS_BEFORE_POLLING failures (polling fallback), per competition */
+  /** Callbacks to call after MAX_RECONNECTS_BEFORE_POLLING failures (polling fallback), per (competitionId, channel) */
   private pollingFallbackCallbacks: Map<string, Set<() => void>> = new Map();
+  /** Channels currently in the middle of opening (ticket fetch + EventSource creation). */
+  private connecting: Set<string> = new Set();
 
-  /** Register a callback that fires on every successful SSE (re)open for a competition */
-  onReconnect(competitionId: string, cb: () => void): () => void {
-    if (!this.reconnectCallbacks.has(competitionId)) {
-      this.reconnectCallbacks.set(competitionId, new Set());
+  /** Register a callback that fires on every successful SSE (re)open for a channel */
+  onReconnect(competitionId: string, cb: () => void, channel: SSEChannel = 'admin'): () => void {
+    const k = key(competitionId, channel);
+    if (!this.reconnectCallbacks.has(k)) {
+      this.reconnectCallbacks.set(k, new Set());
     }
-    this.reconnectCallbacks.get(competitionId)!.add(cb);
-    return () => this.reconnectCallbacks.get(competitionId)?.delete(cb);
+    this.reconnectCallbacks.get(k)!.add(cb);
+    return () => this.reconnectCallbacks.get(k)?.delete(cb);
   }
 
   /** Register a callback that fires when polling fallback is triggered (after MAX_RECONNECTS failures) */
-  onPollingFallback(competitionId: string, cb: () => void): () => void {
-    if (!this.pollingFallbackCallbacks.has(competitionId)) {
-      this.pollingFallbackCallbacks.set(competitionId, new Set());
+  onPollingFallback(competitionId: string, cb: () => void, channel: SSEChannel = 'admin'): () => void {
+    const k = key(competitionId, channel);
+    if (!this.pollingFallbackCallbacks.has(k)) {
+      this.pollingFallbackCallbacks.set(k, new Set());
     }
-    this.pollingFallbackCallbacks.get(competitionId)!.add(cb);
-    return () => this.pollingFallbackCallbacks.get(competitionId)?.delete(cb);
+    this.pollingFallbackCallbacks.get(k)!.add(cb);
+    return () => this.pollingFallbackCallbacks.get(k)?.delete(cb);
   }
 
   /** Call this when an SSE payload contains an eventId to track for Last-Event-ID replay. */
-  trackEventId(competitionId: string, eventId: string) {
-    this.lastEventIds.set(competitionId, eventId);
+  trackEventId(competitionId: string, eventId: string, channel: SSEChannel = 'admin') {
+    this.lastEventIds.set(key(competitionId, channel), eventId);
   }
 
-  subscribe(competitionId: string, event: string, handler: SSEEventHandler): SSESubscription {
-    if (!this.sources.has(competitionId)) {
-      this.connect(competitionId);
-    }
+  subscribe(
+    competitionId: string,
+    event: string,
+    handler: SSEEventHandler,
+    channel: SSEChannel = 'admin',
+  ): SSESubscription {
+    const k = key(competitionId, channel);
 
-    const compHandlers = this.handlers.get(competitionId)!;
-    if (!compHandlers.has(event)) {
+    if (!this.handlers.has(k)) {
+      this.handlers.set(k, new Map());
+    }
+    const compHandlers = this.handlers.get(k)!;
+    const isNewEvent = !compHandlers.has(event);
+    if (isNewEvent) {
       compHandlers.set(event, new Set());
-      const source = this.sources.get(competitionId)!;
-      this.attachListener(source, competitionId, event);
+    }
+    compHandlers.get(event)!.add(handler);
+
+    // MED-25: cancel any pending retry timer before deciding whether to open
+    // a new connection. Pre-fix: a subscribe() during the backoff window left
+    // the timer alive AND immediately opened a fresh connection — once the
+    // timer fired we ended up with two parallel EventSources for the same
+    // (competitionId, channel), counting as two judges to the connectivity
+    // dashboard and doubling the BE load.
+    const pendingTimer = this.retryTimers.get(k);
+    if (pendingTimer !== undefined) {
+      clearTimeout(pendingTimer);
+      this.retryTimers.delete(k);
     }
 
-    compHandlers.get(event)!.add(handler);
+    // Open connection if needed. Ticket fetch is async, so the source may be
+    // created shortly after this call returns — that's fine because we attach
+    // the listener for any registered events as part of connect().
+    if (!this.sources.has(k) && !this.connecting.has(k)) {
+      this.connecting.add(k);
+      void this.connect(competitionId, channel);
+    } else if (isNewEvent && this.sources.has(k)) {
+      // Source already open and a brand-new event type was just registered — attach now.
+      this.attachListener(this.sources.get(k)!, k, event);
+    }
 
     return {
       unsubscribe: () => {
-        const h = this.handlers.get(competitionId);
+        const h = this.handlers.get(k);
         h?.get(event)?.delete(handler);
         if (h?.get(event)?.size === 0) h.delete(event);
 
@@ -72,123 +118,151 @@ class SSEClient {
         let totalHandlers = 0;
         h?.forEach((set) => (totalHandlers += set.size));
         if (totalHandlers === 0) {
-          this.teardown(competitionId);
+          this.teardown(k);
         }
       },
     };
   }
 
-  private connect(competitionId: string) {
-    const lastEventId = this.lastEventIds.get(competitionId);
-    // EventSource can't send Authorization headers — pass JWT as query param instead
-    const token = getAccessToken();
+  private async connect(competitionId: string, channel: SSEChannel) {
+    const k = key(competitionId, channel);
+    const lastEventId = this.lastEventIds.get(k);
     const params = new URLSearchParams();
     if (lastEventId) params.set('lastEventId', lastEventId);
-    if (token) params.set('authToken', token);
-    const qs = params.toString();
-    const url = `/api/v1/sse/competitions/${competitionId}/admin${qs ? `?${qs}` : ''}`;
-    const source = new EventSource(url, { withCredentials: true });
 
-    if (!this.handlers.has(competitionId)) {
-      this.handlers.set(competitionId, new Map());
+    // Public channel — no auth, no ticket. Admin/chair — fetch a single-use
+    // ticket from /sse/ticket and pass it as ?ticket=. Pre-fix this passed
+    // the user's JWT directly, leaking it to logs and referrer headers
+    // (CRIT-8 sub-fix C).
+    if (channel !== 'public') {
+      try {
+        const ticket = await fetchSseTicket(competitionId, channel);
+        params.set('ticket', ticket);
+      } catch (err) {
+        console.warn(`[SSE] Failed to fetch ${channel} ticket:`, err);
+        this.connecting.delete(k);
+        // Treat ticket failure the same as repeated reconnect failures:
+        // hand off to polling fallback so the page stays functional.
+        this.pollingFallbackCallbacks.get(k)?.forEach((cb) => cb());
+        this.teardown(k);
+        return;
+      }
     }
 
+    const qs = params.toString();
+    const url = `/api/v1/sse/competitions/${competitionId}/${channel}${qs ? `?${qs}` : ''}`;
+    const source = new EventSource(url, { withCredentials: channel !== 'public' });
+
+    this.sources.set(k, source);
+    this.connecting.delete(k);
+
+    // Attach listeners for every event already registered against this channel.
+    this.handlers.get(k)?.forEach((_, event) => {
+      this.attachListener(source, k, event);
+    });
+
     source.onopen = () => {
-      // Reset backoff + failure count on successful connection
-      this.retryDelays.set(competitionId, BACKOFF_INITIAL_MS);
-      this.reconnectFailures.set(competitionId, 0);
-      // Notify reconnect callbacks (e.g. judge rehydration)
-      this.reconnectCallbacks.get(competitionId)?.forEach((cb) => cb());
+      this.retryDelays.set(k, BACKOFF_INITIAL_MS);
+      this.reconnectFailures.set(k, 0);
+      this.reconnectCallbacks.get(k)?.forEach((cb) => cb());
     };
 
     source.onerror = () => {
       source.close();
-      this.sources.delete(competitionId);
+      this.sources.delete(k);
 
-      // Don't reconnect if all subscriptions were removed
-      const h = this.handlers.get(competitionId);
+      const h = this.handlers.get(k);
       let totalHandlers = 0;
       h?.forEach((set) => (totalHandlers += set.size));
       if (totalHandlers === 0) return;
 
-      const failures = (this.reconnectFailures.get(competitionId) ?? 0) + 1;
-      this.reconnectFailures.set(competitionId, failures);
+      const failures = (this.reconnectFailures.get(k) ?? 0) + 1;
+      this.reconnectFailures.set(k, failures);
       if (failures >= MAX_RECONNECTS_BEFORE_POLLING) {
-        // Trigger polling fallback — stop SSE reconnect attempts
-        this.pollingFallbackCallbacks.get(competitionId)?.forEach((cb) => cb());
-        this.teardown(competitionId);
+        this.pollingFallbackCallbacks.get(k)?.forEach((cb) => cb());
+        this.teardown(k);
         return;
       }
 
-      const delay = this.retryDelays.get(competitionId) ?? BACKOFF_INITIAL_MS;
-      this.retryDelays.set(competitionId, Math.min(delay * 2, BACKOFF_MAX_MS));
+      const delay = this.retryDelays.get(k) ?? BACKOFF_INITIAL_MS;
+      this.retryDelays.set(k, Math.min(delay * 2, BACKOFF_MAX_MS));
 
       const timer = setTimeout(() => {
-        this.retryTimers.delete(competitionId);
-        // Re-connect and re-attach all existing event listeners
-        this.connect(competitionId);
-        const newSource = this.sources.get(competitionId)!;
-        this.handlers.get(competitionId)?.forEach((_, event) => {
-          this.attachListener(newSource, competitionId, event);
-        });
+        this.retryTimers.delete(k);
+        if (!this.connecting.has(k)) {
+          this.connecting.add(k);
+          void this.connect(competitionId, channel);
+        }
       }, delay);
 
-      this.retryTimers.set(competitionId, timer);
+      this.retryTimers.set(k, timer);
     };
-
-    this.sources.set(competitionId, source);
   }
 
-  private attachListener(source: EventSource, competitionId: string, event: string) {
+  private attachListener(source: EventSource, k: string, event: string) {
     source.addEventListener(event, (e) => {
+      // MED-26: separate JSON-parse failure (the payload is malformed and we
+      // can't dispatch) from handler-throws (parsed fine, but a downstream
+      // React handler crashed). Pre-fix both ended up logged as "Malformed
+      // payload" — misleading during incident triage. Each handler also runs
+      // in its own try/catch so one bad subscriber doesn't starve the others.
+      let data: unknown;
       try {
-        const data = JSON.parse((e as MessageEvent).data);
-        // Track eventId for Last-Event-ID replay on reconnect
-        if (data && typeof data === "object" && "eventId" in data && typeof data.eventId === "string") {
-          this.lastEventIds.set(competitionId, data.eventId);
-        }
-        this.handlers.get(competitionId)?.get(event)?.forEach((h) => h(data));
+        data = JSON.parse((e as MessageEvent).data);
       } catch {
-        console.warn("[SSE] Malformed payload for event", event, (e as MessageEvent).data);
+        console.warn('[SSE] Malformed payload for event', event, (e as MessageEvent).data);
+        return;
       }
+
+      if (data && typeof data === 'object' && 'eventId' in data && typeof data.eventId === 'string') {
+        this.lastEventIds.set(k, data.eventId);
+      }
+
+      this.handlers.get(k)?.get(event)?.forEach((h) => {
+        try {
+          h(data);
+        } catch (err) {
+          console.error(`[SSE] Handler for event "${event}" threw:`, err);
+        }
+      });
     });
   }
 
-  private teardown(competitionId: string) {
-    this.sources.get(competitionId)?.close();
-    this.sources.delete(competitionId);
-    this.handlers.delete(competitionId);
-    this.retryDelays.delete(competitionId);
-    this.lastEventIds.delete(competitionId);
-    this.reconnectFailures.delete(competitionId);
-    this.reconnectCallbacks.delete(competitionId);
-    this.pollingFallbackCallbacks.delete(competitionId);
-    const timer = this.retryTimers.get(competitionId);
+  private teardown(k: string) {
+    this.sources.get(k)?.close();
+    this.sources.delete(k);
+    this.handlers.delete(k);
+    this.retryDelays.delete(k);
+    this.lastEventIds.delete(k);
+    this.reconnectFailures.delete(k);
+    this.reconnectCallbacks.delete(k);
+    this.pollingFallbackCallbacks.delete(k);
+    this.connecting.delete(k);
+    const timer = this.retryTimers.get(k);
     if (timer !== undefined) {
       clearTimeout(timer);
-      this.retryTimers.delete(competitionId);
+      this.retryTimers.delete(k);
     }
   }
 }
 
 export const sseClient = new SSEClient();
 
-// Hook that tracks SSE connection state for a competition.
-// Returns true when EventSource is open, false on disconnect/polling fallback.
 import { useState, useEffect } from 'react';
 
-export function useSSEConnected(competitionId: string): boolean {
+/** Hook that tracks SSE connection state for a competition channel. */
+export function useSSEConnected(competitionId: string, channel: SSEChannel = 'admin'): boolean {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const unsubReconnect = sseClient.onReconnect(competitionId, () => setConnected(true));
-    const unsubFallback = sseClient.onPollingFallback(competitionId, () => setConnected(false));
+    const unsubReconnect = sseClient.onReconnect(competitionId, () => setConnected(true), channel);
+    const unsubFallback = sseClient.onPollingFallback(competitionId, () => setConnected(false), channel);
 
     return () => {
       unsubReconnect();
       unsubFallback();
     };
-  }, [competitionId]);
+  }, [competitionId, channel]);
 
   return connected;
 }

@@ -32,8 +32,10 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { judgeTokensApi, type JudgeTokenDto, type JudgeTokenCreatedResponse } from "@/lib/api/judge-tokens";
+import { judgeCredentialsCache } from "@/lib/judge-credentials-cache";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
 import QRCode from "qrcode";
@@ -64,10 +66,15 @@ function QRCanvas({ url, size = 140 }: { url: string | null; size?: number }) {
 }
 
 // ── Single judge QR card (for print view) ───────────────────────────────────
-function JudgeQRCard({ token, judgeUrl, rawToken }: { token: JudgeTokenDto; judgeUrl: string; rawToken?: string }) {
+function JudgeQRCard({ token, judgeUrl, rawToken: rawTokenProp }: { token: JudgeTokenDto; judgeUrl: string; rawToken?: string }) {
   const { t } = useLocale();
+  // Resolve raw token from session cache when prop wasn't passed (CRIT-2 — BE no
+  // longer returns plaintext on list endpoints; raw values only available immediately
+  // after createJudgeToken via judgeCredentialsCache).
+  const cached = judgeCredentialsCache.get(token.id);
+  const rawToken = rawTokenProp ?? cached?.rawToken;
   const url = rawToken ? `${judgeUrl}/${rawToken}` : null;
-  const pin = token.rawPin ?? token.pin;
+  const pin = cached?.rawPin ?? token.pin;
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center print:break-inside-avoid">
       <p className="text-lg font-bold text-[var(--text-primary)]">{t("judges.judgeNumber", { number: token.judgeNumber ?? 0 })}</p>
@@ -92,7 +99,7 @@ function JudgeQRCard({ token, judgeUrl, rawToken }: { token: JudgeTokenDto; judg
 function QRModal({
   token,
   judgeUrl,
-  rawToken,
+  rawToken: rawTokenProp,
   onClose,
 }: {
   token: JudgeTokenDto;
@@ -101,8 +108,10 @@ function QRModal({
   onClose: () => void;
 }) {
   const { t } = useLocale();
+  const cached = judgeCredentialsCache.get(token.id);
+  const rawToken = rawTokenProp ?? cached?.rawToken;
   const url = rawToken ? `${judgeUrl}/${rawToken}` : null;
-  const pin = token.rawPin ?? token.pin;
+  const pin = cached?.rawPin ?? token.pin;
 
   const handleDownload = () => {
     if (!url) return;
@@ -179,9 +188,14 @@ function FallbackScoringModal({
     if (!selectedJudge) return;
     const token = activeTokens.find((tk) => tk.id === selectedJudge);
     if (!token) return;
-    const rawToken = token.rawToken ?? token.token;
+    // Fallback scoring opens the judge URL in a new tab — needs raw token from session cache.
+    const rawToken = judgeCredentialsCache.get(token.id)?.rawToken ?? token.token;
     if (rawToken) {
       window.open(`/judge/${rawToken}`, "_blank");
+    } else {
+      // No raw token available — page-level toast or alert would be better;
+      // for now log + close so admin understands they need to reissue.
+      console.warn("[judges] fallback scoring requires raw token; reissue judge token");
     }
     onClose();
   };
@@ -267,6 +281,8 @@ function AutoSaveCell({
       setSaving(true);
       try {
         await onSave(val);
+      } catch (e) {
+        console.error("[AutoSaveCell] save failed", e);
       } finally {
         setSaving(false);
       }
@@ -364,7 +380,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
     queryFn: () => judgeTokensApi.list(id),
   });
 
-  const createTokens = useMutation({
+  const createTokens = useApiMutation({
     mutationFn: async (): Promise<JudgeTokenCreatedResponse[]> => {
       const n = parseInt(count) || 1;
       const existingNumbers = new Set((tokens ?? []).map((tk) => tk.judgeNumber));
@@ -383,7 +399,14 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
       return results;
     },
     onSuccess: (results) => {
-      // Immediately add new tokens to the cache so they're visible before the refetch completes
+      // Capture plaintext credentials in session cache (CRIT-2 — backend never
+      // returns them again on list/refetch, so this is the one chance).
+      results.forEach((r) =>
+        judgeCredentialsCache.set(r.id, { rawToken: r.rawToken, rawPin: r.pin })
+      );
+      // Immediately add new tokens to the cache so they're visible before the refetch
+      // completes. rawToken/rawPin no longer on JudgeTokenDto — UI reads via
+      // judgeCredentialsCache.get(token.id) for raw values.
       qc.setQueryData<JudgeTokenDto[]>(["judge-tokens", id], (old) => [
         ...(old ?? []),
         ...results.map((r) => ({
@@ -391,8 +414,6 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
           judgeNumber: r.judgeNumber,
           role: r.role,
           active: true,
-          rawToken: r.rawToken,
-          rawPin: r.pin,
         } as JudgeTokenDto)),
       ]);
       // Background refetch for full consistency (connectedAt, name, etc.)
@@ -402,9 +423,10 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
     },
   });
 
-  const deleteTokenPermanent = useMutation({
+  const deleteTokenPermanent = useApiMutation({
     mutationFn: (tokenId: string) => judgeTokensApi.deletePermanent(id, tokenId),
-    onSuccess: () => {
+    onSuccess: (_data, tokenId) => {
+      judgeCredentialsCache.delete(tokenId);
       qc.invalidateQueries({ queryKey: ["judge-tokens", id] });
       setDeleteConfirmId(null);
       toast({ title: "Porotce byl smazán", variant: "success" });
@@ -425,7 +447,8 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
   };
 
   const activeTokens = tokens?.filter((t) => t.active) ?? [];
-  const getTokenRaw = (tk: JudgeTokenDto) => tk.rawToken ?? tk.token;
+  const getTokenRaw = (tk: JudgeTokenDto) =>
+    judgeCredentialsCache.get(tk.id)?.rawToken ?? tk.token;
 
   // Print view
   if (printMode) {
@@ -539,7 +562,7 @@ export default function JudgesPage({ params }: { params: Promise<{ id: string }>
                   </code>
                 </TableCell>
                 <TableCell>
-                  <PinCell pin={tk.rawPin ?? tk.pin} />
+                  <PinCell pin={judgeCredentialsCache.get(tk.id)?.rawPin ?? tk.pin} />
                 </TableCell>
                 <TableCell>
                   <Badge variant={tk.active ? "success" : "secondary"}>

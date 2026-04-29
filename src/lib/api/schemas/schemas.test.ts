@@ -42,6 +42,18 @@ describe("PairSchema", () => {
     const wire = { id: "p-1", startNumber: 42, newField: "ok" };
     expect(PairSchema.safeParse(wire).success).toBe(true);
   });
+
+  it("accepts null for nullable BE fields (JacksonConfig has no NON_NULL)", () => {
+    const wire = {
+      id: "p-1",
+      startNumber: 42,
+      dancer1Name: null,
+      adminNote: null,
+      club: null,
+      sections: [{ sectionId: "s-1", sectionName: null, paymentStatus: "PENDING" }],
+    };
+    expect(PairSchema.safeParse(wire).success).toBe(true);
+  });
 });
 
 describe("SectionFinalSummarySchema", () => {

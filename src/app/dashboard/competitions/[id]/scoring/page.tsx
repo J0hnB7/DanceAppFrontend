@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useCallback } from "react";
+import { use, useState, useCallback, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -32,9 +32,12 @@ import {
 import { useSSE } from "@/hooks/use-sse";
 import { useAlertsStore } from "@/store/alerts-store";
 import apiClient from "@/lib/api-client";
+import { scoringApi } from "@/lib/api/scoring";
 import { formatTime, cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/locale-context";
+import { OverrideModal, type MissingJudgeInfo } from "@/components/results/override-modal";
+import axios from "axios";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,6 +60,7 @@ interface RoundDto {
   roundType: string;
   status: string;
   judgeCount?: number;
+  version?: number;
 }
 
 interface SSEMarksProgress {
@@ -101,7 +105,13 @@ async function fetchActiveRoundForCompetition(competitionId: string): Promise<{ 
 
 // ── JudgeStatusTable ──────────────────────────────────────────────────────────
 
-function JudgeStatusTable({
+// Memoised: parent (ScoringProgressPage) re-renders on every 5s submission-status
+// poll AND on every SSE event (marks-progress, all-marks-in, tie-detected,
+// mark-conflict) — ~30 renders/min during a busy round close. React Query
+// returns referentially-stable `status` when the payload is unchanged, so
+// shallow compare blocks the children-table re-render. Pair with a stable
+// `onRemind` (useCallback in the parent) for the memo to actually fire (HIGH-31).
+const JudgeStatusTable = memo(function JudgeStatusTable({
   status,
   onRemind,
 }: {
@@ -189,7 +199,7 @@ function JudgeStatusTable({
       )}
     </div>
   );
-}
+});
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -202,6 +212,11 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
 
   const [tieDetected, setTieDetected] = useState<{ dance: string; count: number } | null>(null);
   const [activeConflict, setActiveConflict] = useState<{ id: string } | null>(null);
+  const [overrideState, setOverrideState] = useState<{
+    open: boolean;
+    missingJudges: MissingJudgeInfo[];
+    errorMessage: string | null;
+  }>({ open: false, missingJudges: [], errorMessage: null });
 
   // Active round for this competition
   const { data: activeRound, isLoading: roundLoading } = useQuery({
@@ -212,12 +227,13 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
 
   const roundId = activeRound?.roundId ?? null;
 
-  // Submission status (replaces marks-progress)
+  // Submission status (replaces marks-progress) — refresh driven by `marks-progress`
+  // and `all-marks-in` SSE handlers below; polling removed to avoid double-update
+  // storms when SSE is also delivering events for the same data (MED-48).
   const { data: status, isLoading: statusLoading } = useQuery({
     queryKey: ["rounds", roundId, "submission-status"],
     queryFn: () => fetchSubmissionStatus(roundId!),
     enabled: !!roundId,
-    refetchInterval: 5_000,
   });
 
   // Round detail (for type/number info)
@@ -244,6 +260,18 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
   const calculateMutation = useMutation({
     mutationFn: () => apiClient.post(`/rounds/${roundId}/calculate`),
     onSuccess: () => {
+      // HIGH-25: invalidate caches the results page reads on mount.
+      // Without this, the navigated-to results page hits stale cache for ~30s
+      // (default staleTime), showing "calculating..." even though results are
+      // already persisted. SSE results-corrected may also fire before the new
+      // page subscribes; the cache eviction makes the eventual subscribe see
+      // fresh data.
+      qc.invalidateQueries({ queryKey: ["sections", competitionId] });
+      qc.invalidateQueries({ queryKey: ["rounds", roundId] });
+      qc.invalidateQueries({ queryKey: ["rounds", roundId, "submission-status"] });
+      if (activeRound?.sectionId) {
+        qc.invalidateQueries({ queryKey: ["section", activeRound.sectionId, "final-summary"] });
+      }
       toast({ title: t("round.resultsCalculated"), variant: "success" });
       if (activeRound?.sectionId) {
         router.push(
@@ -251,8 +279,70 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
         );
       }
     },
-    onError: () => {
+    onError: (err) => {
+      const isAxios = axios.isAxiosError(err);
+      const httpStatus = isAxios ? err.response?.status : undefined;
+      const data = isAxios ? err.response?.data : undefined;
+      const message =
+        typeof data === "object" && data !== null && "message" in data &&
+        typeof (data as { message?: unknown }).message === "string"
+          ? (data as { message: string }).message
+          : "";
+      // R11 incomplete-judges → 409 with parseable message → open override modal
+      if (httpStatus === 409 && message.includes("incomplete judge data")) {
+        const matches = Array.from(
+          message.matchAll(/Judge (\d+) \(submitted (\d+)\/(\d+) dances?\)/g),
+        );
+        const enriched: MissingJudgeInfo[] = matches
+          .map((m) => {
+            const judgeNumber = Number(m[1]);
+            const tokenId = status?.judges.find((j) => j.judgeNumber === judgeNumber)?.judgeTokenId;
+            if (!tokenId) return null;
+            return {
+              judgeTokenId: tokenId,
+              judgeNumber,
+              submitted: Number(m[2]),
+              expected: Number(m[3]),
+            };
+          })
+          .filter((x): x is MissingJudgeInfo => x !== null);
+        if (enriched.length > 0) {
+          setOverrideState({ open: true, missingJudges: enriched, errorMessage: null });
+          return;
+        }
+      }
       toast({ title: t("common.error"), variant: "destructive" });
+    },
+  });
+
+  const overrideMutation = useMutation({
+    mutationFn: (payload: { withdrawJudgeTokenIds: string[]; reason: string }) => {
+      if (!roundId) return Promise.reject(new Error("No active round"));
+      const expectedRoundVersion = roundDetail?.version ?? 0;
+      return scoringApi.calculateWithOverride(roundId, {
+        withdrawJudgeTokenIds: payload.withdrawJudgeTokenIds,
+        reason: payload.reason,
+        expectedRoundVersion,
+      });
+    },
+    onSuccess: () => {
+      setOverrideState({ open: false, missingJudges: [], errorMessage: null });
+      toast({ title: t("round.resultsCalculated"), variant: "success" });
+      if (activeRound?.sectionId) {
+        router.push(
+          `/dashboard/competitions/${competitionId}/sections/${activeRound.sectionId}/rounds/${roundId}`
+        );
+      }
+    },
+    onError: (err) => {
+      const isAxios = axios.isAxiosError(err);
+      const data = isAxios ? err.response?.data : undefined;
+      const message =
+        typeof data === "object" && data !== null && "message" in data &&
+        typeof (data as { message?: unknown }).message === "string"
+          ? (data as { message: string }).message
+          : t("common.error");
+      setOverrideState((prev) => ({ ...prev, errorMessage: message }));
     },
   });
 
@@ -260,12 +350,14 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
   useSSE<SSEMarksProgress>(competitionId, "marks-progress", useCallback((data) => {
     if (data.roundId === roundId) {
       qc.invalidateQueries({ queryKey: ["rounds", roundId, "marks-progress"] });
+      qc.invalidateQueries({ queryKey: ["rounds", roundId, "submission-status"] });
     }
   }, [roundId, qc]));
 
   useSSE<SSEMarksProgress>(competitionId, "all-marks-in", useCallback((data) => {
     if (data.roundId === roundId) {
       qc.invalidateQueries({ queryKey: ["rounds", roundId, "marks-progress"] });
+      qc.invalidateQueries({ queryKey: ["rounds", roundId, "submission-status"] });
       addAlert({ level: "success", title: t("scoring.calculate") });
     }
   }, [roundId, qc, addAlert, t]));
@@ -284,12 +376,14 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
     }
   }, [roundId, qc, addAlert, t]));
 
-  const handleRemind = (judgeNumber: number) => {
+  // Stable reference so JudgeStatusTable's React.memo can short-circuit
+  // re-renders when only unrelated parent state changes.
+  const handleRemind = useCallback((judgeNumber: number) => {
     toast({
       title: t("round.reminderSent", { number: judgeNumber }),
       variant: "success",
     });
-  };
+  }, [t]);
 
   const handleResolveConflict = (resolution: "ONLINE" | "OFFLINE") => {
     if (!activeConflict) return;
@@ -393,6 +487,8 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
                 size="lg"
                 onClick={() => calculateMutation.mutate()}
                 loading={calculateMutation.isPending}
+                disabled={tieDetected !== null}
+                title={tieDetected !== null ? t("scoring.resolveTieFirst") ?? "Resolve tie first" : undefined}
               >
                 <BarChart3 className="h-4 w-4" />
                 {t("scoring.calculate")}
@@ -409,6 +505,16 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       )}
+
+      <OverrideModal
+        open={overrideState.open}
+        missingJudges={overrideState.missingJudges}
+        totalJudges={status?.totalJudges ?? roundDetail?.judgeCount ?? 0}
+        submitting={overrideMutation.isPending}
+        errorMessage={overrideState.errorMessage}
+        onClose={() => setOverrideState({ open: false, missingJudges: [], errorMessage: null })}
+        onSubmit={(payload) => overrideMutation.mutate(payload)}
+      />
     </AppShell>
   );
 }

@@ -56,6 +56,11 @@ export interface PairDto {
   ranklistPosition?: number | null;
 }
 
+export type RemovePairSectionDto = {
+  pair: PairDto;
+  hadScoringData: boolean;
+};
+
 export interface CreatePairRequest {
   startNumber?: number;
   dancer1Name: string;

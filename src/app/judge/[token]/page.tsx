@@ -30,7 +30,9 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
 
   useEffect(() => {
     if (!token) return;
-    // Clear any previous session for THIS token — PIN is always required on fresh login
+    // Clear any previous session for THIS token — PIN is always required on fresh login.
+    // judge_access_token_* is purged here too so any previously-stored JWTs from
+    // older builds get scrubbed on next visit.
     localStorage.removeItem(`judge_device_token_${token}`);
     localStorage.removeItem(`judge_competition_id_${token}`);
     localStorage.removeItem(`judge_adjudicator_id_${token}`);
@@ -56,14 +58,15 @@ export default function JudgeTokenPage({ params }: { params: Promise<{ token: st
     setPinError(null);
     try {
       const res = await apiClient.post("/judge-access/connect", { token, pin });
-      const { accessToken, adjudicatorId, competitionId, competitionName, deviceToken, judgeName } = res.data;
-      localStorage.setItem(`judge_access_token_${token}`, accessToken);
+      const { adjudicatorId, competitionId, competitionName, deviceToken, judgeName } = res.data;
+      // JWT (accessToken) intentionally not stored — backend authenticates judge
+      // requests via X-Judge-Token (deviceToken) header; the JWT is unused for
+      // transport, so persisting it would expose it to XSS without benefit.
       localStorage.setItem(`judge_device_token_${token}`, deviceToken);
       localStorage.setItem(`judge_competition_id_${token}`, competitionId);
       localStorage.setItem(`judge_adjudicator_id_${token}`, adjudicatorId);
       if (judgeName) localStorage.setItem(`judge_name_${token}`, judgeName);
       void competitionName;
-      void accessToken;
       void adjudicatorId;
       router.replace(`/judge/${token}/lobby`);
     } catch (err: unknown) {

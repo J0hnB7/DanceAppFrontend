@@ -50,7 +50,12 @@ export default function AdminOrganizersPage() {
 
   const handleInvite = () => {
     if (!inviteName.trim() || !inviteEmail.trim()) return;
-    inviteMutation.mutate({ name: inviteName.trim(), email: inviteEmail.trim() });
+    const email = inviteEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: t("organizers.inviteDialog.invalidEmail"), variant: "destructive" });
+      return;
+    }
+    inviteMutation.mutate({ name: inviteName.trim(), email });
   };
 
   return (

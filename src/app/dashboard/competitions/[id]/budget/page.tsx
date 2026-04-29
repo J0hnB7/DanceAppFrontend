@@ -5,7 +5,8 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { AppShell } from "@/components/layout/app-shell";
 import { CompetitionSidebar } from "@/components/layout/competition-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
@@ -94,7 +95,11 @@ export default function BudgetPage({
     defaultValues: { category: "OTHER", currency: "CZK" },
   });
 
-  const createMut = useMutation({
+  // MED-30: useApiMutation provides a default destructive-toast onError so
+  // 409/422/5xx surfaces visibly instead of silently rejecting. Migrating
+  // budget/page.tsx as the proof case (audit explicitly flagged 4 mutations
+  // with 0 onError here); other pages will be migrated incrementally.
+  const createMut = useApiMutation({
     mutationFn: (d: ExpenseForm) =>
       budgetApi.createExpense(id, { ...d, amount: parseFloat(d.amount) }),
     onSuccess: () => {
@@ -105,7 +110,7 @@ export default function BudgetPage({
     },
   });
 
-  const updateMut = useMutation({
+  const updateMut = useApiMutation({
     mutationFn: ({
       expenseId,
       d,
@@ -124,7 +129,7 @@ export default function BudgetPage({
     },
   });
 
-  const deleteMut = useMutation({
+  const deleteMut = useApiMutation({
     mutationFn: (expenseId: string) => budgetApi.deleteExpense(id, expenseId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["budget", id] }),
   });

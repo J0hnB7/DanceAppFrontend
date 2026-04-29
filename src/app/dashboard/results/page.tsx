@@ -129,7 +129,7 @@ function CompetitionCard({ entry, locale }: { entry: MyCompetitionEntry; locale:
 
 export default function MyResultsPage() {
   const { t, locale } = useLocale();
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const isDancer = user?.role === "DANCER";
 
   const { data: entries = [], isLoading, isError } = useQuery({

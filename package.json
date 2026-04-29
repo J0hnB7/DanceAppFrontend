@@ -13,6 +13,7 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:v2": "playwright test --config=tests/e2e/v2/playwright.config.v2.ts",
     "api:types": "openapi-typescript ../danceapp-backend/docs/api/openapi.json -o src/lib/api/generated.d.ts"
   },
   "dependencies": {
@@ -56,6 +57,7 @@
     "read-excel-file": "^7.0.3",
     "recharts": "^3.7.0",
     "tailwind-merge": "^3.5.0",
+    "use-debounce": "^10.1.1",
     "write-excel-file": "^3.0.6",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"

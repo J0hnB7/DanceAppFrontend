@@ -16,19 +16,35 @@ import { GoogleLogin } from "@react-oauth/google";
 import { googleAuthApi } from "@/lib/api/google-auth";
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
   password: z.string().min(1),
   totpCode: z.string().optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
+/**
+ * Open-redirect protection: only accept callbackUrl values that are same-origin
+ * relative paths starting with a single "/" (rejects "//evil.com", "https://evil.com",
+ * "javascript:..."). Required because router.replace(callbackUrl) without validation
+ * lands the user off-origin after legitimate login.
+ */
+function isSafeCallbackUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  if (url.length < 2 || url[0] !== "/") return false;
+  // Reject protocol-relative ("//evil.com") and any embedded scheme
+  if (url[1] === "/" || url[1] === "\\") return false;
+  if (/^\/[^\/]*:/.test(url)) return false;
+  return true;
+}
+
 function LoginPageInner() {
   const { t: _t, locale } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
-  const { loginWithTokens } = useAuthStore();
+  const rawCallback = searchParams.get("callbackUrl");
+  const callbackUrl = isSafeCallbackUrl(rawCallback) ? rawCallback : "/dashboard";
+  const loginWithTokens = useAuthStore((s) => s.loginWithTokens);
 
   const [mounted, setMounted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -75,7 +91,8 @@ function LoginPageInner() {
         .login-fadein-2{animation:fadeUp .5s ease .16s both}
         .login-fadein-3{animation:fadeUp .5s ease .24s both}
         .badge-dot-g{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:pdot 2s infinite;display:inline-block;flex-shrink:0}
-        .login-input:focus{outline:none;border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+        /* MED-37: outline transparent + offset preserves high-contrast mode focus ring */
+        .login-input:focus{outline:2px solid transparent;outline-offset:2px;border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
         .login-btn{width:100%;padding:11px;border-radius:9px;background:linear-gradient(135deg,#4F46E5,#6D28D9);color:#fff;font-size:.93rem;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
         .login-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,.35)}
         .login-btn:disabled{opacity:.6;cursor:not-allowed}
@@ -168,7 +185,7 @@ function LoginPageInner() {
                     {t("auth.signIn")}
                   </h1>
                 </div>
-                <p style={{ fontSize: ".85rem", color: "#6B7280", marginTop: 6 }}>{t("auth.signInDesc")}</p>
+                <p style={{ fontSize: ".85rem", color: "#4B5563", marginTop: 6 }}>{t("auth.signInDesc")}</p>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="auth-light" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -226,11 +243,11 @@ function LoginPageInner() {
                   {loading ? t("auth.signingIn") : t("auth.signIn")}
                 </button>
 
-                {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && mounted && (
                   <>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#9CA3AF", fontSize: ".8rem", margin: "4px 0" }}>
                       <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
-                      {mounted ? (locale === "en" ? "or" : "nebo") : ""}
+                      {locale === "en" ? "or" : "nebo"}
                       <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
                     </div>
 
@@ -261,7 +278,7 @@ function LoginPageInner() {
                   <p style={{ fontSize: ".8rem", color: "#EF4444", textAlign: "center", marginTop: -4 }}>{googleError}</p>
                 )}
 
-                <p style={{ textAlign: "center", fontSize: ".83rem", color: "#6B7280", marginTop: 4 }}>
+                <p style={{ textAlign: "center", fontSize: ".83rem", color: "#4B5563", marginTop: 4 }}>
                   {t("auth.noAccountLink")}{" "}
                   <Link href="/register" className="login-link">{t("auth.signUp")}</Link>
                 </p>
@@ -270,7 +287,7 @@ function LoginPageInner() {
 
             {/* back to landing */}
             <p style={{ textAlign: "center", marginTop: 20, fontSize: ".78rem", color: "#9CA3AF" }}>
-              <Link href="/" style={{ color: "#6B7280", textDecoration: "none" }}>
+              <Link href="/" style={{ color: "#4B5563", textDecoration: "none" }}>
                 {t("auth.backToHome")}
               </Link>
             </p>

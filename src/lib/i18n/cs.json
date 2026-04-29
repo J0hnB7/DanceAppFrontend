@@ -108,6 +108,7 @@
       "name": "Jméno",
       "namePlaceholder": "Jan Novák",
       "email": "E-mail",
+      "invalidEmail": "Zadejte platný e-mail",
       "send": "Odeslat pozvánku"
     }
   },
@@ -355,7 +356,11 @@
     "paymentPending": "Čeká",
     "paymentPaid": "Zaplaceno",
     "paymentWaived": "Prominuto",
-    "cyclePaymentTitle": "Kliknutím změníš platbu na: {{next}}"
+    "cyclePaymentTitle": "Kliknutím změníš platbu na: {{next}}",
+    "removedWithScoringData": "Pár odebrán z kategorie. Scoring data jsou zachována.",
+    "cannotRemoveOnlySection": "Pár musí mít alespoň jednu kategorii.",
+    "addCategory": "Přidat kategorii",
+    "categories": "Kategorie"
   },
   "judges": {
     "title": "Tokeny porotců",
@@ -995,7 +1000,19 @@
     "calculateAllTitle": "Přepočítat celkové pořadí pro všechny kategorie",
     "calculateAllLabel": "Vytvořit celkové pořadí pro všechny kategorie",
     "calculateAllBtn": "Vytvořit celkové pořadí ({{count}})",
-    "calculatingAllBtn": "Přepočítávám… {{done}}/{{total}}"
+    "calculatingAllBtn": "Přepočítávám… {{done}}/{{total}}",
+    "dirtyTitle": "Výsledky jsou zastaralé",
+    "dirtyDesc": "Po poslední opravě je potřeba spustit přepočet před publikováním.",
+    "dirtyRecompute": "Přepočítat",
+    "overrideTitle": "Přepočítat s redukovaným počtem rozhodčích",
+    "overrideDesc": "{{missing}} z {{total}} rozhodčích nemá kompletní data. Vyberte ty, kteří mají být vyřazeni z výpočtu.",
+    "overrideJudgeRow": "Rozhodčí {{number}} — odevzdal {{submitted}}/{{expected}} tanců",
+    "overrideReasonLabel": "Důvod (min 10 znaků): hardware failure, rozhodčí odešel…",
+    "overrideAcknowledge": "Rozumím, že měním oficiální výpočet",
+    "overrideCancel": "Zrušit",
+    "overrideSubmit": "Přepočítat s {{remaining}} rozhodčími",
+    "overrideTooFewJudges": "Příliš málo rozhodčích zbývá (potřeba ≥ 3).",
+    "scoreboardCorrectedBadge": "Opraveno {{date}} ({{count}} změn)"
   },
   "diplomas": {
     "title": "Diplomy",
@@ -1596,7 +1613,15 @@
     "valueLabel": "Hodnota",
     "maxUsesLabel": "Max. použití (volitelné)",
     "expiresAtLabel": "Platnost do (volitelné)",
-    "codeMinLength": "Min. 3 znaky"
+    "codeMinLength": "Min. 3 znaky",
+    "volumeDiscount": "Objemová sleva",
+    "volumeDiscountEnable": "Zapnout objemovou slevu",
+    "volumeDiscount2nd": "2. kategorie",
+    "volumeDiscount3rdPlus": "3. kategorie a každá další",
+    "volumeDiscountSave": "Ušetříte",
+    "volumeDiscountTotal": "Celkem",
+    "discountSaved": "Sleva uložena",
+    "discountSaveFailed": "Nepodařilo se uložit slevu"
   },
   "payments": {
     "title": "Faktury a platby",

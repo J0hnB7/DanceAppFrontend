@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
-import { sseClient } from "@/lib/sse-client";
+import { sseClient, type SSEChannel } from "@/lib/sse-client";
 import apiClient from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
@@ -9,7 +9,8 @@ import { useAuthStore } from "@/store/auth-store";
 export function useSSE<T>(
   competitionId: string | null | undefined,
   event: string,
-  handler: (data: T) => void
+  handler: (data: T) => void,
+  channel: SSEChannel = 'admin'
 ) {
   const handlerRef = useRef(handler);
   useEffect(() => { handlerRef.current = handler; });
@@ -18,13 +19,15 @@ export function useSSE<T>(
 
   // Wait for auth store to be hydrated and user authenticated before subscribing.
   // This prevents SSE connecting without a token and getting 401 on first attempt.
+  // Public channel doesn't need auth — judge pages use it via X-Judge-Token, scoreboard is open.
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
-    if (!competitionId || !isAuthenticated) return;
-    const sub = sseClient.subscribe(competitionId, event, stableHandler as (data: unknown) => void);
+    if (!competitionId) return;
+    if (channel !== 'public' && !isAuthenticated) return;
+    const sub = sseClient.subscribe(competitionId, event, stableHandler as (data: unknown) => void, channel);
     return () => sub.unsubscribe();
-  }, [competitionId, event, stableHandler, isAuthenticated]);
+  }, [competitionId, event, stableHandler, isAuthenticated, channel]);
 }
 
 /**
@@ -66,13 +69,11 @@ export function useJudgeSSERehydration(
   useEffect(() => {
     if (!competitionId) return;
 
-    // Register SSE reconnect callback
-    const unsubReconnect = sseClient.onReconnect(competitionId, rehydrate);
-
-    // Register polling fallback callback (triggered after 3 SSE failures)
+    // Judge pages subscribe on 'public' channel (no admin JWT needed).
+    const unsubReconnect = sseClient.onReconnect(competitionId, rehydrate, 'public');
     const unsubPolling = sseClient.onPollingFallback(competitionId, () => {
       setPollingFallback(true);
-    });
+    }, 'public');
 
     return () => {
       unsubReconnect();

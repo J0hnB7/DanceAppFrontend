@@ -12,6 +12,7 @@ import { judgeOfflineStore } from "@/lib/judge-offline-store";
 import { t, detectLocale, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 import { violationsApi, type PenaltyType } from "@/lib/api/violations";
+import { useSSE } from "@/hooks/use-sse";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,10 @@ interface ActiveRoundResponse {
   sectionName?: string;
   /** Dance names this judge has already submitted — used to skip completed dances */
   submittedDances?: string[];
+}
+
+function minutesAgo(isoTimestamp: string): number {
+  return Math.round((Date.now() - new Date(isoTimestamp).getTime()) / 60_000);
 }
 
 // ── Couple tile ───────────────────────────────────────────────────────────────
@@ -182,6 +187,10 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [syncConflictWarning, setSyncConflictWarning] = useState(false);
+  const [usingCachedData, setUsingCachedData] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pingAlert, setPingAlert] = useState(false);
   const [showViolationSheet, setShowViolationSheet] = useState(false);
@@ -193,6 +202,15 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   const [isDark, setIsDark] = useState(() =>
     typeof document !== "undefined" && document.documentElement.classList.contains("dark")
   );
+
+  // MED-39: pending advance-to-next-dance timer; cleared on unmount.
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+  }, []);
 
   const toggleTheme = () => {
     const dark = !isDark;
@@ -209,6 +227,18 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   // waiting-for-admin screen — only admin's floor-control SSE event drives dance changes.
   const initialLoadRef = useRef(true);
 
+  // MED-32: retry-with-backoff for transient 5xx/network errors on /judge/active-round.
+  // Avoids judge mass-exodus during Railway redeploys / DB pool exhaustion / timeouts.
+  // Cleared on unmount.
+  const loadRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadRetryAttemptsRef = useRef(0);
+  useEffect(() => () => {
+    if (loadRetryTimerRef.current) {
+      clearTimeout(loadRetryTimerRef.current);
+      loadRetryTimerRef.current = null;
+    }
+  }, []);
+
   // Reload active round data — called on mount and when SSE signals a new heat/dance
   const loadActiveRound = useCallback(() => {
     if (!competitionId) { router.push(`/judge/${token}`); return; }
@@ -218,6 +248,8 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         ...(adjudicatorId ? { headers: { 'X-Judge-Token': adjudicatorId } } : {}),
       })
       .then((r) => {
+        // Successful load → reset transient-error retry counter
+        loadRetryAttemptsRef.current = 0;
         // Final rounds use placement UI — redirect to /final
         if (r.data.round.roundType === "FINAL") {
           router.replace(`/judge/${token}/final`);
@@ -269,8 +301,74 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             setPairStates({});
           }
         }
+
+        // Cache round data for offline fallback
+        if (competitionId) {
+          judgeOfflineStore.cacheActiveRound(competitionId, {
+            roundId: r.data.round.id,
+            roundType: r.data.round.roundType,
+            dance: mappedDances[0]?.name ?? "",
+            dances: mappedDances,
+            pairs: r.data.pairs,
+            heats: r.data.heats ?? [],
+            sectionName: r.data.sectionName,
+            cachedAt: new Date().toISOString(),
+          }).catch(() => {});
+        }
       })
-      .catch(() => router.push(`/judge/${token}/lobby`))
+      .catch(async (err: unknown) => {
+        // MED-32: differentiate terminal (404 / "round gone") from transient
+        // (5xx, network error, timeout — Railway redeploy, DB pool, etc.).
+        // 401/403 are already handled by the apiClient response interceptor
+        // (refresh+retry / auth rejection). We only fall here on its failure
+        // path, which we treat as terminal as before.
+        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+        const isTransient =
+          status === undefined          // network error / timeout / no response
+          || (status >= 500 && status <= 599);
+
+        if (isTransient && navigator.onLine) {
+          // Schedule exponential-backoff retry: 2s, 4s, 8s, then give up.
+          const attempt = loadRetryAttemptsRef.current;
+          if (attempt < 3) {
+            const delayMs = 2000 * Math.pow(2, attempt); // 2000, 4000, 8000
+            loadRetryAttemptsRef.current = attempt + 1;
+            if (loadRetryTimerRef.current) clearTimeout(loadRetryTimerRef.current);
+            loadRetryTimerRef.current = setTimeout(() => {
+              loadRetryTimerRef.current = null;
+              loadActiveRoundRef.current();
+            }, delayMs);
+            // Keep judge state intact (no router.push) — they stay in the round
+            // and the next attempt populates the data when the backend recovers.
+            return;
+          }
+          // Exhausted retries — fall through to terminal handling below.
+          loadRetryAttemptsRef.current = 0;
+        }
+
+        if (!navigator.onLine && competitionId) {
+          const cached = await judgeOfflineStore.getActiveRoundCache(competitionId).catch(() => null);
+          if (cached) {
+            // Verify cached round matches last known active round from lobby polling
+            const lastKnownRoundId = localStorage.getItem(`judge_active_round_${competitionId}`);
+            if (lastKnownRoundId && lastKnownRoundId !== cached.roundId) {
+              // Cache is from a different (older) round — unsafe to use
+              router.push(`/judge/${token}/lobby`);
+              return;
+            }
+            setRound({ id: cached.roundId, roundType: cached.roundType, roundNumber: 0, pairsToAdvance: null });
+            setDances(cached.dances ?? []);
+            setPairs(cached.pairs);
+            setHeats(cached.heats ?? []);
+            setSectionName(cached.sectionName ?? null);
+            setUsingCachedData(true);
+            setCachedAt(cached.cachedAt);
+            initialLoadRef.current = false;
+            return;
+          }
+        }
+        router.push(`/judge/${token}/lobby`);
+      })
       .finally(() => setLoading(false));
   }, [competitionId, adjudicatorId, token, router]);
 
@@ -278,9 +376,32 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     loadActiveRound();
   }, [loadActiveRound]);
 
+  // Restore pending offline marks into UI state after browser restart
+  useEffect(() => {
+    if (!adjudicatorId) return;
+    judgeOfflineStore.getPendingMarks().then((pending) => {
+      if (pending.length === 0) return;
+      const restoredPairStates: Record<string, PairState> = {};
+      const restoredSubmitted = new Set<string>();
+      for (const mark of pending) {
+        if (mark.recalled != null) restoredPairStates[mark.pairId] = mark.recalled ? "selected" : "none";
+        if (mark.dance) restoredSubmitted.add(mark.dance);
+      }
+      if (Object.keys(restoredPairStates).length > 0) {
+        setPairStates((prev) => ({ ...restoredPairStates, ...prev }));
+        setSubmittedDanceNames((prev) => new Set([...prev, ...restoredSubmitted]));
+      }
+    }).catch(() => {});
+  }, [adjudicatorId]);
+
   // Refs to avoid stale closure in SSE callback
   const loadActiveRoundRef = useRef(loadActiveRound);
   useEffect(() => { loadActiveRoundRef.current = loadActiveRound; }, [loadActiveRound]);
+
+  // Mirror usingCachedData into a ref so the offline-sync effect can read its
+  // current value without re-running every time the flag flips (HIGH-28).
+  const usingCachedDataRef = useRef(usingCachedData);
+  useEffect(() => { usingCachedDataRef.current = usingCachedData; }, [usingCachedData]);
   const dancesRef = useRef<DanceDto[]>([]);
   const heatsRef  = useRef<HeatGroup[]>([]);
   const submittedDanceNamesRef = useRef<Set<string>>(new Set());
@@ -290,76 +411,67 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
   // Pending floor-control: when dance list is empty at SSE time, apply after reload
   const pendingFloorControlRef = useRef<{ danceName?: string; heatNumber?: number } | null>(null);
 
-  // Subscribe to public SSE channel: floor-control + judge-ping
-  useEffect(() => {
-    if (!competitionId) return;
-    const es = new EventSource(`/api/v1/sse/competitions/${competitionId}/public`);
-    // floor-control is the single source of truth for which dance/heat the admin
-    // has put on the floor. Parse the payload, move activeDanceIdx / activeHeatIdx
-    // to exactly what admin sent, and reset the per-dance submission state only
-    // when the admin switches to a dance the judge has not yet submitted.
-    es.addEventListener("floor-control", (e: MessageEvent) => {
-      console.log("[judge-round] SSE floor-control received:", e.data);
-      try {
-        const data = JSON.parse(e.data) as { danceName?: string; heatNumber?: number };
-        if (data.danceName) {
-          const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
-          if (idx >= 0) {
-            setActiveDanceIdx(idx);
-            // If admin re-opened a dance this judge already submitted, keep the
-            // "waiting" screen (submitted=true). Otherwise start fresh scoring grid.
-            const alreadySubmitted = submittedDanceNamesRef.current.has(data.danceName);
-            setSubmitted(alreadySubmitted);
-            setPairStates({});
-          } else {
-            // Dance not yet in list (dances still loading) — stash and apply after reload
-            pendingFloorControlRef.current = data;
-          }
+  // Subscribe to public SSE channel via shared sseClient (HIGH-26 — was raw
+  // EventSource without Last-Event-ID replay, exponential backoff, or polling
+  // fallback). sseClient handles all that plus de-duplicates a single connection
+  // across hooks on the same channel.
+  useSSE<{ danceName?: string; heatNumber?: number }>(
+    competitionId,
+    'floor-control',
+    (data) => {
+      if (data.danceName) {
+        const idx = dancesRef.current.findIndex((d) => d.name === data.danceName);
+        if (idx >= 0) {
+          setActiveDanceIdx(idx);
+          const alreadySubmitted = submittedDanceNamesRef.current.has(data.danceName);
+          setSubmitted(alreadySubmitted);
+          setPairStates({});
+        } else {
+          pendingFloorControlRef.current = data;
         }
-        if (typeof data.heatNumber === "number" && data.heatNumber >= 1) {
-          setActiveHeatIdx(data.heatNumber - 1);
-        }
-      } catch { /* ignore malformed */ }
-      // Refresh pairs/heats/submittedDances from backend — but loadActiveRound
-      // will NOT auto-skip because initialLoadRef is already false.
+      }
+      if (typeof data.heatNumber === 'number' && data.heatNumber >= 1) {
+        setActiveHeatIdx(data.heatNumber - 1);
+      }
       loadActiveRoundRef.current();
-    });
-    // heat-sent is broadcast alongside floor-control; we only need a data refresh,
-    // all navigation is driven by floor-control above.
-    es.addEventListener("heat-sent", (e: MessageEvent) => {
-      console.log("[judge-round] SSE heat-sent received:", e.data);
-      loadActiveRoundRef.current();
-    });
-    es.onerror = () => console.warn("[judge-round] SSE connection error");
-    es.onopen = () => console.log("[judge-round] SSE connected");
-    es.addEventListener("judge-ping", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { judgeTokenId: string };
-        if (data.judgeTokenId === adjudicatorId) {
-          setPingAlert(true);
-          setTimeout(() => setPingAlert(false), 4000);
-        }
-      } catch { /* ignore */ }
-    });
-    es.addEventListener("dance-closed", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { danceName: string };
-        if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
-          // Lock the dance tab — judge can no longer submit for this dance
-          setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
-        }
-      } catch { /* ignore malformed */ }
-    });
-    es.addEventListener("round-status", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { status?: string };
-        if (data.status === "RUNNING") {
-          loadActiveRoundRef.current();
-        }
-      } catch { /* ignore malformed */ }
-    });
-    return () => es.close();
-  }, [competitionId, adjudicatorId]);
+    },
+    'public',
+  );
+  useSSE<unknown>(
+    competitionId,
+    'heat-sent',
+    () => loadActiveRoundRef.current(),
+    'public',
+  );
+  useSSE<{ judgeTokenId: string }>(
+    competitionId,
+    'judge-ping',
+    (data) => {
+      if (data.judgeTokenId === adjudicatorId) {
+        setPingAlert(true);
+        setTimeout(() => setPingAlert(false), 4000);
+      }
+    },
+    'public',
+  );
+  useSSE<{ danceName: string }>(
+    competitionId,
+    'dance-closed',
+    (data) => {
+      if (data.danceName && !submittedDanceNamesRef.current.has(data.danceName)) {
+        setSubmittedDanceNames((prev) => new Set([...prev, data.danceName]));
+      }
+    },
+    'public',
+  );
+  useSSE<{ status?: string }>(
+    competitionId,
+    'round-status',
+    (data) => {
+      if (data.status === 'RUNNING') loadActiveRoundRef.current();
+    },
+    'public',
+  );
 
   // Heartbeat every 20s — keeps admin dashboard online indicator accurate
   // Uses a ref for the interval so React Strict Mode double-invocation doesn't
@@ -383,11 +495,31 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     };
   }, [adjudicatorId]);
 
-  // Auto-sync pending offline marks when internet returns
+  // Auto-sync pending offline marks when internet returns.
+  //
+  // HIGH-28: previously deps were [isOnline] with eslint-disable, capturing
+  // adjudicatorId / deviceToken / token at first render. On a shared tablet
+  // (judges swap between sections), a second judge logging in writes new
+  // localStorage values, but this effect kept syncing under the FIRST judge's
+  // identity → cross-judge mark contamination.
+  //
+  // Fix: re-read localStorage at sync time so the value reflects whichever
+  // judge is currently logged in to this token. The effect still only fires
+  // on isOnline transitions, but the inputs to syncAll are read fresh.
   useEffect(() => {
-    if (!isOnline || !adjudicatorId || !deviceToken) return;
-    judgeOfflineStore.syncAll(adjudicatorId, deviceToken, token).catch(() => {});
-  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!isOnline) return;
+    const currentAdjudicatorId = localStorage.getItem(`judge_adjudicator_id_${token}`);
+    const currentDeviceToken = localStorage.getItem(`judge_device_token_${token}`);
+    if (!currentAdjudicatorId || !currentDeviceToken) return;
+    setSyncing(true);
+    judgeOfflineStore.syncAll(currentAdjudicatorId, currentDeviceToken, token)
+      .then((result) => {
+        if (result.rejected > 0 || result.conflicts.length > 0) setSyncConflictWarning(true);
+        if (usingCachedDataRef.current) loadActiveRoundRef.current();
+      })
+      .catch(() => {})
+      .finally(() => setSyncing(false));
+  }, [isOnline, token]);
 
   const activeDance = dances[activeDanceIdx];
   const activeHeat  = heats.length > 0 ? heats[activeHeatIdx] : null;
@@ -560,11 +692,18 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     // Show "hodnocení odesláno" screen briefly, then auto-advance to the next
     // not-yet-submitted dance — no admin involvement needed. Judge cannot navigate
     // manually (dance tabs are non-clickable spans), so this is the only way to progress.
+    //
+    // MED-39: store the timer in a ref so it can be cleared on unmount and on
+    // a subsequent submit. Without this, navigating away while the 1.5s timer
+    // was pending fired setActiveDanceIdx / setSubmitted on an unmounted
+    // component (React warning + double-advance if user re-mounted quickly).
     setSubmitted(true);
     setSubmitting(false);
     const justSubmitted = new Set(submittedDanceNames);
     justSubmitted.add(danceName);
-    setTimeout(() => {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    advanceTimerRef.current = setTimeout(() => {
+      advanceTimerRef.current = null;
       const nextIdx = dances.findIndex((d, i) => i > activeDanceIdx && !justSubmitted.has(d.name));
       const fallbackIdx = dances.findIndex((d) => !justSubmitted.has(d.name));
       const target = nextIdx >= 0 ? nextIdx : fallbackIdx;
@@ -612,7 +751,29 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
         </div>
       )}
 
-      {!isOnline && (
+      {syncConflictWarning && (
+        <div className="flex items-start gap-3 border-b border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{t("judge.sync_rejected", locale)}</span>
+        </div>
+      )}
+
+      {usingCachedData && (
+        <div className="flex flex-col gap-0.5 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+          <div className="flex items-center justify-center gap-2">
+            <CloudOff className="h-3.5 w-3.5 shrink-0" />
+            <span>{t("judge.offline_cached_data", locale, { minutes: cachedAt ? String(minutesAgo(cachedAt)) : "?" })}</span>
+          </div>
+          {cachedAt && minutesAgo(cachedAt) > 5 && (
+            <div className="flex items-center justify-center gap-1.5 text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="h-3 w-3 shrink-0" />
+              <span>{t("judge.offline_cached_stale", locale)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isOnline && !usingCachedData && (
         <div className="flex items-center justify-center gap-2 border-b border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-2 text-xs font-medium text-[var(--warning)]">
           <CloudOff className="h-3.5 w-3.5" /> {t("prelim.offline_local", locale)}
         </div>
@@ -636,7 +797,8 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            {!isOnline && <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
+            {syncing && <Spinner className="h-3.5 w-3.5 text-[var(--accent)]" aria-label="Synchronizuji..." />}
+            {!isOnline && !syncing && <WifiOff className="h-4 w-4 text-[var(--warning)]" aria-hidden="true" />}
             <button onClick={toggleLocale}
               aria-label={locale === "cs" ? "Switch to English" : "Přepnout do češtiny"}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--surface-secondary)] px-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">

@@ -95,6 +95,23 @@ export function getOrigin(): string {
   return typeof window !== "undefined" ? window.location.origin : "";
 }
 
+/**
+ * Whitelists organizer-controlled image URLs that we render via {@code <img src>}
+ * (MED-14). Accepts only inline {@code data:image/<type>;...} URLs — everything
+ * else (including {@code javascript:}, remote {@code https://evil.com/track.gif},
+ * SVG with embedded scripts) is rejected and an empty string is returned so the
+ * {@code <img>} doesn't render.
+ */
+const QR_DATA_URL_REGEX = /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/;
+export function safeQrImageSrc(input: string | null | undefined): string {
+  if (!input) return "";
+  // Length cap as defence-in-depth — a 5MB QR base64 string will be ~6.7MB,
+  // way above any legitimate QR PNG (~3kB). Reject obviously oversized values
+  // before regex-matching.
+  if (input.length > 200_000) return "";
+  return QR_DATA_URL_REGEX.test(input.trim()) ? input.trim() : "";
+}
+
 /** Extract a human-readable error message from any thrown value. */
 export function getErrorMessage(err: unknown, fallback = "Unknown error"): string {
   if (typeof err === "string") return err;

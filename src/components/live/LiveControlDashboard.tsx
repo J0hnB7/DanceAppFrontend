@@ -10,6 +10,7 @@ import { useSSE } from '@/hooks/use-sse'
 import { useSSEConnected } from '@/lib/sse-client'
 import { useJudgeStatusPolling } from '@/hooks/use-judge-status-polling'
 import { useRoundControl } from '@/hooks/use-round-control'
+import { useToast } from '@/hooks/use-toast'
 
 import { LiveStatusBar } from './LiveStatusBar'
 import { RoundSelector, type RoundItem } from './RoundSelector'
@@ -79,6 +80,7 @@ export function LiveControlDashboard({
   } = useLiveStore()
 
   const { t } = useLocale()
+  const { toast } = useToast()
   const [showHelp, setShowHelp] = useState(false)
   const [showIncidentModal, setShowIncidentModal] = useState(false)
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)
@@ -157,7 +159,13 @@ export function LiveControlDashboard({
   }
 
   // SSE event handlers
-  useSSE(competitionId, 'score-submitted', (data: { judgeTokenId: string }) => {
+  useSSE(competitionId, 'score-submitted', (data: { judgeTokenId: string; roundId?: string }) => {
+    // MED-29: BE includes roundId in score-submitted payload (SseEventPublisher.onScoreSubmitted).
+    // When admin switches rounds, an in-flight event from the previous round can land
+    // moments after live-store wipes judgeStatuses — drop it so the dashboard doesn't
+    // light up stale judge state for a round that's no longer selected.
+    const currentRoundId = useLiveStore.getState().selectedRoundId
+    if (data.roundId && currentRoundId && data.roundId !== currentRoundId) return
     if (data.judgeTokenId) {
       updateJudgeStatus(data.judgeTokenId, 'submitted')
       // Also refresh full judge statuses + danceConfirmations so counter stays in sync
@@ -183,6 +191,9 @@ export function LiveControlDashboard({
   useSSE(competitionId, 'dance-closed', onDanceClosed)
   useSSE(competitionId, 'violation-reported', () => {
     violationsApi.list(competitionId, 'PENDING_REVIEW').then(v => { setViolations(v); pingAudio() }).catch(() => {})
+  })
+  useSSE(competitionId, 'sync:rejected', () => {
+    toast({ title: "Sync rejected: judge's offline scores were not applied because the round was already closed.", variant: 'destructive' })
   })
 
   // ← → heat navigation

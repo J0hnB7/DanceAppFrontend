@@ -60,7 +60,8 @@ type DancerProfileForm = z.infer<typeof dancerProfileSchema>;
 
 export default function SettingsPage() {
   const { t } = useLocale();
-  const { user, checkAuth } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const checkAuth = useAuthStore((s) => s.checkAuth);
   const isDancer = user?.role === "DANCER";
 
   const [showPassword, setShowPassword] = useState(false);
@@ -237,9 +238,13 @@ export default function SettingsPage() {
 
   const copyInvite = async () => {
     if (!invite) return;
-    await navigator.clipboard.writeText(invite.inviteUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(invite.inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error("[settings] clipboard copy failed", e);
+    }
   };
 
   const unlinkPartner = async () => {

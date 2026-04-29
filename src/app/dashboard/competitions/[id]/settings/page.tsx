@@ -2,6 +2,7 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { safeQrImageSrc } from "@/lib/utils";
 import { AlertTriangle, Copy, ExternalLink, FileText, Layers, Trash2, UserCheck, UserX, Users } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
@@ -256,9 +257,11 @@ export default function SettingsPage({
                   <div>
                     <p className="mb-1 text-xs font-medium text-[var(--text-secondary)]">{t("competition.settings.qrCode")}</p>
                     <div className="flex items-start gap-4">
-                      {bankQrCode ? (
+                      {(() => {
+                        const safeBankQr = safeQrImageSrc(bankQrCode);
+                        return safeBankQr ? (
                         <div className="relative shrink-0">
-                          <img src={bankQrCode} alt={t("competition.settings.qrCode")} className="h-24 w-24 rounded-lg border border-[var(--border)] object-contain bg-white p-1" />
+                          <img src={safeBankQr} alt={t("competition.settings.qrCode")} className="h-24 w-24 rounded-lg border border-[var(--border)] object-contain bg-white p-1" />
                           <button
                             type="button"
                             onClick={() => { setBankQrCode(""); scheduleSave({ paymentConfig: { iban: bankIban, bic: bankBic, holder: bankHolder, address: bankAddress, qrCode: "" } }); }}
@@ -288,7 +291,8 @@ export default function SettingsPage({
                             }}
                           />
                         </label>
-                      )}
+                      );
+                      })()}
                       <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)]">
                         {t("competition.settings.qrCodeDesc")}
                       </p>

@@ -68,7 +68,7 @@ test.describe('admin live control', () => {
     // Po kliknutí na kolo se objeví tanec nebo heat selector
     await expect(
       page.locator(
-        '[data-testid="dance-selector"], [data-testid="heat-selector"], text=Tanec, text=Heat'
+        '[data-testid="dance-selector"], [data-testid="heat-selector"], :text("Tanec"), :text("Heat")'
       ).first()
     ).toBeVisible({ timeout: 10_000 });
   });
@@ -112,7 +112,7 @@ test.describe('judge scoring', () => {
 
     // Buď scoring grid, nebo lobby "čekám na kolo"
     await expect(
-      page.locator('.grid button, text=Čekám, text=Waiting, button:has-text("Odeslat")').first()
+      page.locator('.grid button, :text("Čekám"), :text("Waiting"), button:has-text("Odeslat")').first()
     ).toBeVisible({ timeout: 12_000 });
   });
 

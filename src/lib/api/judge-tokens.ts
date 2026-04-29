@@ -9,9 +9,11 @@ export interface JudgeTokenDto {
   role?: JudgeRole;
   active?: boolean;
   connectedAt?: string;
-  rawToken?: string;
-  rawPin?: string;
-  // Legacy mock fields
+  // SECURITY (CRIT-2): backend no longer returns raw QR token / PIN on list/status
+  // endpoints — plaintext alongside hashes was a credential leak on DB read.
+  // Raw values only return via JudgeTokenCreatedResponse at creation. Capture them
+  // in session-scoped cache and re-issue the token when raw access is needed again.
+  // Legacy fields kept ONLY for MSW dev parity; never trusted in production code.
   token?: string;
   pin?: string;
   name?: string;

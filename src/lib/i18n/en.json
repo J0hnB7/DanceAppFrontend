@@ -108,6 +108,7 @@
       "name": "Name",
       "namePlaceholder": "John Doe",
       "email": "Email",
+      "invalidEmail": "Enter a valid email address",
       "send": "Send Invitation"
     }
   },
@@ -355,7 +356,11 @@
     "paymentPending": "Pending",
     "paymentPaid": "Paid",
     "paymentWaived": "Waived",
-    "cyclePaymentTitle": "Click to change payment to: {{next}}"
+    "cyclePaymentTitle": "Click to change payment to: {{next}}",
+    "removedWithScoringData": "Pair removed from section. Scoring data is preserved.",
+    "cannotRemoveOnlySection": "A pair must belong to at least one section.",
+    "addCategory": "Add category",
+    "categories": "Categories"
   },
   "judges": {
     "title": "Judge Tokens",
@@ -995,7 +1000,19 @@
     "calculateAllTitle": "Recalculate overall standings for all categories",
     "calculateAllLabel": "Create overall standings for all categories",
     "calculateAllBtn": "Create overall standings ({{count}})",
-    "calculatingAllBtn": "Recalculating… {{done}}/{{total}}"
+    "calculatingAllBtn": "Recalculating… {{done}}/{{total}}",
+    "dirtyTitle": "Results are stale",
+    "dirtyDesc": "Recompute is required after the last correction before publishing.",
+    "dirtyRecompute": "Recompute",
+    "overrideTitle": "Recalculate with reduced judges",
+    "overrideDesc": "{{missing}} of {{total}} judges have incomplete data. Select those to exclude from the calculation.",
+    "overrideJudgeRow": "Judge {{number}} — submitted {{submitted}}/{{expected}} dances",
+    "overrideReasonLabel": "Reason (min 10 chars): hardware failure, judge withdrew…",
+    "overrideAcknowledge": "I understand this modifies the official calculation",
+    "overrideCancel": "Cancel",
+    "overrideSubmit": "Recalculate with {{remaining}} judges",
+    "overrideTooFewJudges": "Too few judges remain (need ≥ 3).",
+    "scoreboardCorrectedBadge": "Corrected {{date}} ({{count}} changes)"
   },
   "diplomas": {
     "title": "Diplomas",
@@ -1596,7 +1613,15 @@
     "valueLabel": "Value",
     "maxUsesLabel": "Max uses (optional)",
     "expiresAtLabel": "Expires at (optional)",
-    "codeMinLength": "Min 3 characters"
+    "codeMinLength": "Min 3 characters",
+    "volumeDiscount": "Volume discount",
+    "volumeDiscountEnable": "Enable volume discount",
+    "volumeDiscount2nd": "2nd category",
+    "volumeDiscount3rdPlus": "3rd category and beyond",
+    "volumeDiscountSave": "You save",
+    "volumeDiscountTotal": "Total",
+    "discountSaved": "Discount saved",
+    "discountSaveFailed": "Failed to save discount"
   },
   "payments": {
     "title": "Invoices & Payments",
