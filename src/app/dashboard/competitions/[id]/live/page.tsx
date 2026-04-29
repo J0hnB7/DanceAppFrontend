@@ -7,6 +7,7 @@ import { scheduleApi, type ScheduleSlot, type HeatAssignmentGroup } from "@/lib/
 import { liveApi } from "@/lib/api/live";
 import { useScheduleStore } from "@/store/schedule-store";
 import { useLiveStore } from "@/store/live-store";
+import { useShallow } from "zustand/react/shallow";
 import { useJudgeConnectivity } from "@/hooks/use-judge-connectivity";
 import { LiveControlDashboard } from "@/components/live/LiveControlDashboard";
 import { AppShell } from "@/components/layout/app-shell";
@@ -62,7 +63,14 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
   // Load schedule on mount
   useEffect(() => { loadSchedule(competitionId); }, [competitionId, loadSchedule]);
 
-  const { setDanceConfirmation, setRoundClosed, selectDance, selectHeat } = useLiveStore();
+  const { setDanceConfirmation, setRoundClosed, selectDance, selectHeat } = useLiveStore(
+    useShallow((s) => ({
+      setDanceConfirmation: s.setDanceConfirmation,
+      setRoundClosed: s.setRoundClosed,
+      selectDance: s.selectDance,
+      selectHeat: s.selectHeat,
+    })),
+  );
 
   // Judge connectivity (load + SSE + 30s poll)
   const { judgeDetails, updateJudgeDetails } = useJudgeConnectivity(competitionId);

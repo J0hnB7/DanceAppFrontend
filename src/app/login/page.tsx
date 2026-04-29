@@ -44,7 +44,7 @@ function LoginPageInner() {
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get("callbackUrl");
   const callbackUrl = isSafeCallbackUrl(rawCallback) ? rawCallback : "/dashboard";
-  const { loginWithTokens } = useAuthStore();
+  const loginWithTokens = useAuthStore((s) => s.loginWithTokens);
 
   const [mounted, setMounted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

@@ -10,6 +10,7 @@
 import { use, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLiveStore } from "@/store/live-store";
+import { useShallow } from "zustand/react/shallow";
 import { competitionsApi } from "@/lib/api/competitions";
 import { useSSE } from "@/hooks/use-sse";
 import { useLocale } from "@/contexts/locale-context";
@@ -35,7 +36,17 @@ export default function CompetitionDisplayPage({
     heatResults,
     updateJudgeStatus,
     hydrateFromServer,
-  } = useLiveStore();
+  } = useLiveStore(
+    useShallow((s) => ({
+      selectedRoundId: s.selectedRoundId,
+      selectedDanceId: s.selectedDanceId,
+      selectedHeatId: s.selectedHeatId,
+      judgeStatuses: s.judgeStatuses,
+      heatResults: s.heatResults,
+      updateJudgeStatus: s.updateJudgeStatus,
+      hydrateFromServer: s.hydrateFromServer,
+    })),
+  );
 
   // Hydrate when heat is set
   useEffect(() => {

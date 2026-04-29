@@ -15,7 +15,7 @@ const DANCER_ALLOWED_PATHS = [
 ];
 
 function DancerGuard({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const pathname = usePathname();
   const router = useRouter();
 

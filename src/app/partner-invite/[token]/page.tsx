@@ -17,7 +17,8 @@ function PartnerInviteInner({ params }: Props) {
   const { token } = use(params);
   const { t } = useLocale();
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const [preview, setPreview] = useState<PartnerInvitePreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(true);
