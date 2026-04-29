@@ -85,6 +85,18 @@ class SSEClient {
     }
     compHandlers.get(event)!.add(handler);
 
+    // MED-25: cancel any pending retry timer before deciding whether to open
+    // a new connection. Pre-fix: a subscribe() during the backoff window left
+    // the timer alive AND immediately opened a fresh connection — once the
+    // timer fired we ended up with two parallel EventSources for the same
+    // (competitionId, channel), counting as two judges to the connectivity
+    // dashboard and doubling the BE load.
+    const pendingTimer = this.retryTimers.get(k);
+    if (pendingTimer !== undefined) {
+      clearTimeout(pendingTimer);
+      this.retryTimers.delete(k);
+    }
+
     // Open connection if needed. Ticket fetch is async, so the source may be
     // created shortly after this call returns — that's fine because we attach
     // the listener for any registered events as part of connect().
@@ -189,15 +201,30 @@ class SSEClient {
 
   private attachListener(source: EventSource, k: string, event: string) {
     source.addEventListener(event, (e) => {
+      // MED-26: separate JSON-parse failure (the payload is malformed and we
+      // can't dispatch) from handler-throws (parsed fine, but a downstream
+      // React handler crashed). Pre-fix both ended up logged as "Malformed
+      // payload" — misleading during incident triage. Each handler also runs
+      // in its own try/catch so one bad subscriber doesn't starve the others.
+      let data: unknown;
       try {
-        const data = JSON.parse((e as MessageEvent).data);
-        if (data && typeof data === 'object' && 'eventId' in data && typeof data.eventId === 'string') {
-          this.lastEventIds.set(k, data.eventId);
-        }
-        this.handlers.get(k)?.get(event)?.forEach((h) => h(data));
+        data = JSON.parse((e as MessageEvent).data);
       } catch {
         console.warn('[SSE] Malformed payload for event', event, (e as MessageEvent).data);
+        return;
       }
+
+      if (data && typeof data === 'object' && 'eventId' in data && typeof data.eventId === 'string') {
+        this.lastEventIds.set(k, data.eventId);
+      }
+
+      this.handlers.get(k)?.get(event)?.forEach((h) => {
+        try {
+          h(data);
+        } catch (err) {
+          console.error(`[SSE] Handler for event "${event}" threw:`, err);
+        }
+      });
     });
   }
 
