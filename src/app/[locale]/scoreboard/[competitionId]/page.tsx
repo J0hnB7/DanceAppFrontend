@@ -178,9 +178,10 @@ export default function ScoreboardPage({
           )}
           <button
             onClick={toggleFullscreen}
+            aria-label={isFullscreen ? t("scoreboard.exitFullscreen") ?? "Exit fullscreen" : t("scoreboard.enterFullscreen") ?? "Enter fullscreen"}
             className="rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
           >
-            {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+            {isFullscreen ? <Minimize2 className="h-5 w-5" aria-hidden="true" /> : <Maximize2 className="h-5 w-5" aria-hidden="true" />}
           </button>
         </div>
       </div>
