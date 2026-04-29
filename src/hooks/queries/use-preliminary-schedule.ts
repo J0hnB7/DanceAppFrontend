@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import {
   preliminaryScheduleApi,
   type PreliminaryScheduleSettings,
@@ -19,7 +20,7 @@ export function usePreliminarySchedule(competitionId: string) {
 
 export function useSavePreliminaryScheduleSettings(competitionId: string) {
   const qc = useQueryClient();
-  return useMutation({
+  return useApiMutation({
     mutationFn: (settings: PreliminaryScheduleSettings) =>
       preliminaryScheduleApi.saveSettings(competitionId, settings),
     onSuccess: () => {
