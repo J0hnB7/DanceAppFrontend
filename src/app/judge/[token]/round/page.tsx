@@ -203,6 +203,15 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     typeof document !== "undefined" && document.documentElement.classList.contains("dark")
   );
 
+  // MED-39: pending advance-to-next-dance timer; cleared on unmount.
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+  }, []);
+
   const toggleTheme = () => {
     const dark = !isDark;
     setIsDark(dark);
@@ -640,11 +649,18 @@ export default function PreliminaryRoundPage({ params }: { params: Promise<{ tok
     // Show "hodnocení odesláno" screen briefly, then auto-advance to the next
     // not-yet-submitted dance — no admin involvement needed. Judge cannot navigate
     // manually (dance tabs are non-clickable spans), so this is the only way to progress.
+    //
+    // MED-39: store the timer in a ref so it can be cleared on unmount and on
+    // a subsequent submit. Without this, navigating away while the 1.5s timer
+    // was pending fired setActiveDanceIdx / setSubmitted on an unmounted
+    // component (React warning + double-advance if user re-mounted quickly).
     setSubmitted(true);
     setSubmitting(false);
     const justSubmitted = new Set(submittedDanceNames);
     justSubmitted.add(danceName);
-    setTimeout(() => {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    advanceTimerRef.current = setTimeout(() => {
+      advanceTimerRef.current = null;
       const nextIdx = dances.findIndex((d, i) => i > activeDanceIdx && !justSubmitted.has(d.name));
       const fallbackIdx = dances.findIndex((d) => !justSubmitted.has(d.name));
       const target = nextIdx >= 0 ? nextIdx : fallbackIdx;
