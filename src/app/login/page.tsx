@@ -185,7 +185,7 @@ function LoginPageInner() {
                     {t("auth.signIn")}
                   </h1>
                 </div>
-                <p style={{ fontSize: ".85rem", color: "#6B7280", marginTop: 6 }}>{t("auth.signInDesc")}</p>
+                <p style={{ fontSize: ".85rem", color: "#4B5563", marginTop: 6 }}>{t("auth.signInDesc")}</p>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="auth-light" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -278,7 +278,7 @@ function LoginPageInner() {
                   <p style={{ fontSize: ".8rem", color: "#EF4444", textAlign: "center", marginTop: -4 }}>{googleError}</p>
                 )}
 
-                <p style={{ textAlign: "center", fontSize: ".83rem", color: "#6B7280", marginTop: 4 }}>
+                <p style={{ textAlign: "center", fontSize: ".83rem", color: "#4B5563", marginTop: 4 }}>
                   {t("auth.noAccountLink")}{" "}
                   <Link href="/register" className="login-link">{t("auth.signUp")}</Link>
                 </p>

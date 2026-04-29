@@ -179,7 +179,7 @@ function RegisterPageInner() {
                   <h2 style={{ fontFamily: "var(--font-sora, Sora, sans-serif)", fontSize: "1.2rem", fontWeight: 800, color: "#111827", marginBottom: 10 }}>
                     {t("dancer.register.successTitle")}
                   </h2>
-                  <p style={{ fontSize: ".9rem", color: "#6B7280", lineHeight: 1.6, marginBottom: 24 }}>
+                  <p style={{ fontSize: ".9rem", color: "#4B5563", lineHeight: 1.6, marginBottom: 24 }}>
                     {t("dancer.register.successDesc")}
                   </p>
                   <Link href="/login" className="dreg-btn" style={{ display: "block", textAlign: "center", textDecoration: "none", padding: "11px", borderRadius: 9, background: "linear-gradient(135deg,#4F46E5,#6D28D9)", color: "#fff", fontWeight: 600 }}>
@@ -195,7 +195,7 @@ function RegisterPageInner() {
                         {t("dancer.register.title")}
                       </h1>
                     </div>
-                    <p style={{ fontSize: ".85rem", color: "#6B7280", marginTop: 6 }}>{t("dancer.register.subtitle")}</p>
+                    <p style={{ fontSize: ".85rem", color: "#4B5563", marginTop: 6 }}>{t("dancer.register.subtitle")}</p>
                   </div>
 
                   {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && mounted && (
@@ -270,7 +270,7 @@ function RegisterPageInner() {
                         style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0, cursor: "pointer", accentColor: "#4F46E5" }}
                         {...register("gdprAccepted")}
                       />
-                      <label htmlFor="gdpr-dancer" style={{ fontSize: ".82rem", color: "#6B7280", lineHeight: 1.5, cursor: "pointer" }}>
+                      <label htmlFor="gdpr-dancer" style={{ fontSize: ".82rem", color: "#4B5563", lineHeight: 1.5, cursor: "pointer" }}>
                         {t("dancer.register.gdprText")}{" "}
                         <Link href="/privacy" className="dreg-link">{t("dancer.register.gdprLink")}</Link>
                       </label>
@@ -283,7 +283,7 @@ function RegisterPageInner() {
                       {loading ? t("dancer.register.creating") : t("dancer.register.submit")}
                     </button>
 
-                    <p style={{ textAlign: "center", fontSize: ".83rem", color: "#6B7280", marginTop: 4 }}>
+                    <p style={{ textAlign: "center", fontSize: ".83rem", color: "#4B5563", marginTop: 4 }}>
                       {t("auth.hasAccount")}{" "}
                       <Link href="/login" className="dreg-link">{t("auth.signIn")}</Link>
                     </p>
