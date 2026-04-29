@@ -42,7 +42,8 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { usePairs, useCreatePair, useDeletePair, useImportPairs, useRemovePairFromSection } from "@/hooks/queries/use-pairs";
 import { useSections } from "@/hooks/queries/use-sections";
 import { competitionsApi } from "@/lib/api/competitions";
@@ -161,7 +162,7 @@ function NoteCell({ pair, competitionId }: { pair: PairDto; competitionId: strin
   const qc = useQueryClient();
   const cancelRef = useRef(false);
 
-  const save = useMutation({
+  const save = useApiMutation({
     mutationFn: (note: string) => pairsApi.setNote(competitionId, pair.id, note),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pairs", competitionId] });
@@ -224,7 +225,7 @@ function ContactModal({ pair, competitionId, onClose }: { pair: PairDto; competi
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
-  const send = useMutation({
+  const send = useApiMutation({
     mutationFn: () => pairsApi.contactEmail(competitionId, pair.id, { subject, message }),
     onSuccess: () => {
       toast({ title: t("pairs.emailSent"), variant: "success" });
@@ -393,7 +394,7 @@ function AddSectionDropdown({
   const [open, setOpen] = useState(false);
   const available = allSections.filter((s) => !assignedSectionIds.includes(s.id));
 
-  const add = useMutation({
+  const add = useApiMutation({
     mutationFn: (sectionId: string) =>
       apiClient.post(`/competitions/${competitionId}/pairs/${pairId}/sections/${sectionId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pairs", competitionId] }),
@@ -455,7 +456,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
   const importPairs = useImportPairs(id);
   const removePairFromSection = useRemovePairFromSection(id);
 
-  const generateCheckinLink = useMutation({
+  const generateCheckinLink = useApiMutation({
     mutationFn: () =>
       apiClient.post<{ token: string }>(`/competitions/${id}/checkin-token`).then((r) => r.data.token),
     onSuccess: (token) => {
@@ -464,13 +465,13 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
     },
   });
 
-  const cycleStatus = useMutation({
+  const cycleStatus = useApiMutation({
     mutationFn: ({ pairId, status }: { pairId: string; status: RegistrationStatus }) =>
       pairsApi.setRegistrationStatus(id, pairId, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pairs", id] }),
   });
 
-  const cyclePayment = useMutation({
+  const cyclePayment = useApiMutation({
     mutationFn: ({ pairId, status }: { pairId: string; status: PaymentStatus }) =>
       pairsApi.setPaymentStatus(id, pairId, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pairs", id] }),
@@ -488,7 +489,7 @@ export default function PairsPage({ params }: { params: Promise<{ id: string }> 
     });
   };
 
-  const toggleRegistration = useMutation({
+  const toggleRegistration = useApiMutation({
     mutationFn: () => {
       if (competition?.registrationOpen === true) {
         return competitionsApi.closeRegistration(id);
