@@ -41,7 +41,8 @@ const sectionLabel = (icon: string, text: string) => (
 /* ── Nav ───────────────────────────────────────────────── */
 function PublicNav() {
   const { t: _t, locale, setLocale } = useLocale();
-  const { isAuthenticated, user } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
@@ -90,7 +91,8 @@ export default function PublicCompetitionDetailPage({ params }: { params: Promis
   const { id } = use(params);
   const { t } = useLocale();
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [registeredSections, setRegisteredSections] = useState<Record<string, SelfRegistrationResponse>>({});

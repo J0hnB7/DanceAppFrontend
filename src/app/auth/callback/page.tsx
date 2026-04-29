@@ -19,7 +19,7 @@ function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const onboarding = searchParams.get("onboarding") === "true";
-  const { loginWithTokens } = useAuthStore();
+  const loginWithTokens = useAuthStore((s) => s.loginWithTokens);
   const ran = useRef(false);
 
   useEffect(() => {

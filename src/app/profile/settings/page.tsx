@@ -32,7 +32,7 @@ type ProfileForm = z.infer<typeof profileSchema>;
 export default function ProfileSettingsPage() {
   const { t } = useLocale();
   const router = useRouter();
-  const { logout } = useAuthStore();
+  const logout = useAuthStore((s) => s.logout);
 
   const [profile, setProfile] = useState<DancerProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);

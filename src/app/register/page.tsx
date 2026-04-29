@@ -34,7 +34,7 @@ function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
-  const { loginWithTokens } = useAuthStore();
+  const loginWithTokens = useAuthStore((s) => s.loginWithTokens);
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);

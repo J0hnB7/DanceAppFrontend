@@ -60,7 +60,8 @@ type DancerProfileForm = z.infer<typeof dancerProfileSchema>;
 
 export default function SettingsPage() {
   const { t } = useLocale();
-  const { user, checkAuth } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const checkAuth = useAuthStore((s) => s.checkAuth);
   const isDancer = user?.role === "DANCER";
 
   const [showPassword, setShowPassword] = useState(false);

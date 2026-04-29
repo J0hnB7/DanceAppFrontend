@@ -16,7 +16,7 @@ function VerifyEmailPageInner() {
   const router = useRouter();
   const token = searchParams.get("token");
   const sent = searchParams.get("sent");
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
     token ? "loading" : "idle"
