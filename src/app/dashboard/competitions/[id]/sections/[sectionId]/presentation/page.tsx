@@ -39,12 +39,16 @@ export default function PresentationPage({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealing, setRevealing] = useState(false);
 
-  const { data: section } = useQuery({
+  // MED-23: surface BE failures explicitly. Pre-fix the presentation page
+  // showed an empty stage indistinguishable from "no results yet" when the
+  // section/summary fetch 5xx'd — judges and audience would see a blank
+  // screen at the awards reveal.
+  const { data: section, isLoading: isSectionLoading, isError: isSectionError } = useQuery({
     queryKey: ["sections", competitionId, sectionId],
     queryFn: () => sectionsApi.get(competitionId, sectionId),
   });
 
-  const { data: summary } = useQuery({
+  const { data: summary, isError: isSummaryError } = useQuery({
     queryKey: ["section-summary", sectionId],
     queryFn: () => scoringApi.getSectionSummary(sectionId),
   });
@@ -125,6 +129,29 @@ export default function PresentationPage({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [advance, back, router]);
+
+  if (isSectionLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#080808] text-white/40">
+        <p className="font-sora text-2xl font-bold">Loading…</p>
+      </div>
+    );
+  }
+
+  if (isSectionError || isSummaryError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#080808] text-white/70">
+        <p className="font-sora text-2xl font-bold text-red-400">Connection error</p>
+        <p className="text-sm text-white/40">Cannot reach server. Please try again from the dashboard.</p>
+        <button
+          onClick={() => router.push(`/dashboard/competitions/${competitionId}`)}
+          className="mt-4 rounded-lg border border-white/20 px-6 py-2 text-sm hover:bg-white/10"
+        >
+          Back to dashboard
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

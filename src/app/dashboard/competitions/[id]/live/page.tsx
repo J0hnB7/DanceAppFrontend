@@ -55,7 +55,14 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
   const [heatIdMap, setHeatIdMap] = useState<Record<string, string>>({});
   const [sectionId, setSectionId] = useState<string | null>(null);
 
-  const { data: competition } = useQuery({
+  // MED-23: surface BE failures so an outage doesn't render an empty live
+  // dashboard during a running round (organizer would think judges had
+  // gone offline).
+  const {
+    data: competition,
+    isError: isCompetitionError,
+    refetch: refetchCompetition,
+  } = useQuery({
     queryKey: ["competition", competitionId],
     queryFn: () => competitionsApi.get(competitionId),
   });
@@ -269,6 +276,23 @@ export default function LiveControlPage({ params }: { params: Promise<{ id: stri
     const updated = { ...h, pairNumbers };
     return sub ? { ...updated, submittedJudges: sub.submitted, totalJudges: sub.total } : updated;
   });
+
+  if (isCompetitionError) {
+    return (
+      <AppShell sidebar={<CompetitionSidebar competitionId={competitionId} />}>
+        <div className="mx-auto mt-12 max-w-md rounded-[var(--radius-lg)] border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 p-6 text-center">
+          <p className="mb-2 text-lg font-semibold text-[var(--text-primary)]">Failed to load live dashboard</p>
+          <p className="mb-4 text-sm text-[var(--text-secondary)]">Cannot reach server. Live data may be stale until reconnected.</p>
+          <button
+            onClick={() => refetchCompetition()}
+            className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm hover:bg-[var(--surface-secondary)]"
+          >
+            Retry
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell noPadding sidebar={<CompetitionSidebar competitionId={competitionId} competitionName={competition?.name} />}>
