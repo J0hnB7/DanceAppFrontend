@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { Merge, Unlink, ChevronDown, ChevronUp, Users, GripVertical } from "lucide-react";
 import { sectionsApi, type SectionDto } from "@/lib/api/sections";
 import { sectionsApi2 } from "@/lib/api/schedule";
@@ -66,7 +67,7 @@ function SectionCard({ section, allSections, competitionId, onMergeRequest }: Se
   const mergeId: string | null = section.mergeId ?? null;
   const mergeLabel: string | null = section.mergedLabel ?? null;
 
-  const unmergeMutation = useMutation({
+  const unmergeMutation = useApiMutation({
     mutationFn: () => sectionsApi2.unmergeSections(competitionId, mergeId!),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sections", competitionId] });
@@ -218,7 +219,7 @@ function MergeDialog({ competitionId, primarySection, allSections, onClose }: Me
       s.danceStyle === primarySection?.danceStyle
   );
 
-  const mergeMutation = useMutation({
+  const mergeMutation = useApiMutation({
     mutationFn: () =>
       sectionsApi2.mergeSections(competitionId, {
         primarySectionId: primarySection!.id,
