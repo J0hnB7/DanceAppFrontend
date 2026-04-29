@@ -6,14 +6,6 @@ export interface LoginRequest {
   totpCode?: string;
 }
 
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  name: string;
-  organizationName?: string;
-  gdprAccepted: boolean;
-}
-
 /** Backend returns only tokens — call /auth/me separately to get user profile */
 export interface TokenResponse {
   accessToken: string;
@@ -41,9 +33,6 @@ export interface RefreshResponse {
 export const authApi = {
   login: (data: LoginRequest) =>
     apiClient.post<TokenResponse>("/auth/login", data).then((r) => r.data),
-
-  register: (data: RegisterRequest) =>
-    apiClient.post<TokenResponse>("/auth/register", data).then((r) => r.data),
 
   logout: () => apiClient.post("/auth/logout").then((r) => r.data),
 
