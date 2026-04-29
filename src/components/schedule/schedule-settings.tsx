@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { scheduleConfigApi, type ScheduleConfig } from "@/lib/api/schedule";
 import { useScheduleStore } from "@/store/schedule-store";
 import { Button } from "@/components/ui/button";
@@ -114,7 +115,7 @@ export function ScheduleSettings({
   }, [initialConfig?.scheduleStartTime, initialConfig?.danceDurationSeconds]);
 
 
-  const { mutate, isPending } = useMutation({
+  const { mutate, isPending } = useApiMutation({
     mutationFn: () =>
       scheduleConfigApi.update(competitionId, {
         ...config,
