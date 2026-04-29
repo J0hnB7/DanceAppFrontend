@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useCallback } from "react";
+import { use, useState, useCallback, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -105,7 +105,13 @@ async function fetchActiveRoundForCompetition(competitionId: string): Promise<{ 
 
 // ── JudgeStatusTable ──────────────────────────────────────────────────────────
 
-function JudgeStatusTable({
+// Memoised: parent (ScoringProgressPage) re-renders on every 5s submission-status
+// poll AND on every SSE event (marks-progress, all-marks-in, tie-detected,
+// mark-conflict) — ~30 renders/min during a busy round close. React Query
+// returns referentially-stable `status` when the payload is unchanged, so
+// shallow compare blocks the children-table re-render. Pair with a stable
+// `onRemind` (useCallback in the parent) for the memo to actually fire (HIGH-31).
+const JudgeStatusTable = memo(function JudgeStatusTable({
   status,
   onRemind,
 }: {
@@ -193,7 +199,7 @@ function JudgeStatusTable({
       )}
     </div>
   );
-}
+});
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -367,12 +373,14 @@ export default function ScoringProgressPage({ params }: { params: Promise<{ id: 
     }
   }, [roundId, qc, addAlert, t]));
 
-  const handleRemind = (judgeNumber: number) => {
+  // Stable reference so JudgeStatusTable's React.memo can short-circuit
+  // re-renders when only unrelated parent state changes.
+  const handleRemind = useCallback((judgeNumber: number) => {
     toast({
       title: t("round.reminderSent", { number: judgeNumber }),
       variant: "success",
     });
-  };
+  }, [t]);
 
   const handleResolveConflict = (resolution: "ONLINE" | "OFFLINE") => {
     if (!activeConflict) return;
