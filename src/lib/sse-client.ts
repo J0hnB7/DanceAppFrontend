@@ -1,4 +1,4 @@
-import { getAccessToken } from './api-client';
+import apiClient from './api-client';
 
 type SSEEventHandler = (data: unknown) => void;
 
@@ -15,6 +15,17 @@ const MAX_RECONNECTS_BEFORE_POLLING = 3;
 
 const key = (competitionId: string, channel: SSEChannel) => `${competitionId}:${channel}`;
 
+/**
+ * Fetches a single-use SSE ticket for the given (competition, channel). The
+ * BE issues a 5-min TTL ticket bound to the authenticated user, and the
+ * EventSource passes it as ?ticket=… instead of the long-lived JWT
+ * (CRIT-8 sub-fix C — keeps the JWT out of URLs / referrer headers / logs).
+ */
+async function fetchSseTicket(competitionId: string, channel: 'admin' | 'chair'): Promise<string> {
+  const res = await apiClient.post<{ ticket: string }>('/sse/ticket', { competitionId, channel });
+  return res.data.ticket;
+}
+
 class SSEClient {
   private sources: Map<string, EventSource> = new Map();
   private handlers: Map<string, Map<string, Set<SSEEventHandler>>> = new Map();
@@ -28,6 +39,8 @@ class SSEClient {
   private reconnectCallbacks: Map<string, Set<() => void>> = new Map();
   /** Callbacks to call after MAX_RECONNECTS_BEFORE_POLLING failures (polling fallback), per (competitionId, channel) */
   private pollingFallbackCallbacks: Map<string, Set<() => void>> = new Map();
+  /** Channels currently in the middle of opening (ticket fetch + EventSource creation). */
+  private connecting: Set<string> = new Set();
 
   /** Register a callback that fires on every successful SSE (re)open for a channel */
   onReconnect(competitionId: string, cb: () => void, channel: SSEChannel = 'admin'): () => void {
@@ -61,18 +74,27 @@ class SSEClient {
     channel: SSEChannel = 'admin',
   ): SSESubscription {
     const k = key(competitionId, channel);
-    if (!this.sources.has(k)) {
-      this.connect(competitionId, channel);
-    }
 
+    if (!this.handlers.has(k)) {
+      this.handlers.set(k, new Map());
+    }
     const compHandlers = this.handlers.get(k)!;
-    if (!compHandlers.has(event)) {
+    const isNewEvent = !compHandlers.has(event);
+    if (isNewEvent) {
       compHandlers.set(event, new Set());
-      const source = this.sources.get(k)!;
-      this.attachListener(source, k, event);
     }
-
     compHandlers.get(event)!.add(handler);
+
+    // Open connection if needed. Ticket fetch is async, so the source may be
+    // created shortly after this call returns — that's fine because we attach
+    // the listener for any registered events as part of connect().
+    if (!this.sources.has(k) && !this.connecting.has(k)) {
+      this.connecting.add(k);
+      void this.connect(competitionId, channel);
+    } else if (isNewEvent && this.sources.has(k)) {
+      // Source already open and a brand-new event type was just registered — attach now.
+      this.attachListener(this.sources.get(k)!, k, event);
+    }
 
     return {
       unsubscribe: () => {
@@ -90,27 +112,42 @@ class SSEClient {
     };
   }
 
-  private connect(competitionId: string, channel: SSEChannel) {
+  private async connect(competitionId: string, channel: SSEChannel) {
     const k = key(competitionId, channel);
     const lastEventId = this.lastEventIds.get(k);
     const params = new URLSearchParams();
     if (lastEventId) params.set('lastEventId', lastEventId);
 
-    // Only the admin/chair channels require an auth token. The public channel is
-    // open by design so judges (X-Judge-Token only) and unauthenticated viewers
-    // can read scoreboard updates without an admin JWT.
+    // Public channel — no auth, no ticket. Admin/chair — fetch a single-use
+    // ticket from /sse/ticket and pass it as ?ticket=. Pre-fix this passed
+    // the user's JWT directly, leaking it to logs and referrer headers
+    // (CRIT-8 sub-fix C).
     if (channel !== 'public') {
-      const token = getAccessToken();
-      if (token) params.set('authToken', token);
+      try {
+        const ticket = await fetchSseTicket(competitionId, channel);
+        params.set('ticket', ticket);
+      } catch (err) {
+        console.warn(`[SSE] Failed to fetch ${channel} ticket:`, err);
+        this.connecting.delete(k);
+        // Treat ticket failure the same as repeated reconnect failures:
+        // hand off to polling fallback so the page stays functional.
+        this.pollingFallbackCallbacks.get(k)?.forEach((cb) => cb());
+        this.teardown(k);
+        return;
+      }
     }
 
     const qs = params.toString();
     const url = `/api/v1/sse/competitions/${competitionId}/${channel}${qs ? `?${qs}` : ''}`;
     const source = new EventSource(url, { withCredentials: channel !== 'public' });
 
-    if (!this.handlers.has(k)) {
-      this.handlers.set(k, new Map());
-    }
+    this.sources.set(k, source);
+    this.connecting.delete(k);
+
+    // Attach listeners for every event already registered against this channel.
+    this.handlers.get(k)?.forEach((_, event) => {
+      this.attachListener(source, k, event);
+    });
 
     source.onopen = () => {
       this.retryDelays.set(k, BACKOFF_INITIAL_MS);
@@ -140,17 +177,14 @@ class SSEClient {
 
       const timer = setTimeout(() => {
         this.retryTimers.delete(k);
-        this.connect(competitionId, channel);
-        const newSource = this.sources.get(k)!;
-        this.handlers.get(k)?.forEach((_, event) => {
-          this.attachListener(newSource, k, event);
-        });
+        if (!this.connecting.has(k)) {
+          this.connecting.add(k);
+          void this.connect(competitionId, channel);
+        }
       }, delay);
 
       this.retryTimers.set(k, timer);
     };
-
-    this.sources.set(k, source);
   }
 
   private attachListener(source: EventSource, k: string, event: string) {
@@ -176,6 +210,7 @@ class SSEClient {
     this.reconnectFailures.delete(k);
     this.reconnectCallbacks.delete(k);
     this.pollingFallbackCallbacks.delete(k);
+    this.connecting.delete(k);
     const timer = this.retryTimers.get(k);
     if (timer !== undefined) {
       clearTimeout(timer);
